@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Save, Globe, FolderOpen, RefreshCw } from 'lucide-react';
-import { PROJECT_SETTINGS_KEYS } from '../lib/calculations';
+import { Save, Globe, FolderOpen } from 'lucide-react';
 import { fetchUsdRate } from '../lib/exchangeRate';
 import FreightHistoryPanel from './FreightHistoryPanel';
 
@@ -57,8 +56,7 @@ export default function SettingsPage({
   const [marginType, setMarginType]     = useState('markup'); // local UI state for the big buttons
   const [projMeta, setProjMeta]           = useState({ supplier: '', shipment_date: '' });
   const [savingProject, setSavingProject] = useState(false);
-  const [rateUpdating, setRateUpdating]   = useState(false);
-  const [rateUpdatedAt, setRateUpdatedAt] = useState(null);
+  const [rateUpdating, setRateUpdating] = useState(false);
 
   // ── Sync from props ──────────────────────────────────────────────────────
 
@@ -182,7 +180,6 @@ export default function SettingsPage({
     const rate = await fetchUsdRate();
     if (rate) {
       handleProjChange('usd_rate', rate);
-      setRateUpdatedAt(new Date());
       showToast(`שער דולר עודכן: ₪${rate}`);
     } else {
       showToast('לא ניתן לאמת שע״ח', 'error');
