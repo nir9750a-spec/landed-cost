@@ -237,13 +237,15 @@ export default function Dashboard({
         ) : (
           <>
             {/* ── Charts ── */}
+            {!products?.length ? null : (
             <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 16, marginBottom: 16 }}>
 
-              {/* Bar chart */}
+              {/* Bar chart — direction:ltr required for recharts in RTL apps */}
               <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 20px 10px' }}>
                 <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 16, color: 'var(--text)' }}>
                   עלות vs. מכירה לפי מוצר
                 </div>
+                <div style={{ direction: 'ltr' }}>
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={barData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                     <XAxis
@@ -269,15 +271,17 @@ export default function Dashboard({
                     <Bar dataKey="רווח"        fill={CHART_COLORS.profit} radius={[4, 4, 0, 0]} maxBarSize={28} />
                   </BarChart>
                 </ResponsiveContainer>
+                </div>
               </div>
 
-              {/* Pie chart */}
+              {/* Pie chart — direction:ltr required for recharts */}
               <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 12, padding: 20 }}>
                 <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12, color: 'var(--text)' }}>
                   מבנה עלות המשלוח ($)
                 </div>
                 {pieData.length > 0 ? (
                   <>
+                    <div style={{ direction: 'ltr' }}>
                     <ResponsiveContainer width="100%" height={160}>
                       <PieChart>
                         <Pie
@@ -294,6 +298,7 @@ export default function Dashboard({
                         <Tooltip content={<PieTooltip />} />
                       </PieChart>
                     </ResponsiveContainer>
+                    </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 8 }}>
                       {pieData.map((d, i) => {
                         const total = pieData.reduce((a, x) => a + x.value, 0);
@@ -316,6 +321,7 @@ export default function Dashboard({
                 )}
               </div>
             </div>
+            )}
 
             {/* ── ROI banner ── */}
             <div className="roi-banner">

@@ -247,7 +247,7 @@ export default function ProductsPage({
                     <tr>
                       {HEADERS.map((h, i) => (
                         <th key={h} style={i === HEADERS.length - 1 ? {
-                          position: 'sticky', right: 0, background: 'var(--bg2)', zIndex: 2,
+                          position: 'sticky', left: 0, background: 'var(--bg2)', zIndex: 2,
                         } : {}}>
                           {h}
                         </th>
@@ -270,7 +270,7 @@ export default function ProductsPage({
                           <td className="td-profit">{fmt.ils(p._profitPerUnit)}</td>
                           <td><MarginBadge pct={p._marginPct} /></td>
                           <td style={{
-                            position: 'sticky', right: 0,
+                            position: 'sticky', left: 0,
                             background: 'var(--bg1)', zIndex: 1,
                           }}>
                             <div className="flex gap-2">
@@ -312,7 +312,7 @@ export default function ProductsPage({
                       <td className="td-sell">{fmt.ils(totals.sellTotal)}</td>
                       <td className="td-profit">{fmt.ils(totals.profitTotal)}</td>
                       <td><MarginBadge pct={totals.marginPctTotal} /></td>
-                      <td style={{ position: 'sticky', right: 0, background: 'var(--bg2)' }}></td>
+                      <td style={{ position: 'sticky', left: 0, background: 'var(--bg2)' }}></td>
                     </tr>
                   </tfoot>
                 </table>

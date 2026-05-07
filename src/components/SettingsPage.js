@@ -141,6 +141,19 @@ export default function SettingsPage({
     setOverrideSet(s => new Set([...s, 'margin_type']));
   }
 
+  async function resetMarginToDefault() {
+    handleProjChange('margin', 25);
+    const overrides = {};
+    PROJECT_NUM_FIELDS.forEach(({ key }) => {
+      const val = key === 'margin' ? 25 : (overrideSet.has(key) ? Number(projValues[key]) : undefined);
+      if (val !== undefined) overrides[key] = val;
+    });
+    overrides.margin = 25;
+    if (overrideSet.has('margin_type')) overrides.margin_type = marginType;
+    await saveProjectSettings(overrides);
+    showToast('מרווח אופס ל-25%');
+  }
+
   async function submitProject(e) {
     e.preventDefault();
     setSavingProject(true);
@@ -442,6 +455,15 @@ export default function SettingsPage({
               <button type="submit" className="btn btn-primary" disabled={savingProject}>
                 {savingProject ? <span className="spinner" /> : <Save size={14} />}
                 {savingProject ? 'שומר...' : 'שמור הגדרות פרויקט'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={resetMarginToDefault}
+                title="שנה מרווח ל-25% ושמור"
+                style={{ color: 'var(--gold)', borderColor: 'var(--gold)' }}
+              >
+                ↺ אפס מרווח לברירת מחדל (25%)
               </button>
               <span className="text-sm text-muted">
                 {overrideSet.size === 0
