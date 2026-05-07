@@ -20,7 +20,8 @@ const PROJECT_NUM_FIELDS = [
   { key: 'usd_rate',  label: 'שער דולר (₪/$)',   type: 'number', step: '0.001', min: '0' },
   { key: 'freight',   label: 'הובלה FCL ($)',     type: 'number', step: '100',   min: '0' },
   { key: 'insurance', label: 'ביטוח (%)',          type: 'number', step: '0.1',   min: '0', max: '10' },
-  { key: 'margin',    label: 'מרווח (%)',          type: 'number', step: '1',     min: '0', max: '500' },
+  { key: 'margin',    label: 'מרווח (%)',          type: 'number', step: '1',     min: '0', max: '500',
+    hint: 'מומלץ: 25-35% לרוב המוצרים' },
 ];
 
 const FORMULA = [
@@ -197,7 +198,7 @@ export default function SettingsPage({
 
   // ── Inline renderer for numeric project fields (avoids React key-stripping) ──
 
-  function renderProjectField({ key, label, type, step, min, max }) {
+  function renderProjectField({ key, label, type, step, min, max, hint }) {
     const isOverridden = overrideSet.has(key);
     return (
       <div className="form-group" key={key}>
@@ -251,6 +252,11 @@ export default function SettingsPage({
         {key === 'freight' && activeFreightRecord && (
           <span className="text-sm text-muted" style={{ display: 'block', marginTop: 3 }}>
             פעיל מ: {new Date(activeFreightRecord.valid_from + 'T00:00:00').toLocaleDateString('he-IL')}
+          </span>
+        )}
+        {hint && (
+          <span className="text-sm text-muted" style={{ display: 'block', marginTop: 4 }}>
+            {hint}
           </span>
         )}
       </div>

@@ -241,10 +241,18 @@ export default function ProductsPage({
           <>
             {/* ── Desktop table ── */}
             <div className="desktop-only">
-              <div className="table-wrap">
-                <table>
+              <div className="table-wrap" style={{ overflowX: 'auto' }}>
+                <table style={{ minWidth: 900 }}>
                   <thead>
-                    <tr>{HEADERS.map(h => <th key={h}>{h}</th>)}</tr>
+                    <tr>
+                      {HEADERS.map((h, i) => (
+                        <th key={h} style={i === HEADERS.length - 1 ? {
+                          position: 'sticky', right: 0, background: 'var(--bg2)', zIndex: 2,
+                        } : {}}>
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
                   </thead>
                   <tbody>
                     {calced.map((p, idx) => (
@@ -261,7 +269,10 @@ export default function ProductsPage({
                           <td className="td-sell">{fmt.ils(p._sellPerUnit)}</td>
                           <td className="td-profit">{fmt.ils(p._profitPerUnit)}</td>
                           <td><MarginBadge pct={p._marginPct} /></td>
-                          <td>
+                          <td style={{
+                            position: 'sticky', right: 0,
+                            background: 'var(--bg1)', zIndex: 1,
+                          }}>
                             <div className="flex gap-2">
                               <button className="btn btn-sm" onClick={() => openEdit(p)} title="ערוך">
                                 <Edit2 size={13} />
@@ -301,7 +312,7 @@ export default function ProductsPage({
                       <td className="td-sell">{fmt.ils(totals.sellTotal)}</td>
                       <td className="td-profit">{fmt.ils(totals.profitTotal)}</td>
                       <td><MarginBadge pct={totals.marginPctTotal} /></td>
-                      <td></td>
+                      <td style={{ position: 'sticky', right: 0, background: 'var(--bg2)' }}></td>
                     </tr>
                   </tfoot>
                 </table>

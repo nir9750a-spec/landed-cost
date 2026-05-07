@@ -70,6 +70,7 @@ export default function App() {
     async function autoFetchRate() {
       const rate = await fetchUsdRate();
       if (!rate) return;
+      console.log('Fetched rate:', rate);
       setGlobalSettings(g => ({ ...g, usd_rate: rate }));
       setLastRateFetchAt(new Date());
       await supabase.from('settings')
