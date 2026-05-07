@@ -1,11 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Copy, Archive, FolderOpen, RotateCcw } from 'lucide-react';
-import { calcProducts, calcTotals } from '../lib/calculations';
+import { Plus, Copy, Archive, FolderOpen, RotateCcw, Trash2 } from 'lucide-react';
+import { calcProducts, calcTotals, fmt } from '../lib/calculations';
 import ProjectForm from './ProjectForm';
 
-function fmt(n, d = 0) {
-  return Number(n || 0).toLocaleString('he-IL', { minimumFractionDigits: d, maximumFractionDigits: d });
-}
 function fmtDate(ts) {
   return ts ? new Date(ts).toLocaleDateString('he-IL') : '';
 }
@@ -15,7 +12,7 @@ export const STATUS_CLASS  = { draft: 'badge-orange', active: 'badge-green', clo
 
 export default function ProjectsPage({
   projects, products, settings,
-  addProject, updateProject, duplicateProject,
+  addProject, updateProject, duplicateProject, deleteProject,
   setActiveProjectId, setPage,
 }) {
   const [showForm, setShowForm] = useState(false);
@@ -27,7 +24,7 @@ export default function ProjectsPage({
     projects.forEach(proj => {
       const pp = products.filter(p => p.project_id === proj.id);
       const t  = calcTotals(calcProducts(pp, settings));
-      map[proj.id] = { count: pp.length, landedIls: t.landedIlsTotal, profitTotal: t.profitTotal };
+      map[proj.id] = { count: pp.length, fobTotal: t.fobTotal, landedIls: t.landedIlsTotal, profitTotal: t.profitTotal };
     });
     return map;
   }, [projects, products, settings]);
@@ -116,12 +113,12 @@ export default function ProjectsPage({
                       <span className="pc-stat-val">{s.count || 0}</span>
                     </div>
                     <div className="pc-stat">
-                      <span className="pc-stat-label">Landed ₪</span>
-                      <span className="pc-stat-val td-ils">₪{fmt(s.landedIls)}</span>
+                      <span className="pc-stat-label">FOB $</span>
+                      <span className="pc-stat-val" style={{ color: 'var(--gold)' }}>{fmt.usd(s.fobTotal)}</span>
                     </div>
                     <div className="pc-stat">
                       <span className="pc-stat-label">רווח ₪</span>
-                      <span className="pc-stat-val td-profit">₪{fmt(s.profitTotal)}</span>
+                      <span className="pc-stat-val" style={{ color: 'var(--green)' }}>{fmt.ils(s.profitTotal)}</span>
                     </div>
                   </div>
 
@@ -141,6 +138,13 @@ export default function ProjectsPage({
                       title={proj.status === 'closed' ? 'שחזר פרויקט' : 'העבר לארכיון'}
                     >
                       {proj.status === 'closed' ? <RotateCcw size={13} /> : <Archive size={13} />}
+                    </button>
+                    <button
+                      className="btn btn-sm btn-danger"
+                      onClick={() => { if (window.confirm('למחוק את הפרויקט וכל מוצריו?')) deleteProject(proj.id); }}
+                      title="מחק פרויקט"
+                    >
+                      <Trash2 size={13} />
                     </button>
                   </div>
                 </div>

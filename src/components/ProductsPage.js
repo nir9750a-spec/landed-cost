@@ -1,33 +1,42 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Upload, Edit2, Trash2, ExternalLink, Sparkles, FolderOpen } from 'lucide-react';
-import { calcProducts, calcTotals } from '../lib/calculations';
+import { calcProducts, calcTotals, fmt } from '../lib/calculations';
 import { classifyHsCode } from '../lib/hsClassify';
 import ProductForm from './ProductForm';
 import FileUpload from './FileUpload';
 
-function fmt(n, d = 0) {
-  return Number(n || 0).toLocaleString('he-IL', { minimumFractionDigits: d, maximumFractionDigits: d });
+function n(v, d = 0) {
+  return Number(v || 0).toLocaleString('he-IL', { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+
+// Margin badge — green ≥20%, amber ≥10%, red <10%
+function MarginBadge({ pct }) {
+  const cls = pct >= 20 ? 'margin-green' : pct >= 10 ? 'margin-amber' : 'margin-red';
+  return <span className={`margin-badge ${cls}`}>{Number(pct || 0).toFixed(1)}%</span>;
 }
 
 const HEADERS = [
-  '#', 'שם מוצר', 'קוד HS', 'כמות',
-  'FOB/יח׳ ($)', 'FOB סה״כ ($)', 'הובלה ($)', 'ביטוח ($)',
-  'CIF ($)', 'מכס ($)', 'לפני מע״מ ($)', 'מע״מ ($)',
-  'עלות מחסן $', 'עלות מחסן ₪', 'עלות מחסן/יח׳ ₪', 'מחיר מכירה/יח׳ ₪',
-  'רווח/יח׳ ₪', 'רווח כולל ₪', 'פעולות',
+  '#', 'שם מוצר', 'מק"ט', 'כמות',
+  'FOB/יח׳ $', 'CBM/יח׳',
+  'קוד HS',
+  'עלות מחסן/יח׳ ₪', 'מכירה/יח׳ ₪', 'רווח/יח׳ ₪', 'מרווח',
+  'פעולות',
 ];
 
-export default function ProductsPage({ products, settings, showToast, addProduct, updateProduct, deleteProduct, addProducts, activeProject, setPage }) {
+export default function ProductsPage({
+  products, settings, showToast,
+  addProduct, updateProduct, deleteProduct, addProducts,
+  activeProject, setPage,
+}) {
   const [showForm, setShowForm]           = useState(false);
   const [editProd, setEditProd]           = useState(null);
   const [showUpload, setShowUpload]       = useState(false);
   const [confirmDel, setConfirmDel]       = useState(null);
   const [classifyingId, setClassifyingId] = useState(null);
-  // { id, result:{hs_code,customs_rate,explanation}, agentHsCode, agentCustomsRate } | { id, error }
   const [classifyPopup, setClassifyPopup] = useState(null);
 
   const calced = useMemo(() => calcProducts(products, settings), [products, settings]);
-  const totals  = useMemo(() => calcTotals(calced), [calced]);
+  const totals = useMemo(() => calcTotals(calced), [calced]);
 
   function openEdit(p) { setEditProd(p); setShowForm(true); }
   function openAdd()   { setEditProd(null); setShowForm(true); }
@@ -48,6 +57,8 @@ export default function ProductsPage({ products, settings, showToast, addProduct
     }
   }
 
+  // ── HS Classification ──────────────────────────────────────────────────
+
   async function handleClassifyInline(p) {
     if (classifyPopup?.id === p.id && !classifyingId) { setClassifyPopup(null); return; }
     setClassifyingId(p.id);
@@ -66,12 +77,11 @@ export default function ProductsPage({ products, settings, showToast, addProduct
     setClassifyPopup(prev => ({ ...prev, [key]: value }));
   }
 
-  // Recompute landed cost in ILS for a given customs rate%, holding everything else constant.
-  function computeLandedIls(p, customsRatePct) {
+  // Approximate warehouse cost delta for a given customs rate (display use only)
+  function computeApproxCost(p, customsRatePct) {
     const customs   = p._cif * (Number(customsRatePct) / 100);
     const beforeVat = p._cif + customs;
-    const vat       = beforeVat * (Number(settings?.vat ?? 18) / 100);
-    return (beforeVat + vat + p._agentShare) * Number(settings?.usd_rate ?? 3.7);
+    return (beforeVat + p._agentShare) * Number(settings?.usd_rate ?? 3.7);
   }
 
   async function saveAsAi(p) {
@@ -87,7 +97,7 @@ export default function ProductsPage({ products, settings, showToast, addProduct
     if (ok) { showToast(`עמיל מכס: HS ${hs} נשמר`); setClassifyPopup(null); }
   }
 
-  // ── Inner components (defined inside so they close over state/handlers) ──
+  // ── Inner sub-components (closures over state) ─────────────────────────
 
   function HsCell({ p }) {
     const busy = classifyingId === p.id;
@@ -102,7 +112,9 @@ export default function ProductsPage({ products, settings, showToast, addProduct
             disabled={busy}
             title="סווג עם AI"
           >
-            {busy ? <span className="spinner" style={{ width: 11, height: 11, borderWidth: 1.5 }} /> : <Sparkles size={11} />}
+            {busy
+              ? <span className="spinner" style={{ width: 11, height: 11, borderWidth: 1.5 }} />
+              : <Sparkles size={11} />}
             סווג
           </button>
           <a
@@ -132,104 +144,72 @@ export default function ProductsPage({ products, settings, showToast, addProduct
       );
     }
 
-    const hasAgentRate   = agentCustomsRate !== '';
-    const aiLanded       = computeLandedIls(p, result.customs_rate);
-    const agentLanded    = hasAgentRate ? computeLandedIls(p, agentCustomsRate) : null;
-    const diff           = hasAgentRate ? agentLanded - aiLanded : null;
-    const diffPositive   = diff !== null && diff > 0;
-    const diffNegative   = diff !== null && diff < 0;
+    const hasAgentRate = agentCustomsRate !== '';
+    const aiCost       = computeApproxCost(p, result.customs_rate);
+    const agentCost    = hasAgentRate ? computeApproxCost(p, agentCustomsRate) : null;
+    const diff         = hasAgentRate ? agentCost - aiCost : null;
 
     return (
       <div className={inCard ? 'cc-panel cc-panel-card' : 'cc-panel'}>
         <div className="cc-body">
           <table className="cc-table">
             <thead>
-              <tr>
-                <th>מקור</th>
-                <th>קוד HS</th>
-                <th>מכס %</th>
-                <th>Landed ₪</th>
-              </tr>
+              <tr><th>מקור</th><th>קוד HS</th><th>מכס %</th><th>עלות מחסן ₪ (קירוב)</th></tr>
             </thead>
             <tbody>
-              {/* AI row */}
               <tr className="cc-row-ai">
                 <td><span className="cc-source-badge cc-badge-ai">AI</span></td>
                 <td><span className="mono cc-code">{result.hs_code}</span></td>
                 <td>{result.customs_rate}%</td>
-                <td className="cc-val">₪{fmt(aiLanded)}</td>
+                <td className="cc-val">₪{n(aiCost)}</td>
               </tr>
-
-              {/* Agent row — inputs */}
               <tr className="cc-row-agent">
                 <td><span className="cc-source-badge cc-badge-agent">עמיל</span></td>
                 <td>
-                  <input
-                    className="cc-input"
-                    value={agentHsCode}
-                    onChange={e => setAgentField('agentHsCode', e.target.value.replace(/\D/g, '').slice(0, 8))}
-                    placeholder="00000000"
-                    dir="ltr"
-                    style={{ fontFamily: 'monospace', letterSpacing: 1 }}
-                  />
+                  <input className="cc-input" value={agentHsCode}
+                    onChange={e => setAgentField('agentHsCode', e.target.value.replace(/\D/g,'').slice(0,8))}
+                    placeholder="00000000" dir="ltr" />
                 </td>
                 <td>
-                  <input
-                    className="cc-input"
-                    type="number"
-                    value={agentCustomsRate}
+                  <input className="cc-input" type="number" value={agentCustomsRate}
                     onChange={e => setAgentField('agentCustomsRate', e.target.value)}
-                    placeholder="0"
-                    min="0" max="200" step="0.5"
-                  />
+                    placeholder="0" min="0" max="200" step="0.5" />
                 </td>
                 <td className="cc-val">
-                  {hasAgentRate ? `₪${fmt(agentLanded)}` : <span className="text-muted">—</span>}
+                  {hasAgentRate ? `₪${n(agentCost)}` : <span className="text-muted">—</span>}
                 </td>
               </tr>
-
-              {/* Diff row */}
               {hasAgentRate && (
                 <tr className="cc-row-diff">
-                  <td colSpan={3} className="cc-diff-label">הפרש בעלות ממונפת</td>
-                  <td className={`cc-diff-val ${diffPositive ? 'cc-more' : diffNegative ? 'cc-less' : 'cc-same'}`}>
-                    {diff > 0 ? '+' : ''}{fmt(diff)} ₪
+                  <td colSpan={3} className="cc-diff-label">הפרש בעלות</td>
+                  <td className={`cc-diff-val ${diff > 0 ? 'cc-more' : diff < 0 ? 'cc-less' : 'cc-same'}`}>
+                    {diff > 0 ? '+' : ''}{n(diff)} ₪
                     <span className="cc-diff-note">
-                      {diffPositive ? ' · עמיל יקר יותר' : diffNegative ? ' · עמיל זול יותר' : ' · זהה'}
+                      {diff > 0 ? ' · עמיל יקר' : diff < 0 ? ' · עמיל זול' : ' · זהה'}
                     </span>
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
-
-          {result.explanation && (
-            <div className="cc-explanation">{result.explanation}</div>
-          )}
+          {result.explanation && <div className="cc-explanation">{result.explanation}</div>}
         </div>
-
         <div className="cc-actions">
-          <button className="btn btn-sm btn-success" onClick={() => saveAsAi(p)}>
-            שמור לפי AI
-          </button>
-          <button className="btn btn-sm btn-primary" onClick={() => saveAsAgent(p)} disabled={!hasAgentRate}>
-            שמור לפי עמיל
-          </button>
+          <button className="btn btn-sm btn-success" onClick={() => saveAsAi(p)}>שמור לפי AI</button>
+          <button className="btn btn-sm btn-primary" onClick={() => saveAsAgent(p)} disabled={!hasAgentRate}>שמור לפי עמיל</button>
           <button className="btn btn-sm" onClick={() => setClassifyPopup(null)}>ביטול</button>
         </div>
       </div>
     );
   }
 
-  // ── Render ──
+  // ── Render ─────────────────────────────────────────────────────────────
 
   return (
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">
-            מוצרים{activeProject ? ` — ${activeProject.name}` : ''}
-          </h1>
+          <h1 className="page-title">מוצרים{activeProject ? ` — ${activeProject.name}` : ''}</h1>
         </div>
         <div className="flex gap-2">
           <button className="btn" onClick={() => setShowUpload(true)} disabled={!activeProject}>
@@ -270,31 +250,26 @@ export default function ProductsPage({ products, settings, showToast, addProduct
                     {calced.map((p, idx) => (
                       <React.Fragment key={p.id}>
                         <tr>
-                          <td className="text-muted" style={{ textAlign: 'center' }}>{idx + 1}</td>
-                          <td style={{ fontWeight: 500 }}>{p.name}</td>
-                          <td style={{ minWidth: 130 }}><HsCell p={p} /></td>
-                          <td className="td-num">{fmt(p.qty)}</td>
-                          <td className="td-usd">${fmt(p.fob_price, 2)}</td>
-                          <td className="td-usd">${fmt(p._fobTotal, 2)}</td>
-                          <td className="td-usd">${fmt(p._freightShare, 2)}</td>
-                          <td className="td-usd">${fmt(p._insuranceAmount, 2)}</td>
-                          <td className="td-usd">${fmt(p._cif, 2)}</td>
-                          <td className="td-usd">${fmt(p._customsAmount, 2)}</td>
-                          <td className="td-usd">${fmt(p._beforeVat, 2)}</td>
-                          <td className="td-usd">${fmt(p._vatAmount, 2)}</td>
-                          <td className="td-usd" style={{ fontWeight: 600 }}>${fmt(p._landedCostUsd, 2)}</td>
-                          <td className="td-ils" style={{ fontWeight: 600 }}>₪{fmt(p._landedCostIls)}</td>
-                          <td className="td-ils">₪{fmt(p._costPerUnit)}</td>
-                          <td className="td-sell">₪{fmt(p._sellPerUnit)}</td>
-                          <td className="td-profit">₪{fmt(p._profitPerUnit)}</td>
-                          <td className="td-profit" style={{ fontWeight: 600 }}>₪{fmt(p._profit)}</td>
+                          <td className="td-muted" style={{ textAlign: 'center', fontSize: 11 }}>{idx + 1}</td>
+                          <td style={{ fontWeight: 600 }}>{p.name}</td>
+                          <td className="td-muted font-mono">{p.item_no || '—'}</td>
+                          <td className="td-num">{n(p.qty)}</td>
+                          <td className="td-usd">${n(p.fob_price, 2)}</td>
+                          <td className="td-num">{n(p.cbm, 4)}</td>
+                          <td style={{ minWidth: 120 }}><HsCell p={p} /></td>
+                          <td className="td-ils" style={{ fontWeight: 700 }}>{fmt.ils(p._costPerUnit)}</td>
+                          <td className="td-sell">{fmt.ils(p._sellPerUnit)}</td>
+                          <td className="td-profit">{fmt.ils(p._profitPerUnit)}</td>
+                          <td><MarginBadge pct={p._marginPct} /></td>
                           <td>
                             <div className="flex gap-2">
-                              <button className="btn btn-sm" onClick={() => openEdit(p)} title="ערוך"><Edit2 size={13} /></button>
+                              <button className="btn btn-sm" onClick={() => openEdit(p)} title="ערוך">
+                                <Edit2 size={13} />
+                              </button>
                               <button
                                 className={`btn btn-sm ${confirmDel === p.id ? 'btn-danger' : ''}`}
                                 onClick={() => handleDelete(p.id)}
-                                title={confirmDel === p.id ? 'לחץ שוב לאישור מחיקה' : 'מחק'}
+                                title={confirmDel === p.id ? 'לחץ שוב לאישור' : 'מחק'}
                               >
                                 <Trash2 size={13} />
                                 {confirmDel === p.id && <span>אישור?</span>}
@@ -303,7 +278,6 @@ export default function ProductsPage({ products, settings, showToast, addProduct
                           </td>
                         </tr>
 
-                        {/* Comparison expand row */}
                         {classifyPopup?.id === p.id && (
                           <tr className="cc-expand-row">
                             <td colSpan={HEADERS.length} style={{ padding: 0 }}>
@@ -317,21 +291,16 @@ export default function ProductsPage({ products, settings, showToast, addProduct
                   <tfoot>
                     <tr>
                       <td></td>
-                      <td>סה״כ ({products.length} מוצרים)</td>
+                      <td>סה״כ ({products.length})</td>
                       <td></td>
-                      <td className="td-num">{fmt(totals.qtyTotal)}</td>
+                      <td className="td-num">{n(totals.qtyTotal)}</td>
                       <td></td>
-                      <td className="td-usd">${fmt(totals.fobTotal, 2)}</td>
-                      <td className="td-usd">${fmt(totals.freightTotal, 2)}</td>
-                      <td className="td-usd">${fmt(totals.insuranceTotal, 2)}</td>
-                      <td className="td-usd">${fmt(totals.cifTotal, 2)}</td>
-                      <td className="td-usd">${fmt(totals.customsTotal, 2)}</td>
-                      <td className="td-usd">${fmt(totals.beforeVatTotal, 2)}</td>
-                      <td className="td-usd">${fmt(totals.vatTotal, 2)}</td>
-                      <td className="td-usd">${fmt(totals.landedUsdTotal, 2)}</td>
-                      <td className="td-ils">₪{fmt(totals.landedIlsTotal)}</td>
-                      <td></td><td></td><td></td>
-                      <td className="td-profit" style={{ fontWeight: 600 }}>₪{fmt(totals.profitTotal)}</td>
+                      <td></td>
+                      <td></td>
+                      <td className="td-ils">{fmt.ils(totals.landedIlsTotal)}</td>
+                      <td className="td-sell">{fmt.ils(totals.sellTotal)}</td>
+                      <td className="td-profit">{fmt.ils(totals.profitTotal)}</td>
+                      <td><MarginBadge pct={totals.marginPctTotal} /></td>
                       <td></td>
                     </tr>
                   </tfoot>
@@ -344,20 +313,20 @@ export default function ProductsPage({ products, settings, showToast, addProduct
               <div className="mobile-totals">
                 <div className="mobile-totals-title">סה״כ — {products.length} מוצרים</div>
                 <div className="pc-item">
-                  <span className="pc-label">FOB סה״כ</span>
-                  <span className="pc-value td-usd">${fmt(totals.fobTotal, 2)}</span>
+                  <span className="pc-label">FOB $</span>
+                  <span className="pc-value td-usd">{fmt.usd(totals.fobTotal)}</span>
                 </div>
                 <div className="pc-item">
-                  <span className="pc-label">Landed ₪</span>
-                  <span className="pc-value td-ils">₪{fmt(totals.landedIlsTotal)}</span>
+                  <span className="pc-label">עלות מחסן ₪</span>
+                  <span className="pc-value td-ils">{fmt.ils(totals.landedIlsTotal)}</span>
                 </div>
                 <div className="pc-item">
-                  <span className="pc-label">מחיר מכירה ₪</span>
-                  <span className="pc-value td-sell">₪{fmt(totals.sellTotal)}</span>
+                  <span className="pc-label">מכירה ₪</span>
+                  <span className="pc-value td-sell">{fmt.ils(totals.sellTotal)}</span>
                 </div>
                 <div className="pc-item">
-                  <span className="pc-label">רווח כולל ₪</span>
-                  <span className="pc-value td-profit">₪{fmt(totals.profitTotal)}</span>
+                  <span className="pc-label">רווח ₪</span>
+                  <span className="pc-value td-profit">{fmt.ils(totals.profitTotal)}</span>
                 </div>
               </div>
 
@@ -365,37 +334,42 @@ export default function ProductsPage({ products, settings, showToast, addProduct
                 {calced.map((p, idx) => (
                   <div key={p.id} className="product-card">
                     <div className="product-card-header">
-                      <span className="product-card-name">{p.name}</span>
-                      <span className="product-card-num">#{idx + 1}</span>
+                      <div>
+                        <div className="product-card-name">{p.name}</div>
+                        {p.item_no && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2, fontFamily: 'monospace' }}>{p.item_no}</div>}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                        <span className="product-card-num">#{idx + 1}</span>
+                        <MarginBadge pct={p._marginPct} />
+                      </div>
                     </div>
                     <div className="product-card-grid">
                       <div className="pc-item">
                         <span className="pc-label">כמות</span>
-                        <span className="pc-value">{fmt(p.qty)}</span>
+                        <span className="pc-value">{n(p.qty)}</span>
                       </div>
                       <div className="pc-item">
-                        <span className="pc-label">FOB סה״כ</span>
-                        <span className="pc-value td-usd">${fmt(p._fobTotal, 2)}</span>
+                        <span className="pc-label">FOB/יח׳</span>
+                        <span className="pc-value td-usd">${n(p.fob_price, 2)}</span>
                       </div>
                       <div className="pc-item">
-                        <span className="pc-label">Landed $</span>
-                        <span className="pc-value td-usd">${fmt(p._landedCostUsd, 2)}</span>
+                        <span className="pc-label">עלות מחסן/יח׳</span>
+                        <span className="pc-value td-ils">{fmt.ils(p._costPerUnit)}</span>
                       </div>
                       <div className="pc-item">
-                        <span className="pc-label">Landed ₪</span>
-                        <span className="pc-value td-ils">₪{fmt(p._landedCostIls)}</span>
+                        <span className="pc-label">מכירה/יח׳</span>
+                        <span className="pc-value td-sell">{fmt.ils(p._sellPerUnit)}</span>
                       </div>
                       <div className="pc-item">
-                        <span className="pc-label">מחיר מכירה/יח׳</span>
-                        <span className="pc-value td-sell">₪{fmt(p._sellPerUnit)}</span>
+                        <span className="pc-label">רווח/יח׳</span>
+                        <span className="pc-value td-profit">{fmt.ils(p._profitPerUnit)}</span>
                       </div>
                       <div className="pc-item">
-                        <span className="pc-label">רווח כולל ₪</span>
-                        <span className="pc-value td-profit">₪{fmt(p._profit)}</span>
+                        <span className="pc-label">רווח כולל</span>
+                        <span className="pc-value td-profit">{fmt.ils(p._profit)}</span>
                       </div>
                     </div>
 
-                    {/* HS row */}
                     <div className="mobile-hs-row">
                       {p.hs_code && <span className="hs-code-text">{p.hs_code}</span>}
                       <div className="hs-cell-actions">
@@ -419,15 +393,13 @@ export default function ProductsPage({ products, settings, showToast, addProduct
                       </div>
                     </div>
 
-                    {/* Comparison panel inside card */}
                     <ComparisonPanel p={p} inCard />
 
                     <div className="product-card-footer">
-                      <button className="btn btn-sm" onClick={() => openEdit(p)} title="ערוך"><Edit2 size={13} /></button>
+                      <button className="btn btn-sm" onClick={() => openEdit(p)}><Edit2 size={13} /></button>
                       <button
                         className={`btn btn-sm ${confirmDel === p.id ? 'btn-danger' : ''}`}
                         onClick={() => handleDelete(p.id)}
-                        title={confirmDel === p.id ? 'לחץ שוב לאישור מחיקה' : 'מחק'}
                       >
                         <Trash2 size={13} />
                         {confirmDel === p.id && <span>אישור?</span>}

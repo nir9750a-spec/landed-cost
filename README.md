@@ -1,3 +1,22 @@
+# Landed Cost Calculator
+
+## טבלת freight_history (להוסיף ידנית ב-Supabase)
+
+```sql
+create table freight_history (
+  id uuid default gen_random_uuid() primary key,
+  project_id uuid references projects(id) on delete cascade,
+  freight_usd numeric not null,
+  valid_from date not null default current_date,
+  notes text,
+  created_at timestamptz default now()
+);
+alter table freight_history enable row level security;
+create policy "allow all" on freight_history for all using (true);
+```
+
+---
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
