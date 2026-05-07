@@ -1,105 +1,73 @@
 import React, { useMemo } from 'react';
-import { FolderOpen, Plus, TrendingUp } from 'lucide-react';
+import { FolderOpen, Plus, TrendingUp, TrendingDown, DollarSign, Package } from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
+  PieChart, Pie, Cell,
+} from 'recharts';
 import { calcProducts, calcTotals, fmt } from '../lib/calculations';
 import { STATUS_LABEL, STATUS_CLASS } from './ProjectsPage';
 
-function fmtN(n, d = 0) {
-  return Number(n || 0).toLocaleString('he-IL', { minimumFractionDigits: d, maximumFractionDigits: d });
+const CHART_COLORS = {
+  cost:     '#00d4aa',
+  sell:     '#7c3aed',
+  profit:   '#10b981',
+};
+
+const PIE_COLORS = ['#00d4aa', '#7c3aed', '#f59e0b', '#f97316', '#3b82f6'];
+
+function n(v, d = 0) {
+  return Number(v || 0).toLocaleString('he-IL', { minimumFractionDigits: d, maximumFractionDigits: d });
 }
 
-// ── Pure CSS bar chart ──────────────────────────────────────────────────────
-function BarChart({ calced }) {
-  if (!calced.length) return null;
-  const maxVal = Math.max(...calced.map(p => p._sellPerUnit || 0));
-  if (maxVal === 0) return null;
-
+// ── Custom tooltip for bar chart ───────────────────────────────────────────
+function BarTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
   return (
-    <div>
-      <div className="bar-legend">
-        <div className="bar-legend-item">
-          <div className="bar-legend-dot" style={{ background: 'rgba(0,212,170,0.7)' }} />
-          עלות מחסן/יח׳
+    <div style={{
+      background: '#1e293b', border: '1px solid #334155', borderRadius: 8,
+      padding: '10px 14px', fontSize: 12, minWidth: 160,
+    }}>
+      <div style={{ fontWeight: 700, marginBottom: 6, color: '#f1f5f9', fontSize: 13 }}>{label}</div>
+      {payload.map(p => (
+        <div key={p.dataKey} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, color: p.color, marginBottom: 3 }}>
+          <span>{p.name}</span>
+          <span style={{ fontWeight: 600 }}>₪{n(p.value)}</span>
         </div>
-        <div className="bar-legend-item">
-          <div className="bar-legend-dot" style={{ background: 'rgba(124,58,237,0.6)' }} />
-          מחיר מכירה/יח׳
-        </div>
-        <div className="bar-legend-item">
-          <div className="bar-legend-dot" style={{ background: 'rgba(16,185,129,0.8)' }} />
-          רווח/יח׳
-        </div>
-      </div>
-      <div className="bar-chart" style={{ marginTop: 14 }}>
-        {calced.slice(0, 10).map((p, i) => {
-          const costW   = ((p._costPerUnit   || 0) / maxVal * 100).toFixed(1);
-          const sellW   = ((p._sellPerUnit   || 0) / maxVal * 100).toFixed(1);
-          const profitW = ((p._profitPerUnit || 0) / maxVal * 100).toFixed(1);
-          return (
-            <div key={p.id || i} className="bar-chart-row">
-              <div className="bar-chart-label" title={p.name}>{p.name}</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <div className="bar-track" style={{ height: 8 }}>
-                  <div className="bar-segment bar-cost"   style={{ width: `${costW}%`   }} />
-                </div>
-                <div className="bar-track" style={{ height: 8 }}>
-                  <div className="bar-segment bar-sell"   style={{ width: `${sellW}%`   }} />
-                </div>
-                <div className="bar-track" style={{ height: 8 }}>
-                  <div className="bar-segment bar-profit" style={{ width: `${profitW}%` }} />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      ))}
     </div>
   );
 }
 
-// ── CSS donut chart ─────────────────────────────────────────────────────────
-function DonutChart({ totals }) {
-  const total = (totals.fobTotal    || 0)
-              + (totals.freightTotal || 0)
-              + (totals.insuranceTotal || 0)
-              + (totals.customsTotal   || 0)
-              + (totals.agentTotal     || 0);
-  if (total === 0) return null;
-
-  const segments = [
-    { label: 'FOB',        value: totals.fobTotal,       color: '#00d4aa' },
-    { label: 'הובלה',      value: totals.freightTotal,   color: '#7c3aed' },
-    { label: 'ביטוח',      value: totals.insuranceTotal, color: '#f59e0b' },
-    { label: 'מכס',        value: totals.customsTotal,   color: '#f97316' },
-    { label: 'עמלת סוכן', value: totals.agentTotal,     color: '#10b981' },
-  ].filter(s => s.value > 0);
-
-  let start = 0;
-  const gradient = segments.map(s => {
-    const pct = s.value / total * 100;
-    const seg = `${s.color} ${start.toFixed(1)}% ${(start + pct).toFixed(1)}%`;
-    start += pct;
-    return seg;
-  }).join(', ');
-
+// ── Custom tooltip for pie chart ───────────────────────────────────────────
+function PieTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null;
+  const p = payload[0];
   return (
-    <div className="donut-wrap">
-      <div className="donut" style={{ background: `conic-gradient(${gradient})` }}>
-        <div className="donut-hole" />
-      </div>
-      <div className="donut-legend">
-        {segments.map(s => (
-          <div key={s.label} className="donut-legend-item">
-            <div className="donut-legend-dot" style={{ background: s.color }} />
-            <span className="donut-legend-label">{s.label}</span>
-            <span className="donut-legend-pct">{(s.value / total * 100).toFixed(0)}%</span>
-          </div>
-        ))}
-      </div>
+    <div style={{
+      background: '#1e293b', border: '1px solid #334155', borderRadius: 8,
+      padding: '8px 12px', fontSize: 12,
+    }}>
+      <span style={{ color: p.payload.fill, fontWeight: 700 }}>{p.name}</span>
+      <span style={{ color: '#f1f5f9', marginRight: 8 }}> ${n(p.value, 0)} ({(p.percent * 100).toFixed(1)}%)</span>
     </div>
   );
 }
 
-// ── Component ───────────────────────────────────────────────────────────────
+// ── KPI card ───────────────────────────────────────────────────────────────
+function KpiCard({ label, value, sub, accent, icon: Icon }) {
+  return (
+    <div className="kpi-card" style={{ '--kpi-accent': accent }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div className="kpi-label">{label}</div>
+        {Icon && <Icon size={16} style={{ color: accent, opacity: 0.6 }} />}
+      </div>
+      <div className="kpi-value" style={{ color: accent }}>{value}</div>
+      {sub && <div className="kpi-sub">{sub}</div>}
+    </div>
+  );
+}
+
+// ── Component ──────────────────────────────────────────────────────────────
 export default function Dashboard({
   products, settings,
   allProducts, projects, activeProjectId, setActiveProjectId, setPage,
@@ -113,12 +81,30 @@ export default function Dashboard({
     return { ...proj, count: pp.length, ...t };
   }), [projects, allProducts, settings]);
 
-  const activeProject = projects.find(p => p.id === activeProjectId);
-  const marginLabel   = settings.margin_type === 'margin' ? 'Gross Margin' : 'Markup';
+  const activeProject  = projects.find(p => p.id === activeProjectId);
+  const marginLabel    = settings.margin_type === 'margin' ? 'Gross Margin' : 'Markup';
+  const vatEstimate    = totals.vatTotal * Number(settings.usd_rate || 3.7);
 
   function openProject(proj) { setActiveProjectId(proj.id); setPage('products'); }
 
-  // ── No project selected ──────────────────────────────────────────────────
+  // ── Bar chart data ─────────────────────────────────────────────────────
+  const barData = calced.slice(0, 12).map(p => ({
+    name: p.name.length > 14 ? p.name.slice(0, 13) + '…' : p.name,
+    'עלות מחסן':   Math.round(p._costPerUnit),
+    'מחיר מכירה': Math.round(p._sellPerUnit),
+    'רווח':        Math.round(p._profitPerUnit),
+  }));
+
+  // ── Pie chart data ─────────────────────────────────────────────────────
+  const pieData = [
+    { name: 'FOB סחורה',   value: Math.round(totals.fobTotal) },
+    { name: 'הובלה',       value: Math.round(totals.freightTotal) },
+    { name: 'ביטוח',       value: Math.round(totals.insuranceTotal) },
+    { name: 'מכס',         value: Math.round(totals.customsTotal) },
+    { name: 'עמלת סוכן',  value: Math.round(totals.agentTotal) },
+  ].filter(d => d.value > 0);
+
+  // ── No project selected ────────────────────────────────────────────────
   if (!activeProjectId) {
     return (
       <div>
@@ -138,12 +124,14 @@ export default function Dashboard({
             </div>
           ) : (
             <>
-              <div className="dashboard-section-title">לחץ על פרויקט לפתיחה</div>
+              <div className="dashboard-section-title">בחר פרויקט לפתיחה</div>
               <div className="projects-grid">
                 {projectStats.map(proj => (
-                  <div key={proj.id}
+                  <div
+                    key={proj.id}
                     className={`project-card project-card-clickable${proj.status === 'closed' ? ' project-card-closed' : ''}`}
-                    onClick={() => openProject(proj)}>
+                    onClick={() => openProject(proj)}
+                  >
                     <div className="project-card-top">
                       <div>
                         <div className="project-card-name">{proj.name}</div>
@@ -177,14 +165,20 @@ export default function Dashboard({
     );
   }
 
-  // ── Project selected ─────────────────────────────────────────────────────
+  // ── Project selected ───────────────────────────────────────────────────
   return (
     <div>
       <div className="page-header">
         <div>
           <h1 className="page-title">{activeProject?.name || 'לוח בקרה'}</h1>
-          {activeProject?.supplier && <div className="text-sm text-muted" style={{ marginTop: 2 }}>ספק: {activeProject.supplier}</div>}
-          {activeProject?.shipment_date && <div className="text-sm text-muted" style={{ marginTop: 1 }}>🚢 {new Date(activeProject.shipment_date).toLocaleDateString('he-IL')}</div>}
+          {activeProject?.supplier && (
+            <div className="text-sm text-muted" style={{ marginTop: 2 }}>ספק: {activeProject.supplier}</div>
+          )}
+          {activeProject?.shipment_date && (
+            <div className="text-sm text-muted" style={{ marginTop: 1 }}>
+              🚢 {new Date(activeProject.shipment_date).toLocaleDateString('he-IL')}
+            </div>
+          )}
         </div>
         <div className="flex gap-2 items-center">
           {activeProject && (
@@ -199,28 +193,36 @@ export default function Dashboard({
       </div>
 
       <div className="page-body">
-        {/* KPI cards */}
+        {/* ── KPI cards ── */}
         <div className="kpi-grid">
-          <div className="kpi-card kpi-teal">
-            <div className="kpi-label">עלות יבוא כוללת</div>
-            <div className="kpi-value" style={{ color: 'var(--blue)' }}>{fmt.ils(totals.landedIlsTotal)}</div>
-            <div className="kpi-sub">{fmt.usd(totals.landedUsdTotal)} · {fmtN(totals.totalCbm, 2)} m³</div>
-          </div>
-          <div className="kpi-card kpi-purple">
-            <div className="kpi-label">מחיר מכירה כולל</div>
-            <div className="kpi-value" style={{ color: 'var(--purple)' }}>{fmt.ils(totals.sellTotal)}</div>
-            <div className="kpi-sub">{marginLabel} · {settings.margin}%</div>
-          </div>
-          <div className="kpi-card kpi-green">
-            <div className="kpi-label">רווח גולמי</div>
-            <div className="kpi-value" style={{ color: 'var(--green)' }}>{fmt.ils(totals.profitTotal)}</div>
-            <div className="kpi-sub">ROI {fmtN(totals.roiTotal, 1)}% · מרווח {fmtN(totals.marginPctTotal, 1)}%</div>
-          </div>
-          <div className="kpi-card kpi-gold">
-            <div className="kpi-label">FOB סה״כ</div>
-            <div className="kpi-value" style={{ color: 'var(--gold)' }}>{fmt.usd(totals.fobTotal)}</div>
-            <div className="kpi-sub">{fmtN(totals.qtyTotal)} יחידות · {products.length} פריטים</div>
-          </div>
+          <KpiCard
+            label="עלות ייבוא כוללת"
+            value={fmt.ils(totals.landedIlsTotal)}
+            sub={`${fmt.usd(totals.landedUsdTotal)} · ${n(totals.totalCbm, 2)} m³`}
+            accent="#3b82f6"
+            icon={Package}
+          />
+          <KpiCard
+            label="מחיר מכירה כולל"
+            value={fmt.ils(totals.sellTotal)}
+            sub={`${marginLabel} · ${settings.margin}%`}
+            accent="#00d4aa"
+            icon={TrendingUp}
+          />
+          <KpiCard
+            label="רווח צפוי"
+            value={fmt.ils(totals.profitTotal)}
+            sub={`ROI ${n(totals.roiTotal, 1)}% · מרווח ${n(totals.marginPctTotal, 1)}%`}
+            accent={totals.profitTotal >= 0 ? '#f59e0b' : '#ef4444'}
+            icon={totals.profitTotal >= 0 ? TrendingUp : TrendingDown}
+          />
+          <KpiCard
+            label="FOB סה״כ"
+            value={fmt.usd(totals.fobTotal)}
+            sub={`${n(totals.qtyTotal)} יחידות · ${products.length} פריטים`}
+            accent="#7c3aed"
+            icon={DollarSign}
+          />
         </div>
 
         {products.length === 0 ? (
@@ -233,44 +235,111 @@ export default function Dashboard({
             </button>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-            {/* Bar chart */}
-            <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 12, padding: 20 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 16 }}>עלות vs. מכירה לפי מוצר</div>
-              <BarChart calced={calced} />
-            </div>
+          <>
+            {/* ── Charts ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 16, marginBottom: 16 }}>
 
-            {/* Donut chart */}
-            <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 12, padding: 20 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 16 }}>מבנה עלות המשלוח ($)</div>
-              <DonutChart totals={totals} />
-            </div>
-          </div>
-        )}
+              {/* Bar chart */}
+              <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 20px 10px' }}>
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 16, color: 'var(--text)' }}>
+                  עלות vs. מכירה לפי מוצר
+                </div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={barData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fill: '#64748b', fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fill: '#64748b', fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={v => '₪' + (v >= 1000 ? (v / 1000).toFixed(0) + 'K' : v)}
+                      width={52}
+                    />
+                    <Tooltip content={<BarTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                    <Legend
+                      wrapperStyle={{ fontSize: 11, color: '#94a3b8', paddingTop: 8 }}
+                      formatter={v => <span style={{ color: '#94a3b8' }}>{v}</span>}
+                    />
+                    <Bar dataKey="עלות מחסן"   fill={CHART_COLORS.cost}   radius={[4, 4, 0, 0]} maxBarSize={28} />
+                    <Bar dataKey="מחיר מכירה"  fill={CHART_COLORS.sell}   radius={[4, 4, 0, 0]} maxBarSize={28} />
+                    <Bar dataKey="רווח"        fill={CHART_COLORS.profit} radius={[4, 4, 0, 0]} maxBarSize={28} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
 
-        {/* ROI banner */}
-        {products.length > 0 && (
-          <div className="roi-banner">
-            <div className="roi-stat">
-              <div className="roi-label">ROI</div>
-              <div className="roi-value">{fmtN(totals.roiTotal, 1)}%</div>
-            </div>
-            <div className="roi-stat">
-              <div className="roi-label">{marginLabel}</div>
-              <div className="roi-value">{fmtN(totals.marginPctTotal, 1)}%</div>
-            </div>
-            <div className="roi-stat">
-              <div className="roi-label">רווח כולל</div>
-              <div className="roi-value">{fmt.ils(totals.profitTotal)}</div>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div className="roi-note">
-                <TrendingUp size={13} style={{ display: 'inline', marginLeft: 4 }} />
-                מע״מ ({settings.vat}%) מוצג לעיון בדף הפירוט המלא — לא נכלל בחישוב עלות המחסן.
-                זכות חזרת מע״מ: כ-{fmt.ils(totals.vatTotal * Number(settings.usd_rate || 3.7))} (הערכה).
+              {/* Pie chart */}
+              <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 12, padding: 20 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12, color: 'var(--text)' }}>
+                  מבנה עלות המשלוח ($)
+                </div>
+                {pieData.length > 0 ? (
+                  <>
+                    <ResponsiveContainer width="100%" height={160}>
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          cx="50%" cy="50%"
+                          innerRadius={48} outerRadius={76}
+                          paddingAngle={2}
+                          dataKey="value"
+                        >
+                          {pieData.map((_, i) => (
+                            <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<PieTooltip />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 8 }}>
+                      {pieData.map((d, i) => {
+                        const total = pieData.reduce((a, x) => a + x.value, 0);
+                        return (
+                          <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: 2, background: PIE_COLORS[i], flexShrink: 0 }} />
+                            <span style={{ color: 'var(--text2)', flex: 1 }}>{d.name}</span>
+                            <span style={{ color: 'var(--text)', fontWeight: 600 }}>
+                              {total > 0 ? (d.value / total * 100).toFixed(0) : 0}%
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ color: 'var(--text3)', fontSize: 12, textAlign: 'center', paddingTop: 40 }}>
+                    אין נתונים להצגה
+                  </div>
+                )}
               </div>
             </div>
-          </div>
+
+            {/* ── ROI banner ── */}
+            <div className="roi-banner">
+              <div className="roi-stat">
+                <div className="roi-label">ROI</div>
+                <div className="roi-value" style={{ color: totals.roiTotal >= 0 ? 'var(--blue)' : 'var(--red)' }}>
+                  {n(totals.roiTotal, 1)}%
+                </div>
+              </div>
+              <div className="roi-stat">
+                <div className="roi-label">{marginLabel}</div>
+                <div className="roi-value">{n(totals.marginPctTotal, 1)}%</div>
+              </div>
+              <div className="roi-stat">
+                <div className="roi-label">רווח כולל</div>
+                <div className="roi-value" style={{ color: 'var(--gold)' }}>{fmt.ils(totals.profitTotal)}</div>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div className="roi-note">
+                  💡 מע״מ ({settings.vat}%) לא כלול בחישוב — כעוסק מורשה תקבל החזר {fmt.ils(vatEstimate)} (הערכה)
+                </div>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>

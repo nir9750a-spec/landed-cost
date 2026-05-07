@@ -13,11 +13,14 @@ export const STATUS_CLASS  = { draft: 'badge-orange', active: 'badge-green', clo
 export default function ProjectsPage({
   projects, products, settings,
   addProject, updateProject, duplicateProject, deleteProject,
-  setActiveProjectId, setPage,
+  setActiveProjectId, setPage, showToast,
 }) {
   const [showForm, setShowForm] = useState(false);
   const [editProj, setEditProj] = useState(null);
   const [filter, setFilter]     = useState('all');
+
+  // Read active project ID from localStorage for border highlight
+  const storedActiveId = localStorage.getItem('lc_activeProjectId');
 
   const projectStats = useMemo(() => {
     const map = {};
@@ -90,16 +93,30 @@ export default function ProjectsPage({
           <div className="projects-grid">
             {filtered.map(proj => {
               const s = projectStats[proj.id] || {};
+              const isActive = proj.id === storedActiveId;
               return (
-                <div key={proj.id} className={`project-card${proj.status === 'closed' ? ' project-card-closed' : ''}`}>
+                <div
+                  key={proj.id}
+                  className={`project-card${proj.status === 'closed' ? ' project-card-closed' : ''}`}
+                  style={isActive ? {
+                    borderColor: 'var(--blue)',
+                    boxShadow: '0 0 0 1px rgba(0,212,170,0.3), 0 4px 20px rgba(0,212,170,0.08)',
+                  } : {}}
+                >
                   <div className="project-card-top">
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="project-card-name">{proj.name}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div className="project-card-name">{proj.name}</div>
+                        {isActive && (
+                          <span style={{
+                            fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 10,
+                            background: 'var(--blue-dim)', color: 'var(--blue)', flexShrink: 0,
+                          }}>פעיל</span>
+                        )}
+                      </div>
                       {proj.supplier && <div className="project-card-supplier">ספק: {proj.supplier}</div>}
                       <div className="project-card-date">
-                        {proj.shipment_date
-                          ? `🚢 ${fmtDate(proj.shipment_date)}`
-                          : fmtDate(proj.created_at)}
+                        {proj.shipment_date ? `🚢 ${fmtDate(proj.shipment_date)}` : fmtDate(proj.created_at)}
                       </div>
                     </div>
                     <span className={`badge ${STATUS_CLASS[proj.status] || 'badge-blue'}`}>
@@ -113,8 +130,8 @@ export default function ProjectsPage({
                       <span className="pc-stat-val">{s.count || 0}</span>
                     </div>
                     <div className="pc-stat">
-                      <span className="pc-stat-label">FOB $</span>
-                      <span className="pc-stat-val" style={{ color: 'var(--gold)' }}>{fmt.usd(s.fobTotal)}</span>
+                      <span className="pc-stat-label">Landed ₪</span>
+                      <span className="pc-stat-val" style={{ color: 'var(--blue)' }}>{fmt.ils(s.landedIls)}</span>
                     </div>
                     <div className="pc-stat">
                       <span className="pc-stat-label">רווח ₪</span>
@@ -129,13 +146,13 @@ export default function ProjectsPage({
                       <FolderOpen size={13} /> פתח
                     </button>
                     <button className="btn btn-sm" onClick={() => openEdit(proj)}>עריכה</button>
-                    <button className="btn btn-sm" onClick={() => duplicateProject(proj)} title="שכפל פרויקט">
+                    <button className="btn btn-sm" onClick={() => duplicateProject(proj)} title="שכפל">
                       <Copy size={13} />
                     </button>
                     <button
                       className="btn btn-sm"
                       onClick={() => toggleArchive(proj)}
-                      title={proj.status === 'closed' ? 'שחזר פרויקט' : 'העבר לארכיון'}
+                      title={proj.status === 'closed' ? 'שחזר' : 'ארכיון'}
                     >
                       {proj.status === 'closed' ? <RotateCcw size={13} /> : <Archive size={13} />}
                     </button>
@@ -143,6 +160,7 @@ export default function ProjectsPage({
                       className="btn btn-sm btn-danger"
                       onClick={() => { if (window.confirm('למחוק את הפרויקט וכל מוצריו?')) deleteProject(proj.id); }}
                       title="מחק פרויקט"
+                      style={{ marginRight: 'auto' }}
                     >
                       <Trash2 size={13} />
                     </button>

@@ -6,15 +6,36 @@ function fmtN(n, d = 0) {
   return Number(n || 0).toLocaleString('he-IL', { minimumFractionDigits: d, maximumFractionDigits: d });
 }
 
+// ── Progress bar card ──────────────────────────────────────────────────────
+function CostStructCard({ label, pct, absValue, color }) {
+  const clampedPct = Math.min(100, Math.max(0, pct));
+  return (
+    <div className="cost-struct-card">
+      <div className="cost-struct-label">{label}</div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
+        <div className="cost-struct-pct" style={{ color }}>{fmtN(pct, 1)}%</div>
+        <div className="cost-struct-abs">{fmt.usd(absValue)}</div>
+      </div>
+      <div style={{
+        height: 6, background: 'var(--bg3)', borderRadius: 4, overflow: 'hidden',
+      }}>
+        <div style={{
+          height: '100%', width: `${clampedPct}%`, background: color,
+          borderRadius: 4, transition: 'width 0.6s ease',
+        }} />
+      </div>
+    </div>
+  );
+}
+
 export default function BreakdownPage({ products, settings, activeProject, setPage }) {
   const calced = useMemo(() => calcProducts(products, settings), [products, settings]);
   const totals = useMemo(() => calcTotals(calced), [calced]);
 
-  // Cost structure percentages (in USD for comparability)
   const totalUsd    = totals.landedUsdTotal || 1;
-  const fobPct      = totals.fobTotal       / totalUsd * 100;
+  const fobPct      = totals.fobTotal / totalUsd * 100;
   const freInsPct   = (totals.freightTotal + totals.insuranceTotal) / totalUsd * 100;
-  const custAgntPct = (totals.customsTotal  + totals.agentTotal)    / totalUsd * 100;
+  const custAgntPct = (totals.customsTotal + totals.agentTotal) / totalUsd * 100;
 
   if (!activeProject) {
     return (
@@ -38,35 +59,40 @@ export default function BreakdownPage({ products, settings, activeProject, setPa
       <div className="page-header">
         <div>
           <h1 className="page-title">פירוט מלא — {activeProject.name}</h1>
-          {activeProject.supplier && <div className="text-sm text-muted" style={{ marginTop: 2 }}>ספק: {activeProject.supplier}</div>}
+          {activeProject.supplier && (
+            <div className="text-sm text-muted" style={{ marginTop: 2 }}>ספק: {activeProject.supplier}</div>
+          )}
         </div>
       </div>
 
       <div className="page-body">
         {/* VAT notice */}
         <div className="vat-notice">
-          💡 מע״מ ({settings.vat}%) מוצג לעיון בלבד — <strong>אינו נכלל</strong> בחישוב עלות המחסן.
-          כיצרן/יבואן רשום, תקבל חזרה על המע״מ. הערכת החזר: כ-{fmt.ils(totals.vatTotal * Number(settings.usd_rate || 3.7))}.
+          💡 מע״מ ({settings.vat}%) מוצג לידיעה בלבד — <strong>אינו נכלל</strong> בחישוב עלות המחסן.
+          הערכת החזר מע״מ: {fmt.ils(totals.vatTotal * Number(settings.usd_rate || 3.7))}.
         </div>
 
-        {/* Cost structure cards */}
+        {/* Cost structure with progress bars */}
         {products.length > 0 && (
           <div className="cost-structure-cards">
-            <div className="cost-struct-card">
-              <div className="cost-struct-label">רכיב FOB</div>
-              <div className="cost-struct-pct" style={{ color: 'var(--blue)' }}>{fmtN(fobPct, 1)}%</div>
-              <div className="cost-struct-abs">{fmt.usd(totals.fobTotal)}</div>
-            </div>
-            <div className="cost-struct-card">
-              <div className="cost-struct-label">הובלה + ביטוח</div>
-              <div className="cost-struct-pct" style={{ color: 'var(--purple)' }}>{fmtN(freInsPct, 1)}%</div>
-              <div className="cost-struct-abs">{fmt.usd(totals.freightTotal + totals.insuranceTotal)}</div>
-            </div>
-            <div className="cost-struct-card">
-              <div className="cost-struct-label">מכס + עמלת סוכן</div>
-              <div className="cost-struct-pct" style={{ color: 'var(--gold)' }}>{fmtN(custAgntPct, 1)}%</div>
-              <div className="cost-struct-abs">{fmt.usd(totals.customsTotal + totals.agentTotal)}</div>
-            </div>
+            <CostStructCard
+              label="FOB סחורה"
+              pct={fobPct}
+              absValue={totals.fobTotal}
+              color="var(--blue)"
+            />
+            <CostStructCard
+              label="הובלה + ביטוח"
+              pct={freInsPct}
+              absValue={totals.freightTotal + totals.insuranceTotal}
+              color="var(--purple)"
+            />
+            <CostStructCard
+              label="מכס + עמלת סוכן"
+              pct={custAgntPct}
+              absValue={totals.customsTotal + totals.agentTotal}
+              color="var(--gold)"
+            />
           </div>
         )}
 
@@ -92,12 +118,12 @@ export default function BreakdownPage({ products, settings, activeProject, setPa
                   <th>מכס %</th>
                   <th>מכס $</th>
                   <th>לפני מע״מ $</th>
-                  <th style={{ color: 'var(--gold)', opacity: 0.7 }}>מע״מ $ ⁽¹⁾</th>
+                  <th style={{ color: 'var(--gold)', opacity: 0.7 }}>מע״מ $ ⁽*⁾</th>
                   <th>עמלת סוכן $</th>
-                  <th>עלות מחסן/יח׳ ₪</th>
-                  <th>Breakeven ₪</th>
-                  <th>מחיר מכירה/יח׳ ₪</th>
-                  <th>רווח/יח׳ ₪</th>
+                  <th>עלות/יח׳ ₪</th>
+                  <th>Break-even ₪</th>
+                  <th>מחיר מכירה ₪</th>
+                  <th>רווח ₪</th>
                   <th>ROI %</th>
                 </tr>
               </thead>
@@ -157,7 +183,7 @@ export default function BreakdownPage({ products, settings, activeProject, setPa
 
         {products.length > 0 && (
           <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text3)' }}>
-            ⁽¹⁾ מע״מ מוצג לעיון בלבד — אינו נכלל בחישוב עלות המחסן.
+            ⁽*⁾ מע״מ מוצג לידיעה בלבד — אינו נכלל בחישוב עלות המחסן.
           </div>
         )}
       </div>

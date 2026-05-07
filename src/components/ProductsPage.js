@@ -9,9 +9,9 @@ function n(v, d = 0) {
   return Number(v || 0).toLocaleString('he-IL', { minimumFractionDigits: d, maximumFractionDigits: d });
 }
 
-// Margin badge — green ≥20%, amber ≥10%, red <10%
+// Margin badge — green ≥25%, amber 15-25%, red <15%
 function MarginBadge({ pct }) {
-  const cls = pct >= 20 ? 'margin-green' : pct >= 10 ? 'margin-amber' : 'margin-red';
+  const cls = pct >= 25 ? 'margin-green' : pct >= 15 ? 'margin-amber' : 'margin-red';
   return <span className={`margin-badge ${cls}`}>{Number(pct || 0).toFixed(1)}%</span>;
 }
 
