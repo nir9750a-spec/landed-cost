@@ -3,6 +3,7 @@ import { supabase } from './lib/supabase';
 import { DEFAULT_SETTINGS, PROJECT_SETTINGS_KEYS } from './lib/calculations';
 import { fetchUsdRate } from './lib/exchangeRate';
 import { getActiveFreight } from './lib/freightHistory';
+import { loadMarketRates, saveMarketRate } from './lib/marketRates';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import ProductsPage from './components/ProductsPage';
@@ -43,6 +44,7 @@ export default function App() {
   const [toasts, setToasts]         = useState([]);
   const [freightHistory, setFreightHistory]   = useState([]);
   const [lastRateFetchAt, setLastRateFetchAt] = useState(null);
+  const [marketRates, setMarketRates]         = useState([]);
 
   const [globalSettings, setGlobalSettings]     = useState(DEFAULT_SETTINGS);
   const [projectOverrides, setProjectOverrides] = useState({});
@@ -92,8 +94,14 @@ export default function App() {
       }
     }
 
+    async function initMarketRates() {
+      const data = await loadMarketRates(supabase);
+      setMarketRates(data);
+    }
+
     autoFetchRate();
     initFreight();
+    initMarketRates();
     const rateInterval = setInterval(autoFetchRate, 6 * 60 * 60 * 1000);
     return () => clearInterval(rateInterval);
   }, []); // eslint-disable-line
@@ -278,12 +286,35 @@ export default function App() {
     showToast(`"${newProj.name}" שוכפל בהצלחה`);
   }
 
+  async function updateMarketRate(parameter, value) {
+    const ok = await saveMarketRate(supabase, parameter, value);
+    if (ok) {
+      setMarketRates(prev => prev.map(r =>
+        r.parameter === parameter
+          ? { ...r, value, updated_at: new Date().toISOString() }
+          : r
+      ));
+      showToast(`שיעור שוק עודכן: $${value}`);
+    } else {
+      showToast('שגיאה בעדכון שיעור', 'error');
+    }
+  }
+
+  async function applyMarketRate(key, value) {
+    if (!activeProjectId) { showToast('בחר פרויקט פעיל', 'error'); return; }
+    const merged = { ...projectOverrides, [key]: Number(value) };
+    const ok = await saveProjectSettings(merged);
+    if (ok) showToast(`שיעור $${value} הוחל על הפרויקט`);
+  }
+
   const activeProject  = projects.find(p => p.id === activeProjectId) || null;
   const activeProducts = activeProjectId ? products.filter(p => p.project_id === activeProjectId) : [];
   const shared = { products: activeProducts, settings, showToast, addProduct, updateProduct, deleteProduct, addProducts };
 
   return (
-    <Layout page={page} setPage={setPage} activeProject={activeProject}>
+    <Layout page={page} setPage={setPage} activeProject={activeProject}
+      marketRates={marketRates} onUpdateMarketRate={updateMarketRate}
+      onApplyMarketRate={applyMarketRate} settings={settings}>
       {page === 'dashboard'  && <Dashboard {...shared} allProducts={products} projects={projects}
                                   activeProjectId={activeProjectId} setActiveProjectId={setActiveProjectId} setPage={setPage} />}
       {page === 'products'   && <ProductsPage {...shared} activeProject={activeProject} setPage={setPage} />}

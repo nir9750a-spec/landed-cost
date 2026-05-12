@@ -1,5 +1,29 @@
 # Landed Cost Calculator
 
+## טבלת market_rates (להוסיף ב-Supabase)
+
+```sql
+CREATE TABLE IF NOT EXISTS market_rates (
+  id uuid default gen_random_uuid() primary key,
+  parameter text not null unique,
+  value numeric not null,
+  unit text,
+  source text,
+  notes text,
+  updated_at timestamptz default now()
+);
+ALTER TABLE market_rates ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow all" ON market_rates FOR ALL USING (true);
+
+INSERT INTO market_rates (parameter, value, unit, source, notes) VALUES
+('fcl_40ft_china_med', 2286, 'USD', 'Drewry WCI', 'China to Mediterranean 40ft container'),
+('lcl_per_cbm', 70, 'USD', 'Market average', 'China to Israel per CBM'),
+('air_per_kg', 5.5, 'USD', 'Market average', 'China to Israel per kg')
+ON CONFLICT (parameter) DO NOTHING;
+```
+
+---
+
 ## טבלת freight_history (להוסיף ידנית ב-Supabase)
 
 ```sql
