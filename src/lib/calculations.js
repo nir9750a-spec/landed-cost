@@ -1,6 +1,6 @@
 // ─── Incoterms & port constants ────────────────────────────────────────────
 export const INCOTERMS_LIST = ['EXW','FCA','FAS','FOB','CFR','CIF','CPT','CIP','DAP','DPU','DDP'];
-export const ORIGIN_PORTS   = ['שנגחאי','שנזן','גואנגג׳ו','נינגבו','טיאנג׳ין','קינגדאו'];
+export const ORIGIN_PORTS   = ['שנגחאי','שנזן','גואנגג׳ו','נינגבו','טיאנג׳ין','קינגדאו','יונגקאנג'];
 
 export const INCOTERMS_DESC = {
   EXW: 'קבלת הסחורה מהמפעל — הקונה אחראי לכל העלויות',

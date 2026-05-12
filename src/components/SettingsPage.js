@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Save, Globe, FolderOpen } from 'lucide-react';
 import { fetchUsdRate } from '../lib/exchangeRate';
 import FreightHistoryPanel from './FreightHistoryPanel';
+import { INCOTERMS_LIST, INCOTERMS_DESC, ORIGIN_PORTS } from '../lib/calculations';
 
 // ── Field definitions ──────────────────────────────────────────────────────
 
@@ -166,19 +167,22 @@ export default function SettingsPage({
     setSavingProject(true);
 
     const overrides = {};
+    // Numeric rate fields (only when overridden)
     PROJECT_NUM_FIELDS.forEach(({ key }) => {
       if (overrideSet.has(key)) overrides[key] = Number(projValues[key]);
     });
-    // String keys
-    if (overrideSet.has('margin_type'))       overrides.margin_type        = marginType;
-    const strKeys = ['incoterms','shipping_method','sea_type','origin_port'];
-    strKeys.forEach(k => {
-      if (overrideSet.has(k)) overrides[k] = String(projValues[k] ?? '');
+    if (overrideSet.has('margin_type')) overrides.margin_type = marginType;
+
+    // Shipping & Incoterms — ALWAYS save (project-specific, not inherited from global)
+    const shipStrKeys = ['incoterms','shipping_method','sea_type','origin_port'];
+    shipStrKeys.forEach(k => {
+      const v = projValues[k] ?? globalSettings[k] ?? '';
+      if (v !== '') overrides[k] = String(v);
     });
-    // Numeric shipping keys
-    const numShip = ['freight','lcl_price_per_cbm','air_price_per_kg','china_local_transport'];
-    numShip.forEach(k => {
-      if (overrideSet.has(k)) overrides[k] = Number(projValues[k] ?? 0);
+    const shipNumKeys = ['freight','lcl_price_per_cbm','air_price_per_kg','china_local_transport'];
+    shipNumKeys.forEach(k => {
+      const v = projValues[k] ?? globalSettings[k] ?? 0;
+      overrides[k] = Number(v) || 0;
     });
 
     const ok = await saveProjectSettings(overrides);
@@ -372,6 +376,148 @@ export default function SettingsPage({
               <div className="settings-grid">
                 {PROJECT_NUM_FIELDS.map(f => renderProjectField(f))}
               </div>
+
+              {/* ── Incoterms & Shipping ── */}
+              <div className="settings-section-divider">תנאי מכר ומשלוח (Incoterms 2020)</div>
+              {(() => {
+                const inc  = String(projValues.incoterms      || globalSettings.incoterms      || 'FOB');
+                const meth = String(projValues.shipping_method || globalSettings.shipping_method || 'sea').toLowerCase();
+                const seaT = String(projValues.sea_type        || globalSettings.sea_type        || 'fcl').toLowerCase();
+                const desc = INCOTERMS_DESC[inc] || '';
+                const buyerPaysFr  = ['EXW','FCA','FAS','FOB'].includes(inc);
+                const chinaVisible = ['EXW','FCA','FAS'].includes(inc);
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+                    {/* Incoterms dropdown */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                      <div className="form-group">
+                        <label>תנאי מכר</label>
+                        <select
+                          value={inc}
+                          onChange={e => handleProjChange('incoterms', e.target.value)}
+                          className="sfield-input sfield-overridden"
+                        >
+                          {INCOTERMS_LIST.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                        {desc && (
+                          <span className="text-sm text-muted" style={{ display: 'block', marginTop: 4 }}>
+                            {desc}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Origin port */}
+                      <div className="form-group">
+                        <label>נמל מוצא</label>
+                        <select
+                          value={projValues.origin_port || globalSettings.origin_port || 'שנגחאי'}
+                          onChange={e => handleProjChange('origin_port', e.target.value)}
+                          className="sfield-input sfield-overridden"
+                        >
+                          {ORIGIN_PORTS.map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Shipping method toggle */}
+                    <div className="form-group">
+                      <label style={{ marginBottom: 8, display: 'block' }}>שיטת משלוח</label>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {[['sea','🚢 ים'],['air','✈️ אוויר']].map(([val, lbl]) => (
+                          <button
+                            key={val}
+                            type="button"
+                            className={`margin-type-btn${meth === val ? ' selected' : ''}`}
+                            style={{ flex: 'unset', padding: '10px 28px', minWidth: 120 }}
+                            onClick={() => handleProjChange('shipping_method', val)}
+                          >
+                            {lbl}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* SEA: FCL / LCL */}
+                    {meth === 'sea' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div className="form-group">
+                          <label style={{ marginBottom: 8, display: 'block' }}>סוג משלוח</label>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            {[['fcl','FCL — קונטיינר מלא'],['lcl','LCL — חלק מקונטיינר']].map(([val, lbl]) => (
+                              <button
+                                key={val}
+                                type="button"
+                                className={`margin-type-btn${seaT === val ? ' selected' : ''}`}
+                                style={{ flex: 'unset', padding: '8px 20px' }}
+                                onClick={() => handleProjChange('sea_type', val)}
+                              >
+                                {lbl}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        {seaT === 'fcl' && buyerPaysFr && (
+                          <div className="form-group" style={{ maxWidth: 220 }}>
+                            <label>מחיר קונטיינר 40ft ($)</label>
+                            <input
+                              type="number" min="0" step="100"
+                              value={projValues.freight ?? globalSettings.freight ?? ''}
+                              onChange={e => handleProjChange('freight', e.target.value)}
+                              className="sfield-input sfield-overridden"
+                              placeholder="5000"
+                            />
+                          </div>
+                        )}
+                        {seaT === 'lcl' && buyerPaysFr && (
+                          <div className="form-group" style={{ maxWidth: 220 }}>
+                            <label>מחיר לCBM ($)</label>
+                            <input
+                              type="number" min="0" step="1"
+                              value={projValues.lcl_price_per_cbm ?? globalSettings.lcl_price_per_cbm ?? ''}
+                              onChange={e => handleProjChange('lcl_price_per_cbm', e.target.value)}
+                              className="sfield-input sfield-overridden"
+                              placeholder="70"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* AIR */}
+                    {meth === 'air' && (
+                      <div className="form-group" style={{ maxWidth: 220 }}>
+                        <label>מחיר לק"ג ($)</label>
+                        <input
+                          type="number" min="0" step="0.1"
+                          value={projValues.air_price_per_kg ?? globalSettings.air_price_per_kg ?? ''}
+                          onChange={e => handleProjChange('air_price_per_kg', e.target.value)}
+                          className="sfield-input sfield-overridden"
+                          placeholder="5.5"
+                        />
+                      </div>
+                    )}
+
+                    {/* China local transport — EXW/FCA/FAS only */}
+                    {chinaVisible && (
+                      <div className="form-group" style={{ maxWidth: 220 }}>
+                        <label>הובלה מקומית סין ($)</label>
+                        <input
+                          type="number" min="0" step="10"
+                          value={projValues.china_local_transport ?? globalSettings.china_local_transport ?? ''}
+                          onChange={e => handleProjChange('china_local_transport', e.target.value)}
+                          className="sfield-input sfield-overridden"
+                          placeholder="0"
+                        />
+                        <span className="text-sm text-muted" style={{ display: 'block', marginTop: 4 }}>
+                          הובלה מהמפעל לנמל המוצא
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Margin type selector */}
               <div className="settings-section-divider">שיטת מרווח</div>
