@@ -1,24 +1,77 @@
-// ─── Setting key groups ────────────────────────────────────────────────────
-export const GLOBAL_SETTINGS_KEYS  = ['vat', 'customs', 'agent_fee', 'api_key', 'port_fees', 'local_transport'];
-export const PROJECT_SETTINGS_KEYS = ['usd_rate', 'freight', 'insurance', 'margin', 'margin_type'];
-// margin_type: 'markup' → sell = cost × (1 + m)   |  'margin' → sell = cost / (1 − m)  (gross margin)
+// ─── Incoterms & port constants ────────────────────────────────────────────
+export const INCOTERMS_LIST = ['EXW','FCA','FAS','FOB','CFR','CIF','CPT','CIP','DAP','DPU','DDP'];
+export const ORIGIN_PORTS   = ['שנגחאי','שנזן','גואנגג׳ו','נינגבו','טיאנג׳ין','קינגדאו'];
 
-export const DEFAULT_SETTINGS = {
-  usd_rate:        3.7,
-  freight:         5000,
-  customs:         5,
-  vat:             18,
-  agent_fee:       4000,
-  insurance:       0.5,
-  margin:          25,
-  margin_type:     'markup',   // string — special-cased in App.js parseRow / mergeSettings
-  port_fees:       0,
-  local_transport: 0,
-  api_key:         '',
+export const INCOTERMS_DESC = {
+  EXW: 'קבלת הסחורה מהמפעל — הקונה אחראי לכל העלויות',
+  FCA: 'המוכר מעביר למוביל — הקונה אחראי ממסירה למוביל',
+  FAS: 'המוכר מאחסן ליד האוניה — הקונה מטעין ומעלה',
+  FOB: 'המוכר מעמיס — הקונה אחראי מהאוניה (הנפוץ ביותר)',
+  CFR: 'המוכר משלם הובלה לנמל יעד — הקונה אחראי לביטוח',
+  CIF: 'המוכר משלם הובלה + ביטוח לנמל יעד',
+  CPT: 'המוכר משלם הובלה למוביל בנקודת יעד — הקונה אחראי לביטוח',
+  CIP: 'המוכר משלם הובלה + ביטוח עד נקודת יעד',
+  DAP: 'המוכר אחראי עד נקודת יעד — לא כולל פריקה ומכס',
+  DPU: 'המוכר אחראי עד הפריקה בנמל יעד — לא כולל מכס',
+  DDP: 'המוכר אחראי לכל העלויות כולל מכס ומע"מ',
 };
 
-// ─── Format helpers ────────────────────────────────────────────────────────
-const HE = { minimumFractionDigits: 0, maximumFractionDigits: 0 };
+// ─── Buyer-pays matrix per Incoterm ────────────────────────────────────────
+//   china = local Chinese transport (factory → port)
+//   fr    = international freight
+//   ins   = marine insurance
+//   cust  = customs duty
+//   vat   = import VAT
+//   port  = Israeli port fees
+//   local = Israeli local transport
+const BP = {
+  EXW: { china:true,  fr:true,  ins:true,  cust:true,  vat:true,  port:true,  local:true  },
+  FCA: { china:true,  fr:true,  ins:true,  cust:true,  vat:true,  port:true,  local:true  },
+  FAS: { china:true,  fr:true,  ins:true,  cust:true,  vat:true,  port:true,  local:true  },
+  FOB: { china:false, fr:true,  ins:true,  cust:true,  vat:true,  port:true,  local:true  },
+  CFR: { china:false, fr:false, ins:true,  cust:true,  vat:true,  port:true,  local:true  },
+  CIF: { china:false, fr:false, ins:false, cust:true,  vat:true,  port:true,  local:true  },
+  CPT: { china:false, fr:false, ins:true,  cust:true,  vat:true,  port:true,  local:true  },
+  CIP: { china:false, fr:false, ins:false, cust:true,  vat:true,  port:true,  local:true  },
+  DAP: { china:false, fr:false, ins:false, cust:true,  vat:true,  port:false, local:false },
+  DPU: { china:false, fr:false, ins:false, cust:true,  vat:true,  port:false, local:false },
+  DDP: { china:false, fr:false, ins:false, cust:false, vat:false, port:false, local:false },
+};
+
+// ─── Setting key groups ─────────────────────────────────────────────────────
+export const GLOBAL_SETTINGS_KEYS = [
+  'vat', 'customs', 'agent_fee', 'api_key', 'port_fees', 'local_transport', 'purchase_tax_rate',
+];
+export const PROJECT_SETTINGS_KEYS = [
+  'usd_rate', 'freight', 'insurance', 'margin', 'margin_type',
+  'incoterms', 'shipping_method', 'sea_type', 'lcl_price_per_cbm',
+  'air_price_per_kg', 'origin_port', 'china_local_transport',
+];
+
+export const DEFAULT_SETTINGS = {
+  usd_rate:             3.7,
+  freight:              5000,    // FCL container price $
+  customs:              5,       // default customs %
+  vat:                  18,      // Israel VAT %
+  agent_fee:            4000,    // customs agent fee ₪
+  insurance:            0.5,     // insurance %
+  margin:               25,
+  margin_type:          'markup',
+  port_fees:            0,
+  local_transport:      0,
+  api_key:              '',
+  purchase_tax_rate:    0,       // מס קניה %
+  incoterms:            'FOB',
+  shipping_method:      'sea',   // 'sea' | 'air'
+  sea_type:             'fcl',   // 'fcl' | 'lcl'
+  lcl_price_per_cbm:   0,
+  air_price_per_kg:    0,
+  origin_port:          'שנגחאי',
+  china_local_transport: 0,
+};
+
+// ─── Format helpers ─────────────────────────────────────────────────────────
+const HE  = { minimumFractionDigits: 0, maximumFractionDigits: 0 };
 const HE2 = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
 
 export const fmt = {
@@ -28,168 +81,218 @@ export const fmt = {
   pct:  n => Number(n || 0).toFixed(1) + '%',
   num:  n => Number(n || 0).toLocaleString('he-IL', HE),
   cbm:  n => Number(n || 0).toLocaleString('he-IL', { minimumFractionDigits: 4, maximumFractionDigits: 4 }),
+  kg:   n => Number(n || 0).toLocaleString('he-IL', HE2) + ' ק"ג',
 };
 
-// ─── Core calculation ──────────────────────────────────────────────────────
+// ─── Core calculation engine ─────────────────────────────────────────────────
 //
-//  Step 1  total_ils = (fob×rate) + (freight×rate) + (insurance×rate)
-//                    + (customs×rate) + agent_fee + port_fees + local_transport
-//          (agent_fee / port_fees / local_transport already in ILS)
+//  Based on Israel Customs Authority official CIF method:
+//  customs_duty = CIF_USD × rate × customs%
+//  vat_base     = (CIF_USD × rate) + customs_duty_ils + purchase_tax_ils
+//  vat          = vat_base × 18%
 //
-//  Step 2  cost_per_cbm = total_ils / total_cbm
-//          Fallback (cbm=0): cost = (total_ils / total_fob_usd) × fob_price
+//  Warehouse cost = CIF×rate + customs + purchase_tax + VAT
+//                 + agent + port + local_transport + china_transport
 //
-//  Step 3  warehouse_cost_unit = cost_per_cbm × cbm_unit
-//
-//  Step 4  sell_price
-//          markup:  sell = cost × (1 + margin%)
-//          margin:  sell = cost / (1 − margin%)   ← gross-margin correct
-//
-//  Step 5  profit = sell − cost
-//          roi     = profit / cost × 100
-//
-//  Insurance uses ICC formula: premium = value × r / (1 − r)
-//  so the policy covers the premium itself.
-// ──────────────────────────────────────────────────────────────────────────
+//  Note: VAT is included in warehouse cost (cash-flow basis).
+//        Registered importers can reclaim VAT.
+// ────────────────────────────────────────────────────────────────────────────
 
 export function calcProducts(products, settings) {
   const s = { ...DEFAULT_SETTINGS, ...settings };
 
-  const rate           = Number(s.usd_rate);
-  const freightUsd     = Number(s.freight);
-  const insurancePct   = Number(s.insurance)       / 100;
-  const customsPct     = Number(s.customs)          / 100;
-  const vatPct         = Number(s.vat)              / 100;
+  const rate           = Number(s.usd_rate)          || 3.7;
+  const incoterms      = (s.incoterms || 'FOB').toUpperCase();
+  const pays           = BP[incoterms] || BP.FOB;
+  const shippingMethod = (s.shipping_method || 'sea').toLowerCase();
+  const seaType        = (s.sea_type        || 'fcl').toLowerCase();
+  const fclPrice       = Number(s.freight)                  || 0;
+  const lclPerCbm      = Number(s.lcl_price_per_cbm)        || 0;
+  const airPerKg       = Number(s.air_price_per_kg)         || 0;
+  const insurancePct   = Number(s.insurance)                / 100;
+  const globalCustomsPct     = Number(s.customs)            / 100;
+  const globalPurchaseTaxPct = Number(s.purchase_tax_rate)  / 100 || 0;
+  const vatPct         = Number(s.vat)                      / 100;
   const agentFeeIls    = Number(s.agent_fee);
-  const portFeesIls    = Number(s.port_fees)        || 0;
-  const localTransIls  = Number(s.local_transport)  || 0;
-  const marginPct      = Number(s.margin)            / 100;
+  const portFeesIls    = pays.port  ? (Number(s.port_fees)        || 0) : 0;
+  const localTransIls  = pays.local ? (Number(s.local_transport)  || 0) : 0;
+  const chinaTransUsd  = pays.china ? (Number(s.china_local_transport) || 0) : 0;
+  const marginPct      = Number(s.margin) / 100;
   const marginType     = s.margin_type || 'markup';
 
-  const totalCbm = products.reduce((a, p) => a + (Number(p.qty) * Number(p.cbm)),        0);
-  const totalFob = products.reduce((a, p) => a + (Number(p.qty) * Number(p.fob_price)),  0);
+  const totalCbm = products.reduce((a, p) => a + (Number(p.qty) * Number(p.cbm)), 0);
+  const totalFob = products.reduce((a, p) => a + (Number(p.qty) * Number(p.fob_price)), 0);
 
-  // Pass 1 — per-product USD intermediates (display + customs sum)
-  const inter = products.map(p => {
+  return products.map(p => {
     const qty      = Number(p.qty)       || 0;
     const fobPrice = Number(p.fob_price) || 0;
     const cbmUnit  = Number(p.cbm)       || 0;
+    const grossKg  = Number(p.gross_weight_kg) || 0;
+    const boxL     = Number(p.box_l) || 0;
+    const boxW     = Number(p.box_w) || 0;
+    const boxH     = Number(p.box_h) || 0;
+
     const fobTotal   = qty * fobPrice;
     const productCbm = qty * cbmUnit;
+    const cbmShare   = totalCbm > 0 ? productCbm / totalCbm
+                     : totalFob > 0 ? fobTotal   / totalFob : 0;
+    const fobShare   = totalFob > 0 ? fobTotal / totalFob : 0;
 
-    const useCbm = cbmUnit > 0 && totalCbm > 0;
-    const share  = useCbm
-      ? productCbm / totalCbm
-      : (totalFob > 0 ? fobTotal / totalFob : 0);
+    // ── Step 2: Freight share ──────────────────────────────────────────────
+    let freightShare     = 0;
+    let chargeableWeight = 0;
 
-    const freightShare = freightUsd * share;
-    // ICC marine insurance: premium = value × r / (1 − r)
-    const insBase       = fobTotal + freightShare;
-    const insuranceAmt  = insurancePct < 1
-      ? insBase * insurancePct / (1 - insurancePct)
-      : insBase * insurancePct;
-
-    const cif         = fobTotal + freightShare + insuranceAmt;
-    const customsRate = (p.customs_rate_override != null && p.customs_rate_override !== '')
-                          ? Number(p.customs_rate_override) / 100
-                          : customsPct;
-    const customsAmt   = cif * customsRate;
-    const beforeVat    = cif + customsAmt;
-    const vatAmt       = beforeVat * vatPct;       // display only
-    const agentShareIls = agentFeeIls * share;
-
-    return { qty, fobPrice, cbmUnit, fobTotal, productCbm, useCbm,
-             freightShare, insuranceAmt, cif, customsAmt, beforeVat, vatAmt, agentShareIls };
-  });
-
-  // Step 1 — total shipment cost in ILS
-  const totalInsUsd  = inter.reduce((a, p) => a + p.insuranceAmt, 0);
-  const totalCustUsd = inter.reduce((a, p) => a + p.customsAmt,   0);
-
-  const totalIls = (totalFob    * rate)
-                 + (freightUsd  * rate)
-                 + (totalInsUsd * rate)
-                 + (totalCustUsd * rate)
-                 + agentFeeIls + portFeesIls + localTransIls;
-
-  // Step 2 — cost distribution rates
-  const costPerCbm      = totalCbm > 0 ? totalIls / totalCbm : 0;
-  const costPerFobDollar = totalFob > 0 ? totalIls / totalFob : 0;
-
-  // Steps 3-5 — per product
-  return products.map((p, i) => {
-    const pp = inter[i];
-    const { qty, fobPrice, cbmUnit, fobTotal, productCbm, useCbm } = pp;
-
-    const warehouseCostUnit = useCbm
-      ? costPerCbm * cbmUnit
-      : costPerFobDollar * fobPrice;
-
-    // Step 4 — sell price
-    let sellPerUnit;
-    if (marginType === 'margin') {
-      // Gross margin: margin% = profit / sell  →  sell = cost / (1 - m)
-      sellPerUnit = marginPct < 1 ? warehouseCostUnit / (1 - marginPct) : warehouseCostUnit * 2;
-    } else {
-      // Markup on cost: sell = cost × (1 + m)
-      sellPerUnit = warehouseCostUnit * (1 + marginPct);
+    if (pays.fr) {
+      if (shippingMethod === 'air') {
+        const volWeight = (boxL * boxW * boxH) / 6000;
+        chargeableWeight = Math.max(grossKg * qty, volWeight * qty);
+        freightShare = chargeableWeight * airPerKg;
+      } else if (seaType === 'lcl') {
+        freightShare = productCbm * lclPerCbm;
+      } else {
+        freightShare = fclPrice * cbmShare;           // FCL by CBM ratio
+      }
     }
 
-    const profitPerUnit  = sellPerUnit - warehouseCostUnit;
-    const landedCostIls  = warehouseCostUnit * qty;
-    const sellPrice      = sellPerUnit * qty;
-    const profit         = profitPerUnit * qty;
-    const landedCostUsd  = rate > 0 ? landedCostIls / rate : 0;
-    const agentShareUsd  = rate > 0 ? pp.agentShareIls / rate : 0;
+    // ── Step 3: Insurance ─────────────────────────────────────────────────
+    const insuranceShare = pays.ins
+      ? (fobTotal + freightShare) * insurancePct
+      : 0;
 
-    // Step 5 — analytics
-    const _roi          = warehouseCostUnit > 0 ? (profitPerUnit / warehouseCostUnit) * 100 : 0;
-    const _breakevenUnit = warehouseCostUnit;
-    const _marginPct    = sellPerUnit > 0 ? (profitPerUnit / sellPerUnit) * 100 : 0;
+    // ── Step 4: CIF ───────────────────────────────────────────────────────
+    const cifUsd = fobTotal + freightShare + insuranceShare;
+
+    // ── Step 5: Customs duty in ILS (CIF-based — official Israel method) ──
+    const customsRate = pays.cust
+      ? ((p.customs_rate_override != null && p.customs_rate_override !== '')
+          ? Number(p.customs_rate_override) / 100
+          : globalCustomsPct)
+      : 0;
+    const customsDutyIls = cifUsd * rate * customsRate;
+
+    // ── Step 6: Purchase tax in ILS ───────────────────────────────────────
+    const purchaseTaxRate = pays.cust
+      ? ((p.purchase_tax_rate_override != null && p.purchase_tax_rate_override !== '')
+          ? Number(p.purchase_tax_rate_override) / 100
+          : globalPurchaseTaxPct)
+      : 0;
+    const purchaseTaxIls = cifUsd * rate * purchaseTaxRate;
+
+    // ── Step 7: VAT 18% on CIF + customs + purchase_tax ──────────────────
+    const vatIls = pays.vat
+      ? (cifUsd * rate + customsDutyIls + purchaseTaxIls) * vatPct
+      : 0;
+
+    // ── Step 8: Agent fee (by FOB share) ─────────────────────────────────
+    const agentShareIls = agentFeeIls * fobShare;
+
+    // ── Step 9: Port fees (by CBM share) ─────────────────────────────────
+    const portShareIls = portFeesIls * cbmShare;
+
+    // ── Step 10: Local Israeli transport (by CBM share) ───────────────────
+    const transportShareIls = localTransIls * cbmShare;
+
+    // ── Step 11: China local transport, EXW/FCA/FAS only (by CBM share) ──
+    const chinaShareIls = chinaTransUsd * rate * cbmShare;
+
+    // ── Step 12: Total warehouse cost ─────────────────────────────────────
+    const warehouseCostIls =
+      (cifUsd * rate)
+      + customsDutyIls
+      + purchaseTaxIls
+      + vatIls
+      + agentShareIls
+      + portShareIls
+      + transportShareIls
+      + chinaShareIls;
+
+    // ── Step 13: Cost per unit ────────────────────────────────────────────
+    const costPerUnit = qty > 0 ? warehouseCostIls / qty : 0;
+
+    // ── Step 14: Sell price ───────────────────────────────────────────────
+    let sellPerUnit;
+    if (marginType === 'margin') {
+      sellPerUnit = marginPct < 1 ? costPerUnit / (1 - marginPct) : costPerUnit * 2;
+    } else {
+      sellPerUnit = costPerUnit * (1 + marginPct);
+    }
+
+    // ── Step 15: Profit ───────────────────────────────────────────────────
+    const profitPerUnit = sellPerUnit - costPerUnit;
+    const profitTotal   = profitPerUnit * qty;
+    const sellPrice     = sellPerUnit * qty;
+    const landedCostUsd = rate > 0 ? warehouseCostIls / rate : 0;
+    const agentShareUsd = rate > 0 ? agentShareIls / rate : 0;
+
+    const _roi      = costPerUnit > 0 ? (profitPerUnit / costPerUnit) * 100 : 0;
+    const _marginPct = sellPerUnit > 0 ? (profitPerUnit / sellPerUnit) * 100 : 0;
 
     return {
       ...p,
-      _fobTotal:        fobTotal,
-      _productCbm:      productCbm,
-      _freightShare:    pp.freightShare,
-      _insuranceAmount: pp.insuranceAmt,
-      _cif:             pp.cif,
-      _customsAmount:   pp.customsAmt,
-      _beforeVat:       pp.beforeVat,
-      _vatAmount:       pp.vatAmt,
-      _agentShare:      agentShareUsd,
-      _landedCostUsd:   landedCostUsd,
-      _landedCostIls:   landedCostIls,
-      _costPerUnit:     warehouseCostUnit,
-      _sellPrice:       sellPrice,
-      _sellPerUnit:     sellPerUnit,
-      _profit:          profit,
-      _profitPerUnit:   profitPerUnit,
+      // ── Raw ──────────────────────────────────────────────────────────────
+      _fobTotal:          fobTotal,
+      _productCbm:        productCbm,
+      _chargeableWeight:  chargeableWeight,
+      // ── USD components ──────────────────────────────────────────────────
+      _freightShare:      freightShare,
+      _insuranceAmount:   insuranceShare,
+      _cif:               cifUsd,
+      // ── ILS components ──────────────────────────────────────────────────
+      _customsDutyIls:    customsDutyIls,
+      _purchaseTaxIls:    purchaseTaxIls,
+      _vatIls:            vatIls,
+      _agentShareIls:     agentShareIls,
+      _portShareIls:      portShareIls,
+      _transportShareIls: transportShareIls,
+      _chinaShareIls:     chinaShareIls,
+      // ── Totals ───────────────────────────────────────────────────────────
+      _landedCostIls:     warehouseCostIls,
+      _landedCostUsd:     landedCostUsd,
+      _costPerUnit:       costPerUnit,
+      _sellPrice:         sellPrice,
+      _sellPerUnit:       sellPerUnit,
+      _profit:            profitTotal,
+      _profitPerUnit:     profitPerUnit,
       _roi,
-      _breakevenUnit,
+      _breakevenUnit:     costPerUnit,
       _marginPct,
+      // ── Legacy aliases (for backward compat with existing display) ───────
+      _agentShare:        agentShareUsd,
+      _customsAmount:     rate > 0 ? customsDutyIls / rate : 0,
+      _vatAmount:         rate > 0 ? vatIls / rate : 0,
+      _beforeVat:         cifUsd + (rate > 0 ? customsDutyIls / rate : 0),
     };
   });
 }
 
+// ─── Aggregation ────────────────────────────────────────────────────────────
 export function calcTotals(calced) {
+  const sum = key => calced.reduce((a, p) => a + (Number(p[key]) || 0), 0);
   const t = {
-    qtyTotal:       calced.reduce((a, p) => a + (Number(p.qty) || 0), 0),
-    fobTotal:       calced.reduce((a, p) => a + p._fobTotal,          0),
-    totalCbm:       calced.reduce((a, p) => a + p._productCbm,        0),
-    freightTotal:   calced.reduce((a, p) => a + p._freightShare,      0),
-    insuranceTotal: calced.reduce((a, p) => a + p._insuranceAmount,   0),
-    cifTotal:       calced.reduce((a, p) => a + p._cif,               0),
-    customsTotal:   calced.reduce((a, p) => a + p._customsAmount,     0),
-    beforeVatTotal: calced.reduce((a, p) => a + p._beforeVat,         0),
-    vatTotal:       calced.reduce((a, p) => a + p._vatAmount,         0),
-    agentTotal:     calced.reduce((a, p) => a + p._agentShare,        0),
-    landedUsdTotal: calced.reduce((a, p) => a + p._landedCostUsd,     0),
-    landedIlsTotal: calced.reduce((a, p) => a + p._landedCostIls,     0),
-    sellTotal:      calced.reduce((a, p) => a + p._sellPrice,         0),
-    profitTotal:    calced.reduce((a, p) => a + p._profit,            0),
+    qtyTotal:             sum('qty'),
+    fobTotal:             sum('_fobTotal'),
+    totalCbm:             sum('_productCbm'),
+    freightTotal:         sum('_freightShare'),
+    insuranceTotal:       sum('_insuranceAmount'),
+    cifTotal:             sum('_cif'),
+    customsIlsTotal:      sum('_customsDutyIls'),
+    purchaseTaxIlsTotal:  sum('_purchaseTaxIls'),
+    vatIlsTotal:          sum('_vatIls'),
+    agentIlsTotal:        sum('_agentShareIls'),
+    portIlsTotal:         sum('_portShareIls'),
+    transportIlsTotal:    sum('_transportShareIls'),
+    chinaIlsTotal:        sum('_chinaShareIls'),
+    landedIlsTotal:       sum('_landedCostIls'),
+    landedUsdTotal:       sum('_landedCostUsd'),
+    sellTotal:            sum('_sellPrice'),
+    profitTotal:          sum('_profit'),
+    // Legacy
+    customsTotal:         sum('_customsAmount'),
+    vatTotal:             sum('_vatAmount'),
+    agentTotal:           sum('_agentShare'),
+    beforeVatTotal:       sum('_beforeVat'),
   };
-  t.roiTotal = t.landedIlsTotal > 0 ? (t.profitTotal / t.landedIlsTotal) * 100 : 0;
-  t.marginPctTotal = t.sellTotal > 0 ? (t.profitTotal / t.sellTotal) * 100 : 0;
+  t.roiTotal       = t.landedIlsTotal > 0 ? (t.profitTotal / t.landedIlsTotal) * 100 : 0;
+  t.marginPctTotal = t.sellTotal > 0      ? (t.profitTotal / t.sellTotal)       * 100 : 0;
   return t;
 }

@@ -2,19 +2,29 @@ import React, { useState } from 'react';
 import { X, Sparkles, ExternalLink } from 'lucide-react';
 import { classifyHsCode } from '../lib/hsClassify';
 
-const EMPTY = { name: '', item_no: '', qty: '', fob_price: '', cbm: '', supplier: '', notes: '', hs_code: '', customs_rate_override: '' };
+const EMPTY = {
+  name: '', item_no: '', qty: '', fob_price: '', cbm: '', supplier: '', notes: '',
+  hs_code: '', customs_rate_override: '',
+  gross_weight_kg: '', box_l: '', box_w: '', box_h: '',
+  purchase_tax_rate_override: '',
+};
 
 export default function ProductForm({ product, onSave, onClose, settings }) {
   const [form, setForm] = useState(product ? {
-    name:                 product.name                 || '',
-    item_no:              product.item_no              || '',
-    qty:                  product.qty                  ?? '',
-    fob_price:            product.fob_price            ?? '',
-    cbm:                  product.cbm                  ?? '',
-    supplier:             product.supplier             || '',
-    notes:                product.notes                || '',
-    hs_code:              product.hs_code              || '',
-    customs_rate_override: product.customs_rate_override ?? '',
+    name:                       product.name                       || '',
+    item_no:                    product.item_no                    || '',
+    qty:                        product.qty                        ?? '',
+    fob_price:                  product.fob_price                  ?? '',
+    cbm:                        product.cbm                        ?? '',
+    supplier:                   product.supplier                   || '',
+    notes:                      product.notes                      || '',
+    hs_code:                    product.hs_code                    || '',
+    customs_rate_override:      product.customs_rate_override      ?? '',
+    gross_weight_kg:            product.gross_weight_kg            ?? '',
+    box_l:                      product.box_l                      ?? '',
+    box_w:                      product.box_w                      ?? '',
+    box_h:                      product.box_h                      ?? '',
+    purchase_tax_rate_override: product.purchase_tax_rate_override ?? '',
   } : EMPTY);
 
   const [saving, setSaving]           = useState(false);
@@ -58,7 +68,12 @@ export default function ProductForm({ product, onSave, onClose, settings }) {
       supplier:  form.supplier.trim(),
       notes:     form.notes.trim(),
       hs_code:   form.hs_code.trim() || null,
-      customs_rate_override: form.customs_rate_override !== '' ? Number(form.customs_rate_override) : null,
+      customs_rate_override:      form.customs_rate_override      !== '' ? Number(form.customs_rate_override)      : null,
+      gross_weight_kg:            form.gross_weight_kg            !== '' ? Number(form.gross_weight_kg)            : 0,
+      box_l:                      form.box_l                      !== '' ? Number(form.box_l)                      : 0,
+      box_w:                      form.box_w                      !== '' ? Number(form.box_w)                      : 0,
+      box_h:                      form.box_h                      !== '' ? Number(form.box_h)                      : 0,
+      purchase_tax_rate_override: form.purchase_tax_rate_override !== '' ? Number(form.purchase_tax_rate_override) : null,
     });
     setSaving(false);
   }
@@ -98,6 +113,26 @@ export default function ProductForm({ product, onSave, onClose, settings }) {
                 <label>CBM ליח'</label>
                 <input type="number" value={form.cbm} onChange={e => set('cbm', e.target.value)} placeholder="0.0000" min="0" step="0.0001" />
               </div>
+              <div className="form-group">
+                <label>משקל ברוטו ק"ג ליח'</label>
+                <input type="number" value={form.gross_weight_kg} onChange={e => set('gross_weight_kg', e.target.value)} placeholder="0.00" min="0" step="0.01" />
+              </div>
+
+              {/* Box dimensions for air volumetric */}
+              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                <label style={{ marginBottom: 8, display: 'block' }}>מידות ארגז ס"מ (ל × ר × ג) — לחישוב משקל נפחי אוויר</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                  <input type="number" value={form.box_l} onChange={e => set('box_l', e.target.value)} placeholder="אורך" min="0" step="0.1" />
+                  <input type="number" value={form.box_w} onChange={e => set('box_w', e.target.value)} placeholder="רוחב" min="0" step="0.1" />
+                  <input type="number" value={form.box_h} onChange={e => set('box_h', e.target.value)} placeholder="גובה" min="0" step="0.1" />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>מס קניה ספציפי % (override)</label>
+                <input type="number" value={form.purchase_tax_rate_override} onChange={e => set('purchase_tax_rate_override', e.target.value)} placeholder="ברירת מחדל: 0%" min="0" max="200" step="0.5" />
+              </div>
+
               <div className="form-group full">
                 <label>הערות</label>
                 <textarea value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="הערות נוספות..." />

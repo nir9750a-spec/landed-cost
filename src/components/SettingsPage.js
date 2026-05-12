@@ -6,18 +6,19 @@ import FreightHistoryPanel from './FreightHistoryPanel';
 // ── Field definitions ──────────────────────────────────────────────────────
 
 const GLOBAL_FIELDS = [
-  { key: 'vat',             label: 'מע"מ (%)',          type: 'number', step: '0.5',  min: '0', max: '100' },
-  { key: 'customs',         label: 'מכס (%)',            type: 'number', step: '0.5',  min: '0', max: '100',
+  { key: 'vat',              label: 'מע"מ (%)',           type: 'number', step: '0.5',  min: '0', max: '100' },
+  { key: 'customs',          label: 'מכס (%)',             type: 'number', step: '0.5',  min: '0', max: '100',
     hint: 'שיעור מכס כללי — נדרס אוטומטית אם למוצר יש קוד HS מסווג' },
-  { key: 'agent_fee',       label: 'עמלת סוכן (₪)',     type: 'number', step: '100',  min: '0' },
-  { key: 'port_fees',       label: 'אגרות נמל (₪)',     type: 'number', step: '100',  min: '0' },
-  { key: 'local_transport', label: 'הובלה מקומית (₪)',  type: 'number', step: '100',  min: '0' },
+  { key: 'purchase_tax_rate', label: 'מס קניה (%)',        type: 'number', step: '0.5',  min: '0', max: '100',
+    hint: 'מס קניה ישראלי (ברירת מחדל 0%)' },
+  { key: 'agent_fee',        label: 'עמלת סוכן (₪)',      type: 'number', step: '100',  min: '0' },
+  { key: 'port_fees',        label: 'אגרות נמל (₪)',      type: 'number', step: '100',  min: '0' },
+  { key: 'local_transport',  label: 'הובלה מקומית (₪)',   type: 'number', step: '100',  min: '0' },
 ];
 
-// Numeric project fields (margin_type is handled separately)
+// Numeric project fields (margin_type handled separately; incoterms/shipping handled as custom UI)
 const PROJECT_NUM_FIELDS = [
   { key: 'usd_rate',  label: 'שער דולר (₪/$)',   type: 'number', step: '0.001', min: '0' },
-  { key: 'freight',   label: 'הובלה FCL ($)',     type: 'number', step: '100',   min: '0' },
   { key: 'insurance', label: 'ביטוח (%)',          type: 'number', step: '0.1',   min: '0', max: '10' },
   { key: 'margin',    label: 'מרווח (%)',          type: 'number', step: '1',     min: '0', max: '500',
     hint: 'מומלץ: 25-35% לרוב המוצרים' },
@@ -46,7 +47,7 @@ export default function SettingsPage({
 }) {
   // Global section
   const [globalForm, setGlobalForm]     = useState({
-    vat: '', customs: '', agent_fee: '', port_fees: '', local_transport: '', api_key: '',
+    vat: '', customs: '', purchase_tax_rate: '', agent_fee: '', port_fees: '', local_transport: '', api_key: '',
   });
   const [savingGlobal, setSavingGlobal] = useState(false);
 
@@ -62,12 +63,13 @@ export default function SettingsPage({
 
   useEffect(() => {
     setGlobalForm({
-      vat:             globalSettings.vat             ?? '',
-      customs:         globalSettings.customs         ?? '',
-      agent_fee:       globalSettings.agent_fee       ?? '',
-      port_fees:       globalSettings.port_fees       ?? '',
-      local_transport: globalSettings.local_transport ?? '',
-      api_key:         globalSettings.api_key         || '',
+      vat:               globalSettings.vat               ?? '',
+      customs:           globalSettings.customs           ?? '',
+      purchase_tax_rate: globalSettings.purchase_tax_rate ?? '',
+      agent_fee:         globalSettings.agent_fee         ?? '',
+      port_fees:         globalSettings.port_fees         ?? '',
+      local_transport:   globalSettings.local_transport   ?? '',
+      api_key:           globalSettings.api_key           || '',
     });
   }, [globalSettings]);
 
@@ -76,6 +78,12 @@ export default function SettingsPage({
     const vals = {};
     PROJECT_NUM_FIELDS.forEach(({ key }) => {
       vals[key] = projectOverrides[key] ?? globalSettings[key] ?? '';
+    });
+    // Shipping & incoterms fields
+    const allShipKeys = ['freight','lcl_price_per_cbm','air_price_per_kg','china_local_transport',
+                         'incoterms','shipping_method','sea_type','origin_port'];
+    allShipKeys.forEach(k => {
+      vals[k] = projectOverrides[k] ?? globalSettings[k] ?? '';
     });
     setProjValues(vals);
 
@@ -103,12 +111,13 @@ export default function SettingsPage({
     e.preventDefault();
     setSavingGlobal(true);
     await saveGlobalSettings({
-      vat:             Number(globalForm.vat),
-      customs:         Number(globalForm.customs),
-      agent_fee:       Number(globalForm.agent_fee),
-      port_fees:       Number(globalForm.port_fees)       || 0,
-      local_transport: Number(globalForm.local_transport) || 0,
-      api_key:         String(globalForm.api_key || ''),
+      vat:               Number(globalForm.vat),
+      customs:           Number(globalForm.customs),
+      purchase_tax_rate: Number(globalForm.purchase_tax_rate) || 0,
+      agent_fee:         Number(globalForm.agent_fee),
+      port_fees:         Number(globalForm.port_fees)       || 0,
+      local_transport:   Number(globalForm.local_transport) || 0,
+      api_key:           String(globalForm.api_key || ''),
     });
     setSavingGlobal(false);
   }
@@ -160,8 +169,17 @@ export default function SettingsPage({
     PROJECT_NUM_FIELDS.forEach(({ key }) => {
       if (overrideSet.has(key)) overrides[key] = Number(projValues[key]);
     });
-    // margin_type (string key)
-    if (overrideSet.has('margin_type')) overrides.margin_type = marginType;
+    // String keys
+    if (overrideSet.has('margin_type'))       overrides.margin_type        = marginType;
+    const strKeys = ['incoterms','shipping_method','sea_type','origin_port'];
+    strKeys.forEach(k => {
+      if (overrideSet.has(k)) overrides[k] = String(projValues[k] ?? '');
+    });
+    // Numeric shipping keys
+    const numShip = ['freight','lcl_price_per_cbm','air_price_per_kg','china_local_transport'];
+    numShip.forEach(k => {
+      if (overrideSet.has(k)) overrides[k] = Number(projValues[k] ?? 0);
+    });
 
     const ok = await saveProjectSettings(overrides);
     if (ok && activeProject) {
