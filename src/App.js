@@ -286,6 +286,19 @@ export default function App() {
     showToast(`"${newProj.name}" שוכפל בהצלחה`);
   }
 
+  async function applyShipmentInfo(shipment) {
+    if (!activeProjectId) { showToast('בחר פרויקט פעיל', 'error'); return; }
+    const updates = {};
+    if (shipment.incoterms)   updates.incoterms   = shipment.incoterms;
+    if (shipment.origin_port) updates.origin_port = shipment.origin_port;
+    const merged = { ...projectOverrides, ...updates };
+    const ok = await saveProjectSettings(merged);
+    if (ok) {
+      if (shipment.supplier) await updateProject(activeProjectId, { supplier: shipment.supplier });
+      showToast('פרטי המשלוח הוחלו על הפרויקט');
+    }
+  }
+
   async function updateMarketRate(parameter, value) {
     const ok = await saveMarketRate(supabase, parameter, value);
     if (ok) {
@@ -310,7 +323,7 @@ export default function App() {
   const activeProject  = projects.find(p => p.id === activeProjectId) || null;
   const uniqueProducts = products.filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i);
   const activeProducts = activeProjectId ? uniqueProducts.filter(p => p.project_id === activeProjectId) : [];
-  const shared = { products: activeProducts, settings, showToast, addProduct, updateProduct, deleteProduct, addProducts };
+  const shared = { products: activeProducts, settings, showToast, addProduct, updateProduct, deleteProduct, addProducts, applyShipmentInfo };
 
   return (
     <Layout page={page} setPage={setPage} activeProject={activeProject}

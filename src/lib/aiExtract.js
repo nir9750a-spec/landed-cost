@@ -158,27 +158,33 @@ async function extractFromAI(file, ext, apiKey) {
 
   const prompt = `אתה מומחה לחילוץ נתונים מחשבוניות ספקים וניירות אריזה (Packing List / Commercial Invoice).
 
-המסמך המצורף הוא מסמך יבוא. חלץ את כל שורות המוצרים ממנו.
+המסמך המצורף הוא מסמך יבוא. חלץ שני דברים:
 
-עבור כל מוצר / שורה בחשבונית, חלץ את השדות הבאים:
-- name: שם המוצר / תיאור הפריט (string) — חפש: Product Description, Item, Goods, Commodity, שם מוצר
-- item_no: מספר פריט / קוד מוצר / SKU (string) — חפש: Item No., Part No., Model No., SKU, מקט
-- qty: כמות יחידות (number) — חפש: Quantity, Qty, PCS, Units, כמות
-- fob_price: מחיר FOB ליחידה בדולר אמריקאי (number) — חפש: Unit Price, FOB Price, Price/Unit, מחיר יחידה
-- cbm: נפח ליחידה אחת במטר מעוקב (number) — חפש: CBM/Unit, Volume/Unit; אם CBM הוא סה"כ לשורה, חלק ב-qty
-- supplier: שם הספק / יצרן (string) — לרוב מופיע בכותרת המסמך
-- notes: מידע נוסף רלוונטי על המוצר (string)
+## 1. פרטי המשלוח (ברמת המסמך כולו)
+- incoterms: תנאי המסירה — חפש: FOB, CIF, EXW, FCA, CFR, DAP וכו' (החזר קוד באותיות גדולות בלבד, למשל "FOB")
+- origin_port: נמל המוצא — חפש: Port of Loading, Shipment Port, Port, נמל טעינה (החזר שם באנגלית, למשל "NINGBO")
+- supplier: שם הספק / מוכר — חפש: Seller, Vendor, Supplier, Manufacturer, From (בכותרת המסמך)
+- invoice_date: תאריך החשבונית בפורמט YYYY-MM-DD
+- payment_terms: תנאי תשלום — חפש: Payment Terms, T/T, L/C, D/P
+
+## 2. שורות המוצרים
+עבור כל מוצר חלץ:
+- name: שם המוצר / תיאור (חפש: Product Description, Item, Goods)
+- item_no: קוד מוצר / SKU (חפש: Item No., Part No., Model No., SKU)
+- qty: כמות יחידות (חפש: Quantity, Qty, PCS, Units)
+- fob_price: מחיר ליחידה בדולר (חפש: Unit Price, FOB Price, Price/Unit)
+- cbm: נפח ליחידה במ"ק — אם CBM הוא סה"כ לשורה, חלק ב-qty
+- supplier: שם הספק (לרוב מכותרת המסמך)
+- notes: מידע נוסף
 
 כללים:
-1. כל שדה מספרי שאינו קיים — החזר 0 (לא null, לא "")
-2. כל שדה טקסטואלי שאינו קיים — החזר "" (מחרוזת ריקה)
-3. אל תכלול שורות סיכום (Total, Grand Total, Sub Total), כותרות, שורות ריקות
-4. אם יש CBM כולל לשורה (ולא ליחידה), חלק ב-qty כדי לקבל CBM ליחידה
-5. המחיר הוא תמיד ליחידה אחת, לא לשורה כולה
-6. אם הכמות היא בקרטונים (CTN) ויש גם PCS לקרטון — השתמש ב-PCS הכולל
+1. שדה מספרי שאינו קיים → 0
+2. שדה טקסטואלי שאינו קיים → ""
+3. אל תכלול שורות סיכום, כותרות, שורות ריקות
+4. מחיר תמיד ליחידה בודדת
 
-החזר JSON array בלבד, ללא markdown, ללא הסברים, ללא טקסט לפני/אחרי:
-[{"name":"","item_no":"","qty":0,"fob_price":0,"cbm":0,"supplier":"","notes":""}]`;
+החזר JSON object בלבד, ללא markdown, ללא טקסט לפני/אחרי:
+{"products":[{"name":"","item_no":"","qty":0,"fob_price":0,"cbm":0,"supplier":"","notes":""}],"shipment":{"incoterms":"FOB","origin_port":"","supplier":"","invoice_date":"","payment_terms":""}}`;
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -210,35 +216,63 @@ async function extractFromAI(file, ext, apiKey) {
   const result = await response.json();
   const text   = result.content?.[0]?.text?.trim() || '';
 
-  // Extract JSON array — allow the model to wrap it in markdown fences or add brief preamble
-  const match = text.match(/\[[\s\S]*\]/);
-  if (!match) {
-    throw new Error(
-      'ה-AI לא החזיר רשימת מוצרים תקינה. ודא שהמסמך מכיל חשבונית עם שורות מוצר ברורות.'
-    );
+  // Try object format first: { products: [...], shipment: {...} }
+  // Fall back to bare array for backward compat
+  const objMatch = text.match(/\{[\s\S]*\}/);
+  const arrMatch = text.match(/\[[\s\S]*\]/);
+
+  let products = [];
+  let shipment = null;
+
+  if (objMatch) {
+    try {
+      const obj = JSON.parse(objMatch[0]);
+      if (Array.isArray(obj.products) && obj.products.length > 0) {
+        products = obj.products;
+        shipment = obj.shipment || null;
+      } else if (Array.isArray(obj) && obj.length > 0) {
+        products = obj;
+      }
+    } catch { /* fall through */ }
   }
 
-  let parsed;
-  try {
-    parsed = JSON.parse(match[0]);
-  } catch {
-    throw new Error('ה-AI החזיר JSON פגום — נסה שוב או בדוק את איכות המסמך.');
+  if (products.length === 0 && arrMatch) {
+    try {
+      const arr = JSON.parse(arrMatch[0]);
+      if (Array.isArray(arr)) products = arr;
+    } catch { /* fall through */ }
   }
 
-  if (!Array.isArray(parsed) || parsed.length === 0) {
-    throw new Error('לא נמצאו מוצרים במסמך. ודא שמדובר בחשבונית עם שורות פריטים.');
+  if (products.length === 0) {
+    throw new Error('ה-AI לא החזיר רשימת מוצרים תקינה. ודא שהמסמך מכיל חשבונית עם שורות מוצר ברורות.');
   }
 
-  return parsed.map(sanitise);
+  // Normalise shipment fields
+  if (shipment) {
+    const INCOTERMS = ['EXW','FCA','FAS','FOB','CFR','CIF','CPT','CIP','DAP','DPU','DDP'];
+    const raw = String(shipment.incoterms || '').toUpperCase().replace(/[^A-Z]/g, '');
+    shipment.incoterms   = INCOTERMS.includes(raw) ? raw : '';
+    shipment.origin_port = String(shipment.origin_port || '').trim();
+    shipment.supplier    = String(shipment.supplier    || '').trim();
+    shipment.invoice_date= String(shipment.invoice_date|| '').trim();
+    shipment.payment_terms = String(shipment.payment_terms || '').trim();
+    // Only keep shipment if it has at least one useful field
+    const hasData = shipment.incoterms || shipment.origin_port || shipment.supplier;
+    if (!hasData) shipment = null;
+  }
+
+  return { products: products.map(sanitise), shipment };
 }
 
 // ── Public API ─────────────────────────────────────────────────────────────
 
+// Always returns { products: [...], shipment: null | {...} }
 export async function extractProductsFromFile(file, apiKey) {
   const ext = file.name.split('.').pop().toLowerCase();
 
   if (['xlsx', 'xls', 'csv'].includes(ext)) {
-    return extractFromExcel(file);
+    const products = await extractFromExcel(file);
+    return { products, shipment: null };
   }
 
   if (!apiKey) {

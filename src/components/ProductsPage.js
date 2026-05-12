@@ -25,7 +25,7 @@ const HEADERS = [
 
 export default function ProductsPage({
   products, settings, showToast,
-  addProduct, updateProduct, deleteProduct, addProducts,
+  addProduct, updateProduct, deleteProduct, addProducts, applyShipmentInfo,
   activeProject, setPage,
 }) {
   const [showForm, setShowForm]           = useState(false);
@@ -428,7 +428,7 @@ export default function ProductsPage({
         <ProductForm product={editProd} onSave={handleSave} onClose={closeForm} settings={settings} />
       )}
       {showUpload && (
-        <FileUpload settings={settings} onSave={addProducts} onClose={() => setShowUpload(false)} showToast={showToast} />
+        <FileUpload settings={settings} onSave={addProducts} onClose={() => setShowUpload(false)} showToast={showToast} onApplyShipment={applyShipmentInfo} />
       )}
     </div>
   );

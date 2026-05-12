@@ -2,11 +2,13 @@ import React, { useState, useRef } from 'react';
 import { X, Check, AlertCircle, Upload, AlertTriangle } from 'lucide-react';
 import { extractProductsFromFile } from '../lib/aiExtract';
 
-export default function FileUpload({ settings, onSave, onClose, showToast }) {
+export default function FileUpload({ settings, onSave, onClose, showToast, onApplyShipment }) {
   const [dragging, setDragging]   = useState(false);
   const [loading, setLoading]     = useState(false);
   const [fileName, setFileName]   = useState('');
   const [extracted, setExtracted] = useState(null);
+  const [shipment, setShipment]   = useState(null);
+  const [applying, setApplying]   = useState(false);
   const [error, setError]         = useState('');
   const [saving, setSaving]       = useState(false);
   const fileRef = useRef();
@@ -14,17 +16,26 @@ export default function FileUpload({ settings, onSave, onClose, showToast }) {
   async function handleFile(file) {
     setError('');
     setExtracted(null);
+    setShipment(null);
     setFileName(file.name);
     setLoading(true);
     try {
-      const data = await extractProductsFromFile(file, settings?.api_key);
-      if (!data.length) throw new Error('לא נמצאו מוצרים בקובץ');
-      setExtracted(data);
+      const { products, shipment: s } = await extractProductsFromFile(file, settings?.api_key);
+      if (!products.length) throw new Error('לא נמצאו מוצרים בקובץ');
+      setExtracted(products);
+      setShipment(s);
     } catch (err) {
       setError(err.message || 'שגיאה בחילוץ הנתונים');
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleApplyShipment() {
+    if (!onApplyShipment || !shipment) return;
+    setApplying(true);
+    await onApplyShipment(shipment);
+    setApplying(false);
   }
 
   function onDrop(e) {
@@ -151,11 +162,67 @@ export default function FileUpload({ settings, onSave, onClose, showToast }) {
                 <button
                   className="btn btn-sm"
                   style={{ marginRight: 'auto' }}
-                  onClick={() => { setExtracted(null); setError(''); setFileName(''); }}
+                  onClick={() => { setExtracted(null); setShipment(null); setError(''); setFileName(''); }}
                 >
                   <Upload size={13} /> העלה קובץ אחר
                 </button>
               </div>
+
+              {/* ── Shipment info banner ── */}
+              {shipment && (
+                <div style={{
+                  background: 'rgba(0,212,170,0.06)',
+                  border: '1px solid rgba(0,212,170,0.25)',
+                  borderRadius: 8,
+                  padding: '10px 14px',
+                  marginBottom: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  flexWrap: 'wrap',
+                }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--blue)' }}>🔍 זוהה:</span>
+                  {shipment.incoterms && (
+                    <span style={{ fontSize: 13 }}>
+                      <span style={{ color: 'var(--text2)' }}>Incoterms: </span>
+                      <strong style={{ color: 'var(--blue)' }}>{shipment.incoterms}</strong>
+                    </span>
+                  )}
+                  {shipment.origin_port && (
+                    <span style={{ fontSize: 13 }}>
+                      <span style={{ color: 'var(--text2)' }}>נמל: </span>
+                      <strong>{shipment.origin_port}</strong>
+                    </span>
+                  )}
+                  {shipment.supplier && (
+                    <span style={{ fontSize: 13 }}>
+                      <span style={{ color: 'var(--text2)' }}>ספק: </span>
+                      <strong>{shipment.supplier}</strong>
+                    </span>
+                  )}
+                  {shipment.invoice_date && (
+                    <span style={{ fontSize: 12, color: 'var(--text3)' }}>
+                      {shipment.invoice_date}
+                    </span>
+                  )}
+                  {shipment.payment_terms && (
+                    <span style={{ fontSize: 12, color: 'var(--text3)' }}>
+                      · {shipment.payment_terms}
+                    </span>
+                  )}
+                  {onApplyShipment && (
+                    <button
+                      className="btn btn-sm btn-primary"
+                      style={{ marginRight: 'auto', fontSize: 12 }}
+                      onClick={handleApplyShipment}
+                      disabled={applying}
+                    >
+                      {applying ? <span className="spinner" style={{ width: 11, height: 11 }} /> : <Check size={12} />}
+                      החל על הפרויקט
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Validation warnings */}
               {(noCbm > 0 || noPrice > 0 || noName > 0) && (
