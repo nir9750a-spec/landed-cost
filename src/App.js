@@ -115,14 +115,14 @@ export default function App() {
   useEffect(() => {
     const prodCh = supabase.channel('products-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, payload => {
-        if (payload.eventType === 'INSERT')      setProducts(prev => [...prev, payload.new]);
+        if (payload.eventType === 'INSERT')      setProducts(prev => prev.some(p => p.id === payload.new.id) ? prev : [...prev, payload.new]);
         else if (payload.eventType === 'UPDATE') setProducts(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
         else if (payload.eventType === 'DELETE') setProducts(prev => prev.filter(p => p.id !== payload.old.id));
       }).subscribe();
 
     const projCh = supabase.channel('projects-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, payload => {
-        if (payload.eventType === 'INSERT')      setProjects(prev => [payload.new, ...prev]);
+        if (payload.eventType === 'INSERT')      setProjects(prev => prev.some(p => p.id === payload.new.id) ? prev : [payload.new, ...prev]);
         else if (payload.eventType === 'UPDATE') setProjects(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
         else if (payload.eventType === 'DELETE') {
           setProjects(prev => prev.filter(p => p.id !== payload.old.id));
@@ -308,14 +308,15 @@ export default function App() {
   }
 
   const activeProject  = projects.find(p => p.id === activeProjectId) || null;
-  const activeProducts = activeProjectId ? products.filter(p => p.project_id === activeProjectId) : [];
+  const uniqueProducts = products.filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i);
+  const activeProducts = activeProjectId ? uniqueProducts.filter(p => p.project_id === activeProjectId) : [];
   const shared = { products: activeProducts, settings, showToast, addProduct, updateProduct, deleteProduct, addProducts };
 
   return (
     <Layout page={page} setPage={setPage} activeProject={activeProject}
       marketRates={marketRates} onUpdateMarketRate={updateMarketRate}
       onApplyMarketRate={applyMarketRate} settings={settings}>
-      {page === 'dashboard'  && <Dashboard {...shared} allProducts={products} projects={projects}
+      {page === 'dashboard'  && <Dashboard {...shared} allProducts={uniqueProducts} projects={projects}
                                   activeProjectId={activeProjectId} setActiveProjectId={setActiveProjectId} setPage={setPage} />}
       {page === 'products'   && <ProductsPage {...shared} activeProject={activeProject} setPage={setPage} />}
       {page === 'breakdown'  && <BreakdownPage {...shared} activeProject={activeProject} />}
