@@ -48,7 +48,7 @@ export default function SettingsPage({
 }) {
   // Global section
   const [globalForm, setGlobalForm]     = useState({
-    vat: '', customs: '', purchase_tax_rate: '', agent_fee: '', port_fees: '', local_transport: '', api_key: '',
+    vat: '', customs: '', purchase_tax_rate: '', agent_fee: '', port_fees: '', local_transport: '',
   });
   const [savingGlobal, setSavingGlobal] = useState(false);
 
@@ -70,7 +70,6 @@ export default function SettingsPage({
       agent_fee:         globalSettings.agent_fee         ?? '',
       port_fees:         globalSettings.port_fees         ?? '',
       local_transport:   globalSettings.local_transport   ?? '',
-      api_key:           globalSettings.api_key           || '',
     });
   }, [globalSettings]);
 
@@ -118,7 +117,6 @@ export default function SettingsPage({
       agent_fee:         Number(globalForm.agent_fee),
       port_fees:         Number(globalForm.port_fees)       || 0,
       local_transport:   Number(globalForm.local_transport) || 0,
-      api_key:           String(globalForm.api_key || ''),
     });
     setSavingGlobal(false);
   }
@@ -337,18 +335,9 @@ export default function SettingsPage({
 
             <div className="settings-section-body-api">
               <div className="settings-section-title-inner">הגדרות AI</div>
-              <div className="form-group" style={{ maxWidth: 460 }}>
-                <label>מפתח Anthropic API</label>
-                <input
-                  type="password"
-                  value={globalForm.api_key || ''}
-                  onChange={e => setGlobalForm(f => ({ ...f, api_key: e.target.value }))}
-                  placeholder="sk-ant-api03-..."
-                  dir="ltr" autoComplete="off"
-                />
-                <span className="text-sm text-muted" style={{ marginTop: 4 }}>
-                  נדרש לחילוץ PDF/תמונות וסיווג HS. קבצי Excel עובדים ללא מפתח.
-                </span>
+              <div className="text-sm text-muted" style={{ maxWidth: 460 }}>
+                חילוץ PDF/תמונות וסיווג HS מבוצעים דרך Supabase Edge Function מאובטחת —
+                המפתח נשמר בצד השרת ולא נחשף ללקוח.
               </div>
             </div>
           </div>

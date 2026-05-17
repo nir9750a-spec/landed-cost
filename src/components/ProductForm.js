@@ -40,7 +40,7 @@ export default function ProductForm({ product, onSave, onClose, settings }) {
     setClassifyResult(null);
     setClassifyError('');
     try {
-      const result = await classifyHsCode(form.name, form.notes, settings?.api_key);
+      const result = await classifyHsCode(form.name, form.notes);
       setClassifyResult(result);
     } catch (err) {
       setClassifyError(err.message);

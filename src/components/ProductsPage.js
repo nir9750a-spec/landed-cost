@@ -64,7 +64,7 @@ export default function ProductsPage({
     setClassifyingId(p.id);
     setClassifyPopup(null);
     try {
-      const result = await classifyHsCode(p.name, p.notes, settings?.api_key);
+      const result = await classifyHsCode(p.name, p.notes);
       setClassifyPopup({ id: p.id, result, agentHsCode: '', agentCustomsRate: '' });
     } catch (err) {
       setClassifyPopup({ id: p.id, error: err.message });

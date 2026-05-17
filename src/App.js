@@ -13,7 +13,7 @@ import BreakdownPage from './components/BreakdownPage';
 
 // String-typed setting keys (must not be cast to Number)
 const STRING_KEYS = new Set([
-  'api_key', 'margin_type',
+  'margin_type',
   'incoterms', 'shipping_method', 'sea_type', 'origin_port',
 ]);
 

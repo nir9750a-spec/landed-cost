@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { X, Check, AlertCircle, Upload, AlertTriangle } from 'lucide-react';
 import { extractProductsFromFile } from '../lib/aiExtract';
 
-export default function FileUpload({ settings, onSave, onClose, showToast, onApplyShipment }) {
+export default function FileUpload({ onSave, onClose, showToast, onApplyShipment }) {
   const [dragging, setDragging]   = useState(false);
   const [loading, setLoading]     = useState(false);
   const [fileName, setFileName]   = useState('');
@@ -20,7 +20,7 @@ export default function FileUpload({ settings, onSave, onClose, showToast, onApp
     setFileName(file.name);
     setLoading(true);
     try {
-      const { products, shipment: s } = await extractProductsFromFile(file, settings?.api_key);
+      const { products, shipment: s } = await extractProductsFromFile(file);
       if (!products.length) throw new Error('לא נמצאו מוצרים בקובץ');
       setExtracted(products);
       setShipment(s);
@@ -108,15 +108,6 @@ export default function FileUpload({ settings, onSave, onClose, showToast, onApp
                 style={{ display: 'none' }}
                 onChange={e => e.target.files[0] && handleFile(e.target.files[0])}
               />
-              {!settings?.api_key && (
-                <div className="alert alert-warn" style={{ marginTop: 12 }}>
-                  <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
-                  <span>
-                    לחילוץ מ-PDF ותמונות נדרש מפתח Anthropic API — הגדר בהגדרות כלליות.
-                    קבצי Excel מיובאים ללא AI.
-                  </span>
-                </div>
-              )}
             </>
           )}
 

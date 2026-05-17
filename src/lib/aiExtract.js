@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { supabase } from './supabase';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -144,7 +145,7 @@ function extractFromExcel(file) {
 
 // ── PDF / Image via Claude AI ──────────────────────────────────────────────
 
-async function extractFromAI(file, ext, apiKey) {
+async function extractFromAI(file, ext) {
   const base64 = await fileToBase64(file);
   const isPdf    = ext === 'pdf';
   const isImage  = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
@@ -186,15 +187,8 @@ async function extractFromAI(file, ext, apiKey) {
 החזר JSON object בלבד, ללא markdown, ללא טקסט לפני/אחרי:
 {"products":[{"name":"","item_no":"","qty":0,"fob_price":0,"cbm":0,"supplier":"","notes":""}],"shipment":{"incoterms":"FOB","origin_port":"","supplier":"","invoice_date":"","payment_terms":""}}`;
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
+  const { data: result, error } = await supabase.functions.invoke('anthropic-proxy', {
+    body: {
       model: 'claude-opus-4-7',
       max_tokens: 4096,
       messages: [{
@@ -204,17 +198,19 @@ async function extractFromAI(file, ext, apiKey) {
           { type: 'text', text: prompt },
         ],
       }],
-    }),
+    },
   });
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    const msg = err.error?.message || `שגיאת API (${response.status})`;
+  if (error) {
+    const msg = error.message || 'שגיאת AI';
     throw new Error(msg.includes('overloaded') ? 'שרת ה-AI עמוס כרגע — נסה שוב בעוד מספר שניות' : msg);
   }
+  if (result?.error) {
+    const msg = result.error?.message || result.error;
+    throw new Error(typeof msg === 'string' ? msg : 'שגיאת AI');
+  }
 
-  const result = await response.json();
-  const text   = result.content?.[0]?.text?.trim() || '';
+  const text = result.content?.[0]?.text?.trim() || '';
 
   // Try object format first: { products: [...], shipment: {...} }
   // Fall back to bare array for backward compat
@@ -267,7 +263,7 @@ async function extractFromAI(file, ext, apiKey) {
 // ── Public API ─────────────────────────────────────────────────────────────
 
 // Always returns { products: [...], shipment: null | {...} }
-export async function extractProductsFromFile(file, apiKey) {
+export async function extractProductsFromFile(file) {
   const ext = file.name.split('.').pop().toLowerCase();
 
   if (['xlsx', 'xls', 'csv'].includes(ext)) {
@@ -275,16 +271,9 @@ export async function extractProductsFromFile(file, apiKey) {
     return { products, shipment: null };
   }
 
-  if (!apiKey) {
-    throw new Error(
-      'נדרש מפתח Anthropic API לחילוץ מ-PDF ותמונות.\n' +
-      'הגדר אותו בעמוד ההגדרות → הגדרות כלליות → מפתח Anthropic API.'
-    );
-  }
-
   if (!['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
     throw new Error(`סוג קובץ ".${ext}" אינו נתמך. השתמש ב-Excel, PDF, או תמונה (JPG/PNG/WEBP).`);
   }
 
-  return extractFromAI(file, ext, apiKey);
+  return extractFromAI(file, ext);
 }

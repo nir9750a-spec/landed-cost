@@ -1,6 +1,6 @@
-export async function classifyHsCode(productName, notes, apiKey) {
-  if (!apiKey) throw new Error('נדרש מפתח Anthropic API. הגדר אותו בעמוד ההגדרות.');
+import { supabase } from './supabase';
 
+export async function classifyHsCode(productName, notes) {
   const prompt = `אתה מומחה לסיווג מכס ישראלי (תעריף המכס הישראלי).
 בהתבסס על שם המוצר והתיאור הבאים, קבע:
 1. קוד HS מדויק של 8 ספרות לפי תעריף המכס הישראלי
@@ -17,28 +17,21 @@ export async function classifyHsCode(productName, notes, apiKey) {
 - customs_rate: מספר אחוז (לדוגמה: 0, 5, 12, 18)
 - אם המוצר פטור ממכס: customs_rate = 0`;
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
+  const { data, error } = await supabase.functions.invoke('anthropic-proxy', {
+    body: {
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 512,
       messages: [{ role: 'user', content: prompt }],
-    }),
+    },
   });
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.error?.message || `שגיאת API: ${response.status}`);
+  if (error) throw new Error(error.message || 'שגיאת AI');
+  if (data?.error) {
+    const msg = data.error?.message || data.error;
+    throw new Error(typeof msg === 'string' ? msg : 'שגיאת AI');
   }
 
-  const data = await response.json();
-  const text = data.content[0].text.trim();
+  const text = data.content?.[0]?.text?.trim() || '';
   const match = text.match(/\{[\s\S]*\}/);
   if (!match) throw new Error('AI לא החזיר תשובה בפורמט JSON תקין');
 

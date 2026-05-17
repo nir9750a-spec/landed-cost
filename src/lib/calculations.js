@@ -40,7 +40,7 @@ const BP = {
 
 // ─── Setting key groups ─────────────────────────────────────────────────────
 export const GLOBAL_SETTINGS_KEYS = [
-  'vat', 'customs', 'agent_fee', 'api_key', 'port_fees', 'local_transport', 'purchase_tax_rate',
+  'vat', 'customs', 'agent_fee', 'port_fees', 'local_transport', 'purchase_tax_rate',
 ];
 export const PROJECT_SETTINGS_KEYS = [
   'usd_rate', 'freight', 'insurance', 'margin', 'margin_type',
@@ -59,7 +59,6 @@ export const DEFAULT_SETTINGS = {
   margin_type:          'markup',
   port_fees:            0,
   local_transport:      0,
-  api_key:              '',
   purchase_tax_rate:    0,       // מס קניה %
   incoterms:            'FOB',
   shipping_method:      'sea',   // 'sea' | 'air'
