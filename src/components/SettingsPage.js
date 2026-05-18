@@ -377,7 +377,6 @@ export default function SettingsPage({
               {(() => {
                 const inc  = String(projValues.incoterms      || globalSettings.incoterms      || 'FOB');
                 const meth = String(projValues.shipping_method || globalSettings.shipping_method || 'sea').toLowerCase();
-                const seaT = String(projValues.sea_type        || globalSettings.sea_type        || 'fcl').toLowerCase();
                 const desc = INCOTERMS_DESC[inc] || '';
                 const buyerPaysFr  = ['EXW','FCA','FAS','FOB'].includes(inc);
                 const chinaVisible = ['EXW','FCA','FAS'].includes(inc);
