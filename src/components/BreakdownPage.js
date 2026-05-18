@@ -28,8 +28,8 @@ function CostStructCard({ label, pct, absValue, color }) {
   );
 }
 
-export default function BreakdownPage({ products, settings, activeProject, setPage }) {
-  const calced = useMemo(() => calcProducts(products, settings), [products, settings]);
+export default function BreakdownPage({ products, settings, activeProject, setPage, calcCtx }) {
+  const calced = useMemo(() => calcProducts(products, settings, calcCtx), [products, settings, calcCtx]);
   const totals = useMemo(() => calcTotals(calced), [calced]);
 
   const totalUsd    = totals.landedUsdTotal || 1;

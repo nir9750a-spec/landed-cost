@@ -4,6 +4,7 @@ import { DEFAULT_SETTINGS, PROJECT_SETTINGS_KEYS } from './lib/calculations';
 import { fetchUsdRate } from './lib/exchangeRate';
 import { getActiveFreight } from './lib/freightHistory';
 import { loadMarketRates, saveMarketRate } from './lib/marketRates';
+import { loadContainerTypes, loadContainerPricing } from './lib/containerSelection';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import ProductsPage from './components/ProductsPage';
@@ -45,6 +46,8 @@ export default function App() {
   const [freightHistory, setFreightHistory]   = useState([]);
   const [lastRateFetchAt, setLastRateFetchAt] = useState(null);
   const [marketRates, setMarketRates]         = useState([]);
+  const [containerTypes, setContainerTypes]   = useState([]);
+  const [containerPricing, setContainerPricing] = useState([]);
 
   const [globalSettings, setGlobalSettings]     = useState(DEFAULT_SETTINGS);
   const [projectOverrides, setProjectOverrides] = useState({});
@@ -99,9 +102,19 @@ export default function App() {
       setMarketRates(data);
     }
 
+    async function initContainers() {
+      const [types, pricing] = await Promise.all([
+        loadContainerTypes(),
+        loadContainerPricing(),
+      ]);
+      setContainerTypes(types);
+      setContainerPricing(pricing);
+    }
+
     autoFetchRate();
     initFreight();
     initMarketRates();
+    initContainers();
     const rateInterval = setInterval(autoFetchRate, 6 * 60 * 60 * 1000);
     return () => clearInterval(rateInterval);
   }, []); // eslint-disable-line
@@ -135,10 +148,17 @@ export default function App() {
         loadEffectiveSettings(activeProjectIdRef.current);
       }).subscribe();
 
+    const pricingCh = supabase.channel('container-pricing-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'container_pricing' }, async () => {
+        const fresh = await loadContainerPricing();
+        setContainerPricing(fresh);
+      }).subscribe();
+
     return () => {
       supabase.removeChannel(prodCh);
       supabase.removeChannel(projCh);
       supabase.removeChannel(settingsCh);
+      supabase.removeChannel(pricingCh);
     };
   }, []); // eslint-disable-line
 
@@ -323,7 +343,8 @@ export default function App() {
   const activeProject  = projects.find(p => p.id === activeProjectId) || null;
   const uniqueProducts = products.filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i);
   const activeProducts = activeProjectId ? uniqueProducts.filter(p => p.project_id === activeProjectId) : [];
-  const shared = { products: activeProducts, settings, showToast, addProduct, updateProduct, deleteProduct, addProducts, applyShipmentInfo };
+  const calcCtx = { containerTypes, pricing: containerPricing, projectId: activeProjectId };
+  const shared = { products: activeProducts, settings, showToast, addProduct, updateProduct, deleteProduct, addProducts, applyShipmentInfo, calcCtx };
 
   return (
     <Layout page={page} setPage={setPage} activeProject={activeProject}
@@ -335,14 +356,16 @@ export default function App() {
       {page === 'breakdown'  && <BreakdownPage {...shared} activeProject={activeProject} />}
       {page === 'projects'   && <ProjectsPage projects={projects} products={products} settings={settings}
                                   addProject={addProject} updateProject={updateProject} duplicateProject={duplicateProject}
-                                  deleteProject={deleteProject}
+                                  deleteProject={deleteProject} calcCtx={calcCtx}
                                   setActiveProjectId={setActiveProjectId} setPage={setPage} showToast={showToast} />}
       {page === 'settings'   && <SettingsPage globalSettings={globalSettings} projectOverrides={projectOverrides}
                                   saveGlobalSettings={saveGlobalSettings} saveProjectSettings={saveProjectSettings}
                                   showToast={showToast} activeProject={activeProject} updateProject={updateProject}
                                   freightHistory={freightHistory} addFreightRecord={addFreightRecord}
                                   activeProjectId={activeProjectId} projects={projects}
-                                  lastRateFetchAt={lastRateFetchAt} />}
+                                  lastRateFetchAt={lastRateFetchAt}
+                                  containerTypes={containerTypes} containerPricing={containerPricing}
+                                  products={activeProducts} />}
 
       <div className="toast-container">
         {toasts.map(t => <div key={t.id} className={`toast ${t.type}`}>{t.msg}</div>)}

@@ -1,3 +1,5 @@
+import { selectContainer, resolveFreightPrice, isLcl } from './containerSelection';
+
 // ─── Incoterms & port constants ────────────────────────────────────────────
 export const INCOTERMS_LIST = ['EXW','FCA','FAS','FOB','CFR','CIF','CPT','CIP','DAP','DPU','DDP'];
 export const ORIGIN_PORTS   = ['שנגחאי','שנזן','גואנגג׳ו','נינגבו','טיאנג׳ין','קינגדאו','יונגקאנג'];
@@ -46,14 +48,15 @@ export const PROJECT_SETTINGS_KEYS = [
   'usd_rate', 'freight', 'insurance', 'margin', 'margin_type',
   'incoterms', 'shipping_method', 'sea_type', 'lcl_price_per_cbm',
   'air_price_per_kg', 'origin_port', 'china_local_transport',
+  'manual_container_code', 'force_lcl', 'actual_freight_usd',
 ];
 
 export const DEFAULT_SETTINGS = {
   usd_rate:             3.7,
-  freight:              5000,    // FCL container price $
+  freight:              0,       // Legacy — actual_freight_usd is the new path
   customs:              5,       // default customs %
   vat:                  18,      // Israel VAT %
-  agent_fee:            4000,    // customs agent fee ₪
+  agent_fee:            3500,    // customs agent fee ₪ (FCL default; LCL ~2500)
   insurance:            0.5,     // insurance %
   margin:               25,
   margin_type:          'markup',
@@ -62,11 +65,15 @@ export const DEFAULT_SETTINGS = {
   purchase_tax_rate:    0,       // מס קניה %
   incoterms:            'FOB',
   shipping_method:      'sea',   // 'sea' | 'air'
-  sea_type:             'fcl',   // 'fcl' | 'lcl'
-  lcl_price_per_cbm:   0,
+  sea_type:             'fcl',   // 'fcl' | 'lcl' (legacy — derived from container now)
+  lcl_price_per_cbm:   0,        // Legacy — pricing in container_pricing table
   air_price_per_kg:    0,
   origin_port:          'שנגחאי',
   china_local_transport: 0,
+  // Phase A: container auto-selection
+  manual_container_code: null,   // null = auto-select; '20ft' | '40ft' | '40hc' | '45hc' | 'lcl' to override
+  force_lcl:             false,  // force LCL regardless of CBM
+  actual_freight_usd:    null,   // user-entered actual quote (overrides estimate)
 };
 
 // ─── Format helpers ─────────────────────────────────────────────────────────
@@ -97,16 +104,16 @@ export const fmt = {
 //        Registered importers can reclaim VAT.
 // ────────────────────────────────────────────────────────────────────────────
 
-export function calcProducts(products, settings) {
+export function calcProducts(products, settings, ctx = {}) {
   const s = { ...DEFAULT_SETTINGS, ...settings };
+  const { containerTypes = null, pricing = [], projectId = null } = ctx;
 
   const rate           = Number(s.usd_rate)          || 3.7;
   const incoterms      = (s.incoterms || 'FOB').toUpperCase();
   const pays           = BP[incoterms] || BP.FOB;
   const shippingMethod = (s.shipping_method || 'sea').toLowerCase();
-  const seaType        = (s.sea_type        || 'fcl').toLowerCase();
-  const fclPrice       = Number(s.freight)                  || 0;
-  const lclPerCbm      = Number(s.lcl_price_per_cbm)        || 0;
+  const fclPriceLegacy = Number(s.freight)                  || 0;
+  const lclPerCbmLeg   = Number(s.lcl_price_per_cbm)        || 0;
   const airPerKg       = Number(s.air_price_per_kg)         || 0;
   const insurancePct   = Number(s.insurance)                / 100;
   const globalCustomsPct     = Number(s.customs)            / 100;
@@ -121,6 +128,29 @@ export function calcProducts(products, settings) {
 
   const totalCbm = products.reduce((a, p) => a + (Number(p.qty) * Number(p.cbm)), 0);
   const totalFob = products.reduce((a, p) => a + (Number(p.qty) * Number(p.fob_price)), 0);
+
+  // ── Container selection & total freight (sea only; air handled per-product) ─
+  // For sea shipping we compute total freight once, then distribute by CBM share.
+  let totalFreightUsd = 0;
+  let containerInfo   = null;
+  let freightDetail   = null;
+  if (pays.fr && shippingMethod === 'sea') {
+    containerInfo = selectContainer(totalCbm, s, containerTypes);
+    freightDetail = resolveFreightPrice({
+      containerCode: containerInfo.code,
+      originPort:    s.origin_port,
+      totalCbm,
+      pricing,
+      projectId,
+      settings: s,
+    });
+    totalFreightUsd = freightDetail.total;
+    // Legacy fallback if nothing in pricing table and no actual_freight_usd:
+    if (totalFreightUsd === 0) {
+      if (isLcl(containerInfo.code)) totalFreightUsd = totalCbm * lclPerCbmLeg;
+      else                            totalFreightUsd = fclPriceLegacy;
+    }
+  }
 
   return products.map(p => {
     const qty      = Number(p.qty)       || 0;
@@ -138,6 +168,8 @@ export function calcProducts(products, settings) {
     const fobShare   = totalFob > 0 ? fobTotal / totalFob : 0;
 
     // ── Step 2: Freight share ──────────────────────────────────────────────
+    // Sea: total freight resolved once above; distribute by CBM share.
+    // Air: kept per-product (depends on each item's volumetric weight).
     let freightShare     = 0;
     let chargeableWeight = 0;
 
@@ -146,10 +178,9 @@ export function calcProducts(products, settings) {
         const volWeight = (boxL * boxW * boxH) / 6000;
         chargeableWeight = Math.max(grossKg * qty, volWeight * qty);
         freightShare = chargeableWeight * airPerKg;
-      } else if (seaType === 'lcl') {
-        freightShare = productCbm * lclPerCbm;
       } else {
-        freightShare = fclPrice * cbmShare;           // FCL by CBM ratio
+        // Both FCL and LCL: each product gets its CBM share of total freight.
+        freightShare = totalFreightUsd * cbmShare;
       }
     }
 

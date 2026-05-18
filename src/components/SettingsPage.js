@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Save, Globe, FolderOpen } from 'lucide-react';
+import { Save, Globe, FolderOpen, Package, AlertTriangle } from 'lucide-react';
 import { fetchUsdRate } from '../lib/exchangeRate';
 import FreightHistoryPanel from './FreightHistoryPanel';
 import { INCOTERMS_LIST, INCOTERMS_DESC, ORIGIN_PORTS } from '../lib/calculations';
+import { selectContainer, resolveFreightPrice, fillPctColor } from '../lib/containerSelection';
 
 // ── Field definitions ──────────────────────────────────────────────────────
 
@@ -45,6 +46,7 @@ export default function SettingsPage({
   freightHistory = [], addFreightRecord,
   activeProjectId, projects = [],
   lastRateFetchAt,
+  containerTypes = [], containerPricing = [], products = [],
 }) {
   // Global section
   const [globalForm, setGlobalForm]     = useState({
@@ -81,7 +83,8 @@ export default function SettingsPage({
     });
     // Shipping & incoterms fields
     const allShipKeys = ['freight','lcl_price_per_cbm','air_price_per_kg','china_local_transport',
-                         'incoterms','shipping_method','sea_type','origin_port'];
+                         'incoterms','shipping_method','sea_type','origin_port',
+                         'manual_container_code','force_lcl','actual_freight_usd'];
     allShipKeys.forEach(k => {
       vals[k] = projectOverrides[k] ?? globalSettings[k] ?? '';
     });
@@ -172,16 +175,19 @@ export default function SettingsPage({
     if (overrideSet.has('margin_type')) overrides.margin_type = marginType;
 
     // Shipping & Incoterms — ALWAYS save (project-specific, not inherited from global)
-    const shipStrKeys = ['incoterms','shipping_method','sea_type','origin_port'];
+    const shipStrKeys = ['incoterms','shipping_method','sea_type','origin_port','manual_container_code'];
     shipStrKeys.forEach(k => {
       const v = projValues[k] ?? globalSettings[k] ?? '';
-      if (v !== '') overrides[k] = String(v);
+      if (v !== '' && v !== null) overrides[k] = String(v);
+      else overrides[k] = null;
     });
-    const shipNumKeys = ['freight','lcl_price_per_cbm','air_price_per_kg','china_local_transport'];
+    const shipNumKeys = ['freight','lcl_price_per_cbm','air_price_per_kg','china_local_transport','actual_freight_usd'];
     shipNumKeys.forEach(k => {
-      const v = projValues[k] ?? globalSettings[k] ?? 0;
-      overrides[k] = Number(v) || 0;
+      const v = projValues[k];
+      if (v === '' || v === null || v === undefined) overrides[k] = null;
+      else overrides[k] = Number(v) || 0;
     });
+    overrides.force_lcl = !!projValues.force_lcl;
 
     const ok = await saveProjectSettings(overrides);
     if (ok && activeProject) {
@@ -428,50 +434,21 @@ export default function SettingsPage({
                       </div>
                     </div>
 
-                    {/* SEA: FCL / LCL */}
-                    {meth === 'sea' && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        <div className="form-group">
-                          <label style={{ marginBottom: 8, display: 'block' }}>סוג משלוח</label>
-                          <div style={{ display: 'flex', gap: 8 }}>
-                            {[['fcl','FCL — קונטיינר מלא'],['lcl','LCL — חלק מקונטיינר']].map(([val, lbl]) => (
-                              <button
-                                key={val}
-                                type="button"
-                                className={`margin-type-btn${seaT === val ? ' selected' : ''}`}
-                                style={{ flex: 'unset', padding: '8px 20px' }}
-                                onClick={() => handleProjChange('sea_type', val)}
-                              >
-                                {lbl}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        {seaT === 'fcl' && buyerPaysFr && (
-                          <div className="form-group" style={{ maxWidth: 220 }}>
-                            <label>מחיר קונטיינר 40ft ($)</label>
-                            <input
-                              type="number" min="0" step="100"
-                              value={projValues.freight ?? globalSettings.freight ?? ''}
-                              onChange={e => handleProjChange('freight', e.target.value)}
-                              className="sfield-input sfield-overridden"
-                              placeholder="5000"
-                            />
-                          </div>
-                        )}
-                        {seaT === 'lcl' && buyerPaysFr && (
-                          <div className="form-group" style={{ maxWidth: 220 }}>
-                            <label>מחיר לCBM ($)</label>
-                            <input
-                              type="number" min="0" step="1"
-                              value={projValues.lcl_price_per_cbm ?? globalSettings.lcl_price_per_cbm ?? ''}
-                              onChange={e => handleProjChange('lcl_price_per_cbm', e.target.value)}
-                              className="sfield-input sfield-overridden"
-                              placeholder="70"
-                            />
-                          </div>
-                        )}
-                      </div>
+                    {/* SEA: Auto container selection */}
+                    {meth === 'sea' && buyerPaysFr && (
+                      <ContainerSelectionCard
+                        totalCbm={products.reduce((a, p) => a + (Number(p.qty)||0) * (Number(p.cbm)||0), 0)}
+                        originPort={projValues.origin_port || globalSettings.origin_port || 'שנגחאי'}
+                        manualCode={projValues.manual_container_code || ''}
+                        forceLcl={!!projValues.force_lcl}
+                        actualFreightUsd={projValues.actual_freight_usd}
+                        containerTypes={containerTypes}
+                        containerPricing={containerPricing}
+                        projectId={activeProjectId}
+                        onManualChange={code => handleProjChange('manual_container_code', code || null)}
+                        onForceLclToggle={v => handleProjChange('force_lcl', v)}
+                        onActualFreightChange={v => handleProjChange('actual_freight_usd', v === '' ? null : v)}
+                      />
                     )}
 
                     {/* AIR */}
@@ -656,6 +633,174 @@ export default function SettingsPage({
           </div>
         </div>
 
+      </div>
+    </div>
+  );
+}
+
+// ─── Container selection card ────────────────────────────────────────────────
+
+function ContainerSelectionCard({
+  totalCbm, originPort, manualCode, forceLcl, actualFreightUsd,
+  containerTypes, containerPricing, projectId,
+  onManualChange, onForceLclToggle, onActualFreightChange,
+}) {
+  const settings = { manual_container_code: manualCode || null, force_lcl: forceLcl };
+  const containerInfo = selectContainer(totalCbm, settings, containerTypes);
+  const freight = resolveFreightPrice({
+    containerCode: containerInfo.code,
+    originPort,
+    totalCbm,
+    pricing: containerPricing,
+    projectId,
+    settings: { ...settings, actual_freight_usd: actualFreightUsd },
+  });
+
+  const hasActual = Number(actualFreightUsd) > 0;
+  const pct = Math.min(100, Math.round(containerInfo.fillPct || 0));
+  const color = fillPctColor(containerInfo.fillPct || 0);
+  const fillStyle = {
+    width: `${Math.min(100, containerInfo.fillPct || 0)}%`,
+    background:
+      color === 'red'    ? 'var(--red)' :
+      color === 'orange' ? 'var(--gold)' :
+      color === 'green'  ? 'var(--green)' : 'var(--text3)',
+  };
+
+  const warningText =
+    containerInfo.warning === 'exceeds_capacity' ? `CBM (${totalCbm.toFixed(1)} m³) חורג מתפוסת המכולה הגדולה ביותר. שקול לפצל ל-2 משלוחים.` :
+    containerInfo.warning === 'tight_fit'        ? `ניצול ${pct}% — צפוף. שמור על מרווח לסטיות אריזה.` :
+    containerInfo.warning === 'manual_too_small' ? `הקונטיינר שבחרת ידנית קטן מהמטען (${pct}%). המוצרים לא ייכנסו.` :
+    null;
+
+  const isLclSelected = containerInfo.code === 'lcl';
+
+  return (
+    <div style={{
+      border: '1px solid var(--border)', borderRadius: 12, padding: 16,
+      background: 'var(--bg2)', display: 'flex', flexDirection: 'column', gap: 14,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <Package size={18} style={{ color: 'var(--blue)' }} />
+        <span style={{ fontWeight: 700, fontSize: 15 }}>
+          {containerInfo.type?.display_name_he || containerInfo.code}
+        </span>
+        <span className={`sfield-badge ${
+          containerInfo.source === 'manual' ? 'sfield-project' :
+          containerInfo.source === 'forced' ? 'sfield-project' : 'sfield-global'
+        }`}>
+          {containerInfo.source === 'auto' ? 'אוטומטי' :
+           containerInfo.source === 'manual' ? 'ידני' : 'כפוי LCL'}
+        </span>
+      </div>
+
+      {!isLclSelected && containerInfo.type?.practical_cbm > 0 && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
+            <span>{totalCbm.toFixed(2)} / {containerInfo.type.practical_cbm} m³</span>
+            <span style={{ fontWeight: 700, color: fillStyle.background }}>{pct}%</span>
+          </div>
+          <div style={{
+            height: 10, background: 'var(--bg3)', borderRadius: 6,
+            overflow: 'hidden', direction: 'ltr',
+          }}>
+            <div style={{ ...fillStyle, height: '100%', transition: 'width 0.3s' }} />
+          </div>
+        </div>
+      )}
+
+      {isLclSelected && (
+        <div style={{ fontSize: 13, color: 'var(--text2)' }}>
+          סך CBM: {totalCbm.toFixed(2)} m³ — מתחת ל-18 m³ עדיף LCL
+        </div>
+      )}
+
+      {warningText && (
+        <div className="alert alert-warn" style={{ margin: 0, padding: 8, fontSize: 12 }}>
+          <AlertTriangle size={13} />
+          <span>{warningText}</span>
+        </div>
+      )}
+
+      {/* Price breakdown */}
+      <div style={{ background: 'var(--bg3)', borderRadius: 8, padding: 12, fontSize: 13 }}>
+        {hasActual ? (
+          <div>
+            <div style={{ fontWeight: 700, color: 'var(--green)', marginBottom: 4 }}>
+              🧾 ציטוט אמיתי מהforwarder
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 700 }}>${Number(actualFreightUsd).toLocaleString()}</div>
+          </div>
+        ) : freight.source === 'no_price' ? (
+          <div style={{ color: 'var(--orange)' }}>
+            ⚠️ אין מחיר מוגדר עבור {containerInfo.code} מ-{originPort}.
+            <br />
+            <span style={{ fontSize: 11, color: 'var(--text3)' }}>
+              הגדר מחירון או הזן ציטוט אמיתי למטה.
+            </span>
+          </div>
+        ) : (
+          <>
+            <div style={{ fontWeight: 700, marginBottom: 6 }}>💰 הערכת מחיר</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>בסיס ({originPort})</span>
+              <span>${freight.base.toLocaleString()}</span>
+            </div>
+            {freight.warRisk > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--orange)' }}>
+                <span>+ War Risk</span>
+                <span>${freight.warRisk.toLocaleString()}</span>
+              </div>
+            )}
+            <div style={{
+              display: 'flex', justifyContent: 'space-between',
+              borderTop: '1px solid var(--border)', marginTop: 6, paddingTop: 6,
+              fontWeight: 700, fontSize: 15,
+            }}>
+              <span>סך הכל</span>
+              <span>${freight.total.toLocaleString()}</span>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Controls */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="form-group" style={{ margin: 0 }}>
+          <label style={{ fontSize: 12, color: 'var(--text2)' }}>בחירת קונטיינר ידנית</label>
+          <select
+            className="sfield-input"
+            value={manualCode || ''}
+            onChange={e => onManualChange(e.target.value)}
+          >
+            <option value="">אוטומטי (לפי CBM)</option>
+            {(containerTypes || []).map(t => (
+              <option key={t.code} value={t.code}>{t.display_name_he}</option>
+            ))}
+          </select>
+        </div>
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={!!forceLcl}
+            onChange={e => onForceLclToggle(e.target.checked)}
+          />
+          <span>כפה LCL (גם אם CBM גדול)</span>
+        </label>
+
+        <div className="form-group" style={{ margin: 0 }}>
+          <label style={{ fontSize: 12, color: 'var(--text2)' }}>
+            🧾 הזן ציטוט אמיתי מ-forwarder ($) — דורס את ההערכה
+          </label>
+          <input
+            type="number" min="0" step="50"
+            placeholder="לדוגמה: 2800"
+            value={actualFreightUsd ?? ''}
+            onChange={e => onActualFreightChange(e.target.value)}
+            className="sfield-input"
+          />
+        </div>
       </div>
     </div>
   );

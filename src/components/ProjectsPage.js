@@ -12,7 +12,7 @@ export const STATUS_CLASS  = { draft: 'badge-orange', active: 'badge-green', clo
 
 export default function ProjectsPage({
   projects, products, settings,
-  addProject, updateProject, duplicateProject, deleteProject,
+  addProject, updateProject, duplicateProject, deleteProject, calcCtx,
   setActiveProjectId, setPage, showToast,
 }) {
   const [showForm, setShowForm] = useState(false);
@@ -26,11 +26,11 @@ export default function ProjectsPage({
     const map = {};
     projects.forEach(proj => {
       const pp = products.filter(p => p.project_id === proj.id);
-      const t  = calcTotals(calcProducts(pp, settings));
+      const t  = calcTotals(calcProducts(pp, settings, { ...calcCtx, projectId: proj.id }));
       map[proj.id] = { count: pp.length, fobTotal: t.fobTotal, landedIls: t.landedIlsTotal, profitTotal: t.profitTotal };
     });
     return map;
-  }, [projects, products, settings]);
+  }, [projects, products, settings, calcCtx]);
 
   const filtered = filter === 'all' ? projects : projects.filter(p => p.status === filter);
 

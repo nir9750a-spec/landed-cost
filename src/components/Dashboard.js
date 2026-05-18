@@ -70,16 +70,16 @@ function KpiCard({ label, value, sub, accent, icon: Icon }) {
 // ── Component ──────────────────────────────────────────────────────────────
 export default function Dashboard({
   products, settings,
-  allProducts, projects, activeProjectId, setActiveProjectId, setPage,
+  allProducts, projects, activeProjectId, setActiveProjectId, setPage, calcCtx,
 }) {
-  const calced = useMemo(() => calcProducts(products, settings), [products, settings]);
+  const calced = useMemo(() => calcProducts(products, settings, calcCtx), [products, settings, calcCtx]);
   const totals = useMemo(() => calcTotals(calced), [calced]);
 
   const projectStats = useMemo(() => projects.map(proj => {
     const pp = allProducts.filter(p => p.project_id === proj.id);
-    const t  = calcTotals(calcProducts(pp, settings));
+    const t  = calcTotals(calcProducts(pp, settings, { ...calcCtx, projectId: proj.id }));
     return { ...proj, count: pp.length, ...t };
-  }), [projects, allProducts, settings]);
+  }), [projects, allProducts, settings, calcCtx]);
 
   const activeProject  = projects.find(p => p.id === activeProjectId);
   const marginLabel    = settings.margin_type === 'margin' ? 'Gross Margin' : 'Markup';

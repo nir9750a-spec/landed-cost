@@ -26,7 +26,7 @@ const HEADERS = [
 export default function ProductsPage({
   products, settings, showToast,
   addProduct, updateProduct, deleteProduct, addProducts, applyShipmentInfo,
-  activeProject, setPage,
+  activeProject, setPage, calcCtx,
 }) {
   const [showForm, setShowForm]           = useState(false);
   const [editProd, setEditProd]           = useState(null);
@@ -35,7 +35,7 @@ export default function ProductsPage({
   const [classifyingId, setClassifyingId] = useState(null);
   const [classifyPopup, setClassifyPopup] = useState(null);
 
-  const calced = useMemo(() => calcProducts(products, settings), [products, settings]);
+  const calced = useMemo(() => calcProducts(products, settings, calcCtx), [products, settings, calcCtx]);
   const totals = useMemo(() => calcTotals(calced), [calced]);
 
   function openEdit(p) { setEditProd(p); setShowForm(true); }
