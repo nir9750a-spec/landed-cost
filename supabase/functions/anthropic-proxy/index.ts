@@ -2,7 +2,7 @@
 // Accepts the same payload that would have been sent to api.anthropic.com/v1/messages
 // and relays it with the secret ANTHROPIC_API_KEY from Supabase Secrets.
 //
-// Deploy: supabase functions deploy anthropic-proxy
+// Deploy: supabase functions deploy anthropic-proxy --no-verify-jwt
 // Secret: supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
 
 const ALLOWED_ORIGINS = [
@@ -29,69 +29,77 @@ function corsHeaders(origin: string | null) {
   };
 }
 
+function jsonResponse(status: number, body: unknown, cors: Record<string, string>) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...cors, 'Content-Type': 'application/json' },
+  });
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const cors = corsHeaders(origin);
 
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: cors });
-  }
-
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { ...cors, 'Content-Type': 'application/json' },
-    });
-  }
-
-  const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
-  if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'Server misconfigured: ANTHROPIC_API_KEY not set' }), {
-      status: 500,
-      headers: { ...cors, 'Content-Type': 'application/json' },
-    });
-  }
-
-  let payload: any;
   try {
-    payload = await req.json();
-  } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
-      status: 400,
-      headers: { ...cors, 'Content-Type': 'application/json' },
+    if (req.method === 'OPTIONS') {
+      return new Response('ok', { headers: cors });
+    }
+
+    if (req.method !== 'POST') {
+      return jsonResponse(405, { error: 'Method not allowed' }, cors);
+    }
+
+    const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
+    if (!apiKey) {
+      return jsonResponse(500, { error: 'Server misconfigured: ANTHROPIC_API_KEY not set' }, cors);
+    }
+
+    let payload: any;
+    try {
+      payload = await req.json();
+    } catch {
+      return jsonResponse(400, { error: 'Invalid JSON body' }, cors);
+    }
+
+    if (!payload.model || !ALLOWED_MODELS.has(payload.model)) {
+      return jsonResponse(400, { error: `Model not allowed. Allowed: ${[...ALLOWED_MODELS].join(', ')}` }, cors);
+    }
+
+    if (typeof payload.max_tokens === 'number' && payload.max_tokens > 8192) {
+      return jsonResponse(400, { error: 'max_tokens cannot exceed 8192' }, cors);
+    }
+
+    let upstream: Response;
+    try {
+      upstream = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      return jsonResponse(502, {
+        error: 'Upstream fetch failed',
+        detail: err instanceof Error ? err.message : String(err),
+      }, cors);
+    }
+
+    const body = await upstream.text();
+    return new Response(body, {
+      status: upstream.status,
+      headers: {
+        ...cors,
+        'Content-Type': upstream.headers.get('content-type') || 'application/json',
+      },
     });
+  } catch (err) {
+    // Catch-all so we never return a response without CORS headers.
+    return jsonResponse(500, {
+      error: 'Internal proxy error',
+      detail: err instanceof Error ? err.message : String(err),
+    }, cors);
   }
-
-  if (!payload.model || !ALLOWED_MODELS.has(payload.model)) {
-    return new Response(JSON.stringify({ error: `Model not allowed. Allowed: ${[...ALLOWED_MODELS].join(', ')}` }), {
-      status: 400,
-      headers: { ...cors, 'Content-Type': 'application/json' },
-    });
-  }
-
-  if (typeof payload.max_tokens === 'number' && payload.max_tokens > 8192) {
-    return new Response(JSON.stringify({ error: 'max_tokens cannot exceed 8192' }), {
-      status: 400,
-      headers: { ...cors, 'Content-Type': 'application/json' },
-    });
-  }
-
-  const upstream = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify(payload),
-  });
-
-  const body = await upstream.text();
-  return new Response(body, {
-    status: upstream.status,
-    headers: {
-      ...cors,
-      'Content-Type': upstream.headers.get('content-type') || 'application/json',
-    },
-  });
 });
