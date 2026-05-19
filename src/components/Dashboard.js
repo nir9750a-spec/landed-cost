@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { FolderOpen, Plus, TrendingUp, TrendingDown, DollarSign, Package } from 'lucide-react';
+import { FolderOpen, Plus, TrendingUp, TrendingDown, DollarSign, Package,
+         RefreshCw, Trash2, Share2, FileDown } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -98,11 +99,15 @@ function Sparkline({ data, accent }) {
 }
 
 // ── KPI card ───────────────────────────────────────────────────────────────
-function KpiCard({ label, value, sub, accent, icon: Icon, featured, sparklineData, rawValue, formatter }) {
+function KpiCard({ label, value, sub, accent, icon: Icon, featured, loss, badge, sparklineData, rawValue, formatter }) {
   const animated = useCountUp(typeof rawValue === 'number' ? rawValue : 0);
   const displayValue = (typeof rawValue === 'number' && formatter) ? formatter(animated) : value;
+  const cls = ['kpi-card'];
+  if (featured) cls.push('kpi-featured');
+  if (loss)     cls.push('kpi-loss');
   return (
-    <div className={`kpi-card${featured ? ' kpi-featured' : ''}`} style={{ '--kpi-accent': accent }}>
+    <div className={cls.join(' ')} style={{ '--kpi-accent': accent }}>
+      {badge && <span className={`kpi-badge ${loss ? 'loss' : 'profit'}`}>{badge}</span>}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div className="kpi-label">{label}</div>
         {Icon && <Icon size={16} style={{ color: accent, opacity: 0.75 }} />}
@@ -231,25 +236,39 @@ export default function Dashboard({
   return (
     <div>
       <div className="page-header">
-        <div>
-          <h1 className="page-title">{activeProject?.name || 'לוח בקרה'}</h1>
-          {activeProject?.supplier && (
-            <div className="text-sm text-muted" style={{ marginTop: 2 }}>ספק: {activeProject.supplier}</div>
-          )}
-          {activeProject?.shipment_date && (
-            <div className="text-sm text-muted" style={{ marginTop: 1 }}>
-              🚢 {new Date(activeProject.shipment_date).toLocaleDateString('he-IL')}
-            </div>
-          )}
-        </div>
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 items-center" style={{ flexWrap: 'wrap' }}>
+          <button className="btn btn-sm btn-ghost" onClick={() => setPage('projects')} title="כל הפרויקטים">
+            <FolderOpen size={13} /> פרויקטים
+          </button>
+          <span style={{ color: 'var(--text3)' }}>›</span>
+          <h1 className="page-title" style={{ fontSize: 18 }}>{activeProject?.name || 'לוח בקרה'}</h1>
           {activeProject && (
             <span className={`badge ${STATUS_CLASS[activeProject.status] || 'badge-blue'}`}>
               {STATUS_LABEL[activeProject.status] || activeProject.status}
             </span>
           )}
-          <button className="btn btn-sm" onClick={() => setPage('projects')}>
-            <FolderOpen size={13} /> כל הפרויקטים
+        </div>
+        <div className="flex gap-2 items-center">
+          <button className="btn btn-sm" onClick={() => window.location.reload()} title="רענן נתונים">
+            <RefreshCw size={13} />
+          </button>
+          <button className="btn btn-sm btn-ghost"
+            onClick={() => {
+              if (navigator.share && activeProject) {
+                navigator.share({ title: activeProject.name, url: window.location.href }).catch(()=>{});
+              } else if (navigator.clipboard) {
+                navigator.clipboard.writeText(window.location.href);
+                alert('הקישור הועתק');
+              }
+            }}
+            title="שתף">
+            <Share2 size={13} /> שתף
+          </button>
+          <button className="btn btn-sm btn-danger" onClick={() => setPage('projects')} title="מחיקת פרויקט">
+            <Trash2 size={13} /> מחק
+          </button>
+          <button className="btn btn-sm btn-primary" onClick={() => window.print()} title="ייצוא PDF">
+            <FileDown size={13} /> ייצוא PDF
           </button>
         </div>
       </div>
@@ -285,7 +304,9 @@ export default function Dashboard({
             sub={`ROI ${n(totals.roiTotal, 1)}% · מרווח ${n(totals.marginPctTotal, 1)}%`}
             accent={totals.profitTotal >= 0 ? '#10b981' : '#ef4444'}
             icon={totals.profitTotal >= 0 ? TrendingUp : TrendingDown}
-            featured={totals.profitTotal >= 0}
+            featured={totals.profitTotal > 0}
+            loss={totals.profitTotal < 0}
+            badge={totals.profitTotal < 0 ? 'הפסד!' : (totals.profitTotal > 0 ? 'צפי' : null)}
             sparklineData={kpiSparklines.profit}
           />
           <KpiCard

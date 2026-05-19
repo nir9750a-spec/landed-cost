@@ -301,8 +301,9 @@ export default function Layout({
           </div>
           <div className="sidebar-logo-text">
             <span className="sidebar-logo-name">Importly</span>
-            <span className="sidebar-logo-tagline">עלות ממונפת · יבוא חכם</span>
+            <span className="sidebar-logo-tagline">עלות ממונפת</span>
           </div>
+          <ChevronDown size={14} style={{ color: 'var(--text3)', marginRight: 'auto' }} />
         </div>
 
         {activeProject && (
@@ -337,8 +338,10 @@ export default function Layout({
           <div className="sidebar-user-pill">
             <div className="sidebar-user-avatar">4E</div>
             <div className="sidebar-user-info">
-              <span className="sidebar-user-name">4Elements</span>
-              <span className="sidebar-user-role">ניר &amp; יוחאי</span>
+              <span className="sidebar-user-name">ניר &amp; יוחאי</span>
+              <span className="sidebar-user-role">
+                <span className="pro-badge">Pro</span> · 4Elements
+              </span>
             </div>
           </div>
         </div>
