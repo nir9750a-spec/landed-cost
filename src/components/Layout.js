@@ -296,17 +296,26 @@ export default function Layout({
     <div className="app-layout">
       <div className="sidebar">
         <div className="sidebar-logo">
-          <Package size={20} />
-          עלות ממונפת
+          <div className="sidebar-logo-mark">
+            <Package size={18} strokeWidth={2.5} />
+          </div>
+          <div className="sidebar-logo-text">
+            <span className="sidebar-logo-name">Importly</span>
+            <span className="sidebar-logo-tagline">עלות ממונפת · יבוא חכם</span>
+          </div>
         </div>
 
         {activeProject && (
-          <div className="sidebar-active-project">
-            <FolderOpen size={13} />
-            <span title={activeProject.name}>{activeProject.name}</span>
-          </div>
+          <>
+            <div className="sidebar-section-label">פרויקט פעיל</div>
+            <div className="sidebar-active-project">
+              <span className="sidebar-active-pulse" />
+              <span title={activeProject.name}>{activeProject.name}</span>
+            </div>
+          </>
         )}
 
+        <div className="sidebar-section-label">ניווט</div>
         <nav className="sidebar-nav">
           {NAV.map(({ id, label, Icon }) => (
             <button
@@ -325,6 +334,13 @@ export default function Layout({
             <Printer size={14} />
             הדפסה / PDF
           </button>
+          <div className="sidebar-user-pill">
+            <div className="sidebar-user-avatar">4E</div>
+            <div className="sidebar-user-info">
+              <span className="sidebar-user-name">4Elements</span>
+              <span className="sidebar-user-role">ניר &amp; יוחאי</span>
+            </div>
+          </div>
         </div>
       </div>
 

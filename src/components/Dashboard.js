@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { FolderOpen, Plus, TrendingUp, TrendingDown, DollarSign, Package } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
@@ -53,16 +53,63 @@ function PieTooltip({ active, payload }) {
   );
 }
 
-// ── KPI card ───────────────────────────────────────────────────────────────
-function KpiCard({ label, value, sub, accent, icon: Icon }) {
+// ── Count-up animation hook ────────────────────────────────────────────────
+function useCountUp(target, duration = 900) {
+  const [val, setVal] = useState(0);
+  const startedRef = useRef(false);
+  useEffect(() => {
+    if (typeof target !== 'number' || !isFinite(target)) { setVal(target); return; }
+    const from = startedRef.current ? val : 0;
+    startedRef.current = true;
+    const start = performance.now();
+    let raf;
+    const tick = (now) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setVal(from + (target - from) * eased);
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, duration]);
+  return val;
+}
+
+// ── Sparkline SVG ──────────────────────────────────────────────────────────
+function Sparkline({ data, accent }) {
+  if (!data || data.length < 2) return null;
+  const w = 100, h = 28;
+  const min = Math.min(...data), max = Math.max(...data);
+  const span = max - min || 1;
+  const points = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = h - ((v - min) / span) * (h - 4) - 2;
+    return [x, y];
+  });
+  const path = points.map((p, i) => (i === 0 ? `M${p[0]},${p[1]}` : `L${p[0]},${p[1]}`)).join(' ');
+  const areaPath = `${path} L${w},${h} L0,${h} Z`;
   return (
-    <div className="kpi-card" style={{ '--kpi-accent': accent }}>
+    <svg className="kpi-sparkline" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ '--kpi-accent': accent }}>
+      <path d={areaPath} className="kpi-sparkline-fill" />
+      <path d={path} />
+    </svg>
+  );
+}
+
+// ── KPI card ───────────────────────────────────────────────────────────────
+function KpiCard({ label, value, sub, accent, icon: Icon, featured, sparklineData, rawValue, formatter }) {
+  const animated = useCountUp(typeof rawValue === 'number' ? rawValue : 0);
+  const displayValue = (typeof rawValue === 'number' && formatter) ? formatter(animated) : value;
+  return (
+    <div className={`kpi-card${featured ? ' kpi-featured' : ''}`} style={{ '--kpi-accent': accent }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div className="kpi-label">{label}</div>
-        {Icon && <Icon size={16} style={{ color: accent, opacity: 0.6 }} />}
+        {Icon && <Icon size={16} style={{ color: accent, opacity: 0.75 }} />}
       </div>
-      <div className="kpi-value" style={{ color: accent }}>{value}</div>
+      <div className="kpi-value" style={{ color: accent }}>{displayValue}</div>
       {sub && <div className="kpi-sub">{sub}</div>}
+      {sparklineData && <Sparkline data={sparklineData} accent={accent} />}
     </div>
   );
 }
@@ -84,6 +131,21 @@ export default function Dashboard({
   const activeProject  = projects.find(p => p.id === activeProjectId);
   const marginLabel    = settings.margin_type === 'margin' ? 'Gross Margin' : 'Markup';
   const vatEstimate    = totals.vatTotal * Number(settings.usd_rate || 3.7);
+
+  // ── Sparkline data — per-product running totals to visualize composition ──
+  const kpiSparklines = useMemo(() => {
+    if (!calced || calced.length === 0) return {};
+    const landed = [], sell = [], profit = [], fob = [];
+    let aL = 0, aS = 0, aP = 0, aF = 0;
+    for (const p of calced) {
+      aL += Number(p._landedCostIls) || 0;
+      aS += Number(p._sellPrice)     || 0;
+      aP += Number(p._profit)        || 0;
+      aF += Number(p._fobTotal)      || 0;
+      landed.push(aL); sell.push(aS); profit.push(aP); fob.push(aF);
+    }
+    return { landed, sell, profit, fob };
+  }, [calced]);
 
   function openProject(proj) { setActiveProjectId(proj.id); setPage('products'); }
 
@@ -197,31 +259,44 @@ export default function Dashboard({
         <div className="kpi-grid">
           <KpiCard
             label="עלות ייבוא כוללת"
+            rawValue={totals.landedIlsTotal}
+            formatter={fmt.ils}
             value={fmt.ils(totals.landedIlsTotal)}
             sub={`${fmt.usd(totals.landedUsdTotal)} · ${n(totals.totalCbm, 2)} m³`}
-            accent="#3b82f6"
+            accent="#22d3ee"
             icon={Package}
+            sparklineData={kpiSparklines.landed}
           />
           <KpiCard
             label="מחיר מכירה כולל"
+            rawValue={totals.sellTotal}
+            formatter={fmt.ils}
             value={fmt.ils(totals.sellTotal)}
             sub={`${marginLabel} · ${settings.margin}%`}
             accent="#00d4aa"
             icon={TrendingUp}
+            sparklineData={kpiSparklines.sell}
           />
           <KpiCard
             label="רווח צפוי"
+            rawValue={totals.profitTotal}
+            formatter={fmt.ils}
             value={fmt.ils(totals.profitTotal)}
             sub={`ROI ${n(totals.roiTotal, 1)}% · מרווח ${n(totals.marginPctTotal, 1)}%`}
-            accent={totals.profitTotal >= 0 ? '#f59e0b' : '#ef4444'}
+            accent={totals.profitTotal >= 0 ? '#10b981' : '#ef4444'}
             icon={totals.profitTotal >= 0 ? TrendingUp : TrendingDown}
+            featured={totals.profitTotal >= 0}
+            sparklineData={kpiSparklines.profit}
           />
           <KpiCard
             label="FOB סה״כ"
+            rawValue={totals.fobTotal}
+            formatter={fmt.usd}
             value={fmt.usd(totals.fobTotal)}
             sub={`${n(totals.qtyTotal)} יחידות · ${products.length} פריטים`}
             accent="#7c3aed"
             icon={DollarSign}
+            sparklineData={kpiSparklines.fob}
           />
         </div>
 
