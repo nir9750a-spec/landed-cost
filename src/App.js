@@ -11,6 +11,7 @@ import ProductsPage from './components/ProductsPage';
 import ProjectsPage from './components/ProjectsPage';
 import SettingsPage from './components/SettingsPage';
 import BreakdownPage from './components/BreakdownPage';
+import CompliancePage from './components/CompliancePage';
 
 // String-typed setting keys (must not be cast to Number)
 const STRING_KEYS = new Set([
@@ -353,6 +354,7 @@ export default function App() {
       {page === 'dashboard'  && <Dashboard {...shared} allProducts={uniqueProducts} projects={projects}
                                   activeProjectId={activeProjectId} setActiveProjectId={setActiveProjectId} setPage={setPage} />}
       {page === 'products'   && <ProductsPage {...shared} activeProject={activeProject} setPage={setPage} />}
+      {page === 'compliance' && <CompliancePage {...shared} activeProject={activeProject} setPage={setPage} />}
       {page === 'breakdown'  && <BreakdownPage {...shared} activeProject={activeProject} />}
       {page === 'projects'   && <ProjectsPage projects={projects} products={products} settings={settings}
                                   addProject={addProject} updateProject={updateProject} duplicateProject={duplicateProject}

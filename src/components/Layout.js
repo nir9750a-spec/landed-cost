@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { LayoutDashboard, Package, FolderOpen, Settings, Table2, Printer,
-         ChevronDown, ChevronUp, Check, X } from 'lucide-react';
+         ChevronDown, ChevronUp, Check, X, ShieldCheck } from 'lucide-react';
 
 const NAV = [
-  { id: 'dashboard', label: 'לוח בקרה',   Icon: LayoutDashboard },
-  { id: 'products',  label: 'מוצרים',     Icon: Package },
-  { id: 'breakdown', label: 'פירוט מלא',  Icon: Table2 },
-  { id: 'projects',  label: 'פרויקטים',   Icon: FolderOpen },
-  { id: 'settings',  label: 'הגדרות',     Icon: Settings },
+  { id: 'dashboard',  label: 'לוח בקרה',   Icon: LayoutDashboard },
+  { id: 'products',   label: 'מוצרים',     Icon: Package },
+  { id: 'compliance', label: 'תקינה ומכס', Icon: ShieldCheck },
+  { id: 'breakdown',  label: 'פירוט מלא',  Icon: Table2 },
+  { id: 'projects',   label: 'פרויקטים',   Icon: FolderOpen },
+  { id: 'settings',   label: 'הגדרות',     Icon: Settings },
 ];
 
 // ── helpers ─────────────────────────────────────────────────────────────────
