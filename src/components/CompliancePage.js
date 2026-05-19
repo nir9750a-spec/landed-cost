@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { ShieldCheck, Sparkles, Check, AlertTriangle, FolderOpen } from 'lucide-react';
-import { classifyImportGroupBatch, saveSiiClassification } from '../lib/siiClassify';
+import { classifyAllBatch, saveSiiClassification } from '../lib/siiClassify';
+import { supabase } from '../lib/supabase';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Compliance & SII import classification view.
@@ -45,10 +46,10 @@ export default function CompliancePage({ products, activeProject, settings, show
   const [manualEdit, setManualEdit]     = useState({}); // { productId: { group, sii_required } }
   const autoRunRef = useRef({}); // per-project flag so we only auto-run once per visit
 
-  // Summary stats
+  // Summary stats — fully classified means BOTH hs_code and import_group are set
   const summary = useMemo(() => {
     const total = products.length;
-    const classified = products.filter(p => p.import_group != null).length;
+    const classified = products.filter(p => p.hs_code && p.import_group != null).length;
     const requiresTest = products.filter(p => p.sii_required === true).length;
     const byGroup = { 1: 0, 2: 0, 3: 0, 4: 0, '?': 0 };
     products.forEach(p => {
@@ -59,36 +60,55 @@ export default function CompliancePage({ products, activeProject, settings, show
     return { total, classified, requiresTest, byGroup };
   }, [products]);
 
+  // A product needs classification if HS or import_group is missing.
+  function productsNeedingClassification(list) {
+    return list.filter(p => !p.hs_code || p.import_group == null);
+  }
+
   async function runBulkClassify({ silent = false } = {}) {
-    const unclassified = products.filter(p => p.import_group == null);
-    if (unclassified.length === 0) {
+    const needs = productsNeedingClassification(products);
+    if (needs.length === 0) {
       if (!silent) showToast('הכול כבר מסווג');
       return;
     }
 
     setBulkRunning(true);
-    setAutoProgress({ done: 0, total: unclassified.length });
+    setAutoProgress({ done: 0, total: needs.length });
     try {
-      const results = await classifyImportGroupBatch(unclassified.map(p => ({
-        id: p.id, name: p.name, hs_code: p.hs_code || '', notes: p.notes || '',
+      const results = await classifyAllBatch(needs.map(p => ({
+        id: p.id, name: p.name, notes: p.notes || '',
       })));
       let success = 0;
       for (const r of results) {
-        if (r.import_group == null) continue;
+        const p = products.find(x => x.id === r.id);
+        if (!p) continue;
+
+        const updates = {};
+        // Only fill HS/customs if missing — don't overwrite agent overrides.
+        if (!p.hs_code && r.hs_code) {
+          updates.hs_code = r.hs_code;
+        }
+        if ((p.customs_rate_override == null || p.customs_rate_override === '') && r.customs_rate != null) {
+          updates.customs_rate_override = r.customs_rate;
+        }
+        if (p.import_group == null && r.import_group != null) {
+          updates.import_group = r.import_group;
+          updates.sii_required = r.sii_required;
+          updates.sii_notes    = r.reasoning;
+          updates.sii_source   = 'ai';
+        }
+        if (Object.keys(updates).length === 0) continue;
+
         try {
-          await saveSiiClassification(r.id, {
-            import_group: r.import_group,
-            sii_required: r.sii_required,
-            reasoning:    r.reasoning,
-            source:       'ai',
-          });
-          updateProduct(r.id, { import_group: r.import_group, sii_required: r.sii_required, sii_notes: r.reasoning, sii_source: 'ai' });
+          const { error } = await supabase.from('products').update(updates).eq('id', r.id);
+          if (error) throw error;
+          updateProduct(r.id, updates);
           success++;
-          setAutoProgress({ done: success, total: unclassified.length });
+          setAutoProgress({ done: success, total: needs.length });
         } catch {}
       }
-      if (!silent || success !== unclassified.length) {
-        showToast(`סווגו ${success}/${unclassified.length} מוצרים`);
+      if (!silent || success !== needs.length) {
+        showToast(`סווגו ${success}/${needs.length} מוצרים`);
       }
     } catch (err) {
       showToast('שגיאה בסיווג: ' + err.message, 'error');
@@ -103,8 +123,8 @@ export default function CompliancePage({ products, activeProject, settings, show
   useEffect(() => {
     if (!activeProject) return;
     const key = activeProject.id;
-    const unclassified = products.filter(p => p.import_group == null);
-    if (unclassified.length === 0) return;
+    const needs = productsNeedingClassification(products);
+    if (needs.length === 0) return;
     if (autoRunRef.current[key]) return;
     if (bulkRunning) return;
     autoRunRef.current[key] = true;

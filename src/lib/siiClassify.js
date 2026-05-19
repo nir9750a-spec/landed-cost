@@ -5,6 +5,136 @@ import { supabase } from './supabase';
 //  Returns import_group (1..4) + sii_required flag + reasoning.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  Combined HS + customs + SII classifier — single Claude call per batch.
+//  Used by the Compliance page to fill everything that's missing in one shot.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const COMBINED_RULES = `אתה מומחה לסיווג מכס ישראלי ולקבוצות יבוא של מכון התקנים הישראלי (SII).
+
+עבור כל מוצר, ספק:
+א. hs_code — קוד 8 ספרות בדיוק לפי תעריף המכס הישראלי (ללא נקודות/מקפים)
+ב. customs_rate — שיעור המכס החל בישראל (0-100, מספר אחוז, ללא סימן %)
+ג. import_group — קבוצת יבוא של מכון התקנים (1/2/3/4)
+ד. sii_required — האם נדרשת בדיקה כלשהי (true/false). false רק לקבוצה 1.
+
+קבוצות מכון התקנים:
+- קבוצה 1: יבוא חופשי — אין דרישת בדיקת תקן. אוהלים בסיסיים, שקי שינה, ביגוד, רהיטים מתקפלים.
+- קבוצה 2: הצהרת יבואן — לעיתים בדיקת מעבדה ראשונית. מטעני USB פשוטים, פלסטיק במגע עם מזון.
+- קבוצה 3: בדיקת מטען — סוללות ליתיום, צעצועי ילדים, חלקי חילוף לרכב.
+- קבוצה 4: רישוי + פיקוח שוטף — כירי גז, חשמל ביתי 230V, ציוד רפואי.
+
+כללי החלטה:
+- סוללת ליתיום > 100Wh: קבוצה 3 לפחות.
+- מוצר חשמלי 230V (חיבור לרשת): קבוצה 4.
+- גז דליק לקמפינג: קבוצה 3-4.
+- צעצועי ילדים: קבוצה 3.
+- בגדים/טקסטיל: קבוצה 1.
+- אם מקרה ספק: בחר קבוצה גבוהה יותר.`;
+
+function buildCombinedPrompt(items) {
+  const list = items.map((it, idx) => {
+    const parts = [`${idx + 1}. שם: ${it.name}`];
+    if (it.notes) parts.push(`הערות: ${it.notes.slice(0, 200)}`);
+    return parts.join(' · ');
+  }).join('\n');
+
+  return `${COMBINED_RULES}
+
+הרשימה:
+${list}
+
+לכל פריט החזר JSON תקין בלבד (ללא markdown, ללא הסברים מחוץ ל-JSON, בלי גרשיים בתוך מחרוזות):
+{"classifications": [
+  {"index": 1, "hs_code": "94017900", "customs_rate": 12, "import_group": 1, "sii_required": false, "reasoning": "כסא מתקפל מאלומיניום, יבוא חופשי"},
+  {"index": 2, "hs_code": "85045090", "customs_rate": 0, "import_group": 3, "sii_required": true, "reasoning": "מטען עם סוללה דורש בדיקה"}
+]}`;
+}
+
+export async function classifyAllBatch(items) {
+  const BATCH = 12; // smaller batch — combined output is longer per item
+  const out = [];
+  for (let i = 0; i < items.length; i += BATCH) {
+    const slice = items.slice(i, i + BATCH);
+    const result = await callCombined(slice);
+    out.push(...result);
+  }
+  return out;
+}
+
+async function callCombined(items) {
+  const { data, error } = await supabase.functions.invoke('anthropic-proxy', {
+    body: {
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: buildCombinedPrompt(items) }],
+    },
+  });
+
+  if (error) throw new Error(error.message || 'שגיאת AI');
+  if (data?.error) {
+    const msg = data.error?.message || data.error;
+    throw new Error(typeof msg === 'string' ? msg : 'שגיאת AI');
+  }
+
+  const text = data.content?.[0]?.text?.trim() || '';
+  const list = parseCombined(text);
+
+  return items.map((it, idx) => {
+    const c = list.find(x => x.index === idx + 1) || {};
+    const group = Number(c.import_group);
+    const customsRate = Number(c.customs_rate);
+    const hsValid = typeof c.hs_code === 'string' && /^\d{8}$/.test(c.hs_code);
+    return {
+      id: it.id,
+      hs_code:      hsValid ? c.hs_code : null,
+      customs_rate: Number.isFinite(customsRate) && customsRate >= 0 ? customsRate : null,
+      import_group: group >= 1 && group <= 4 ? group : null,
+      sii_required: !!c.sii_required,
+      reasoning:    c.reasoning || '',
+    };
+  });
+}
+
+function parseCombined(text) {
+  const block = text.match(/\{[\s\S]*\}/);
+  if (block) {
+    try {
+      const parsed = JSON.parse(block[0]);
+      if (Array.isArray(parsed.classifications)) return parsed.classifications;
+    } catch {}
+  }
+  // Fallback: scrape individual objects.
+  const results = [];
+  const objRegex = /\{[^{}]*"index"\s*:\s*(\d+)[\s\S]*?\}/g;
+  let m;
+  while ((m = objRegex.exec(text)) !== null) {
+    const obj = m[0];
+    const get = (key, isNum) => {
+      const r = isNum
+        ? new RegExp(`"${key}"\\s*:\\s*(-?\\d+(?:\\.\\d+)?)`)
+        : new RegExp(`"${key}"\\s*:\\s*"([^"]*)"`);
+      const mm = obj.match(r);
+      return mm ? (isNum ? Number(mm[1]) : mm[1]) : undefined;
+    };
+    results.push({
+      index:        Number(m[1]),
+      hs_code:      get('hs_code', false),
+      customs_rate: get('customs_rate', true),
+      import_group: get('import_group', true),
+      sii_required: /"sii_required"\s*:\s*true/.test(obj),
+      reasoning:    get('reasoning', false) || '',
+    });
+  }
+  if (results.length === 0) throw new Error('AI לא החזיר JSON תקין');
+  return results;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Legacy SII-only classifier (kept for compatibility — no longer used by
+//  the Compliance page, but exported in case other code wants just SII).
+// ─────────────────────────────────────────────────────────────────────────────
+
 const SYSTEM_RULES = `אתה מומחה לתקינה ישראלית ולקבוצות יבוא של מכון התקנים הישראלי (SII).
 
 קבוצות היבוא:
