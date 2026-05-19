@@ -1,22 +1,29 @@
+import { supabase } from './supabase';
+
 function validRate(r) {
   // קבל כל שער סביר של ILS/USD (1–20)
   return typeof r === 'number' && r > 1 && r < 20;
 }
 
 export async function fetchUsdRate() {
-  // ── ראשי: API רשמי של בנק ישראל ──────────────────────────────────────
+  // ── ראשי: Edge Function proxy → בנק ישראל (עוקף CORS) ─────────────────
+  try {
+    const { data, error } = await supabase.functions.invoke('boi-usd-rate', { method: 'GET' });
+    if (!error && validRate(Number(data?.rate))) return Number(data.rate);
+  } catch {}
+
+  // ── Fallback 1: API ישיר של בנק ישראל (יעבוד רק אם CORS מותר) ────────
   try {
     const res = await fetch(
       'https://boi.org.il/PublicApi/GetExchangeRates?currencyCode=USD',
       { headers: { 'Accept': 'application/json' } }
     );
     const data = await res.json();
-    // המבנה: { exchangeRates: [{ key, currentExchangeRate, ... }] }
     const rate = data?.exchangeRates?.find(r => r.key === 'USD')?.currentExchangeRate;
     if (validRate(Number(rate))) return Number(rate);
   } catch {}
 
-  // ── Fallback: open.er-api עם ILS כבסיס → הפוך לקבל ILS/USD ──────────
+  // ── Fallback 2: open.er-api עם ILS כבסיס ───────────────────────────────
   try {
     const res2 = await fetch('https://open.er-api.com/v6/latest/ILS');
     if (!res2.ok) return null;

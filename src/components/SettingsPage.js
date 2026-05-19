@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Save, Globe, FolderOpen, Package, AlertTriangle } from 'lucide-react';
 import { fetchUsdRate } from '../lib/exchangeRate';
 import FreightHistoryPanel from './FreightHistoryPanel';
+import DataQualityPanel from './DataQualityPanel';
 import { INCOTERMS_LIST, INCOTERMS_DESC, ORIGIN_PORTS } from '../lib/calculations';
 import { selectContainer, resolveFreightPrice, fillPctColor } from '../lib/containerSelection';
 
@@ -46,7 +47,7 @@ export default function SettingsPage({
   freightHistory = [], addFreightRecord,
   activeProjectId, projects = [],
   lastRateFetchAt,
-  containerTypes = [], containerPricing = [], products = [],
+  containerTypes = [], containerPricing = [], products = [], allProducts = [],
 }) {
   // Global section
   const [globalForm, setGlobalForm]     = useState({
@@ -608,7 +609,14 @@ export default function SettingsPage({
           </div>
         )}
 
-        {/* ════ SECTION 3 — Freight History ════ */}
+        {/* ════ SECTION 3 — Data Quality ════ */}
+        <DataQualityPanel
+          allProducts={allProducts}
+          projects={projects}
+          showToast={showToast}
+        />
+
+        {/* ════ SECTION 4 — Freight History ════ */}
         <div style={{ marginTop: 28, background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 12, padding: 20 }}>
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 16 }}>📦 היסטוריית Freight</div>
           <FreightHistoryPanel

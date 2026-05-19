@@ -365,7 +365,7 @@ export default function App() {
                                   activeProjectId={activeProjectId} projects={projects}
                                   lastRateFetchAt={lastRateFetchAt}
                                   containerTypes={containerTypes} containerPricing={containerPricing}
-                                  products={activeProducts} />}
+                                  products={activeProducts} allProducts={uniqueProducts} />}
 
       <div className="toast-container">
         {toasts.map(t => <div key={t.id} className={`toast ${t.type}`}>{t.msg}</div>)}
