@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { ShieldCheck, Sparkles, Check, AlertTriangle, FolderOpen, ExternalLink } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { ShieldCheck, Sparkles, Check, AlertTriangle, FolderOpen } from 'lucide-react';
 import { classifyImportGroupBatch, saveSiiClassification } from '../lib/siiClassify';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -40,9 +40,10 @@ function n(v, d = 0) {
 }
 
 export default function CompliancePage({ products, activeProject, settings, showToast, setPage, updateProduct }) {
-  const [classifyingIds, setClassifyingIds] = useState(new Set());
-  const [bulkRunning, setBulkRunning]       = useState(false);
-  const [manualEdit, setManualEdit]         = useState({}); // { productId: { group, sii_required } }
+  const [bulkRunning, setBulkRunning]   = useState(false);
+  const [autoProgress, setAutoProgress] = useState({ done: 0, total: 0 });
+  const [manualEdit, setManualEdit]     = useState({}); // { productId: { group, sii_required } }
+  const autoRunRef = useRef({}); // per-project flag so we only auto-run once per visit
 
   // Summary stats
   const summary = useMemo(() => {
@@ -58,35 +59,15 @@ export default function CompliancePage({ products, activeProject, settings, show
     return { total, classified, requiresTest, byGroup };
   }, [products]);
 
-  async function classifyOne(p) {
-    setClassifyingIds(prev => new Set(prev).add(p.id));
-    try {
-      const results = await classifyImportGroupBatch([{
-        id: p.id, name: p.name, hs_code: p.hs_code || '', notes: p.notes || '',
-      }]);
-      const r = results[0];
-      if (!r || r.import_group == null) throw new Error('AI לא הצליח לקבוע קבוצה');
-      await saveSiiClassification(p.id, {
-        import_group: r.import_group,
-        sii_required: r.sii_required,
-        reasoning:    r.reasoning,
-        source:       'ai',
-      });
-      updateProduct(p.id, { import_group: r.import_group, sii_required: r.sii_required, sii_notes: r.reasoning, sii_source: 'ai' });
-      showToast(`"${p.name}": ${GROUP_INFO[r.import_group]?.label}`);
-    } catch (err) {
-      showToast('שגיאה: ' + err.message, 'error');
-    } finally {
-      setClassifyingIds(prev => { const s = new Set(prev); s.delete(p.id); return s; });
-    }
-  }
-
-  async function classifyAll() {
+  async function runBulkClassify({ silent = false } = {}) {
     const unclassified = products.filter(p => p.import_group == null);
-    if (unclassified.length === 0) { showToast('הכול כבר מסווג'); return; }
-    if (!window.confirm(`לסווג ${unclassified.length} מוצרים באמצעות AI?`)) return;
+    if (unclassified.length === 0) {
+      if (!silent) showToast('הכול כבר מסווג');
+      return;
+    }
 
     setBulkRunning(true);
+    setAutoProgress({ done: 0, total: unclassified.length });
     try {
       const results = await classifyImportGroupBatch(unclassified.map(p => ({
         id: p.id, name: p.name, hs_code: p.hs_code || '', notes: p.notes || '',
@@ -103,15 +84,33 @@ export default function CompliancePage({ products, activeProject, settings, show
           });
           updateProduct(r.id, { import_group: r.import_group, sii_required: r.sii_required, sii_notes: r.reasoning, sii_source: 'ai' });
           success++;
+          setAutoProgress({ done: success, total: unclassified.length });
         } catch {}
       }
-      showToast(`סווגו ${success}/${unclassified.length} מוצרים`);
+      if (!silent || success !== unclassified.length) {
+        showToast(`סווגו ${success}/${unclassified.length} מוצרים`);
+      }
     } catch (err) {
       showToast('שגיאה בסיווג: ' + err.message, 'error');
     } finally {
       setBulkRunning(false);
+      setAutoProgress({ done: 0, total: 0 });
     }
   }
+
+  // Auto-classify on mount when there are unclassified products.
+  // Runs once per project visit — agent can re-trigger manually via the button.
+  useEffect(() => {
+    if (!activeProject) return;
+    const key = activeProject.id;
+    const unclassified = products.filter(p => p.import_group == null);
+    if (unclassified.length === 0) return;
+    if (autoRunRef.current[key]) return;
+    if (bulkRunning) return;
+    autoRunRef.current[key] = true;
+    runBulkClassify({ silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeProject?.id, products.length]);
 
   async function applyManualEdit(p) {
     const edit = manualEdit[p.id];
@@ -185,12 +184,17 @@ export default function CompliancePage({ products, activeProject, settings, show
         </h1>
         <div className="flex gap-2">
           <button
-            className="btn btn-primary"
-            onClick={classifyAll}
+            className="btn"
+            onClick={() => runBulkClassify()}
             disabled={bulkRunning || summary.total === summary.classified}
+            title="לסווג שוב את כל מה שלא מסווג"
           >
             {bulkRunning ? <span className="spinner" /> : <Sparkles size={15} />}
-            {bulkRunning ? 'מסווג הכול...' : `סווג ${summary.total - summary.classified} נותרים`}
+            {bulkRunning
+              ? `מסווג ${autoProgress.done}/${autoProgress.total}...`
+              : summary.total === summary.classified
+                ? 'הכל מסווג ✓'
+                : `סווג ${summary.total - summary.classified} נותרים`}
           </button>
         </div>
       </div>
@@ -262,7 +266,6 @@ export default function CompliancePage({ products, activeProject, settings, show
             </thead>
             <tbody>
               {products.map((p, idx) => {
-                const busy = classifyingIds.has(p.id);
                 const customsRate = p.customs_rate_override ?? p.customs_rate ?? settings?.customs ?? 0;
                 const edit = manualEdit[p.id];
                 return (
@@ -272,18 +275,7 @@ export default function CompliancePage({ products, activeProject, settings, show
                     <td className="td-muted font-mono">{p.item_no || '—'}</td>
                     <td className="td-num">{n(p.qty)}</td>
                     <td className="font-mono">
-                      {p.hs_code ? (
-                        <a
-                          href={`https://nfx.co.il/tariff/import/${p.hs_code}`}
-                          target="_blank" rel="noopener noreferrer"
-                          style={{ color: 'var(--blue)', textDecoration: 'none' }}
-                          title="פתח בתעריף המכס"
-                        >
-                          {p.hs_code} <ExternalLink size={10} style={{ verticalAlign: 'middle' }} />
-                        </a>
-                      ) : (
-                        <span className="td-muted">— לא סווג</span>
-                      )}
+                      {p.hs_code || <span className="td-muted">— לא סווג</span>}
                     </td>
                     <td className="td-num">{customsRate}%</td>
                     <td>
@@ -328,7 +320,7 @@ export default function CompliancePage({ products, activeProject, settings, show
                             className="btn btn-sm btn-success"
                             onClick={() => applyManualEdit(p)}
                             disabled={!edit.group}
-                            title="שמור ידני"
+                            title="שמור החלטה ידנית"
                           >
                             <Check size={12} />
                           </button>
@@ -340,26 +332,17 @@ export default function CompliancePage({ products, activeProject, settings, show
                           </button>
                         </div>
                       ) : (
-                        <div className="flex gap-1">
-                          <button
-                            className="btn btn-sm"
-                            onClick={() => classifyOne(p)}
-                            disabled={busy || bulkRunning}
-                            title="סווג עם AI"
-                          >
-                            {busy ? <span className="spinner" style={{ width: 11, height: 11 }} /> : <Sparkles size={12} />}
-                          </button>
-                          <button
-                            className="btn btn-sm"
-                            onClick={() => setManualEdit(prev => ({
-                              ...prev,
-                              [p.id]: { group: p.import_group || '', sii_required: p.sii_required },
-                            }))}
-                            title="ערוך ידנית"
-                          >
-                            ידני
-                          </button>
-                        </div>
+                        <button
+                          className="btn btn-sm"
+                          onClick={() => setManualEdit(prev => ({
+                            ...prev,
+                            [p.id]: { group: p.import_group || '', sii_required: p.sii_required },
+                          }))}
+                          title="עמיל המכס: דרוס סיווג"
+                          disabled={bulkRunning}
+                        >
+                          ערוך
+                        </button>
                       )}
                     </td>
                   </tr>
@@ -384,12 +367,7 @@ export default function CompliancePage({ products, activeProject, settings, show
             ))}
           </div>
           <div style={{ marginTop: 10, color: 'var(--text3)', fontSize: 11 }}>
-            המקור הרשמי:{' '}
-            <a href="https://www.sii.org.il/" target="_blank" rel="noopener noreferrer"
-               style={{ color: 'var(--blue)' }}>
-              מכון התקנים הישראלי
-            </a>
-            {' '} · הסיווג של ה-AI מהווה הצעה בלבד — אמת מול עמיל המכס שלך.
+            הסיווג של ה-AI מהווה הצעה בלבד — עמיל המכס בודק ומחליט סופית לפי החוק.
           </div>
         </div>
       </div>
