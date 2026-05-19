@@ -35,16 +35,15 @@ function buildPrompt(items) {
 קבע לכל מוצר ברשימה:
 1. import_group: 1, 2, 3, או 4
 2. sii_required: true אם נדרשת בדיקה כלשהי (קבוצות 2-4), false אם יבוא חופשי (קבוצה 1)
-3. reasoning: שורה אחת בעברית עד 80 תווים
-4. tests: רשימה קצרה של בדיקות עיקריות שנדרשות (תקנים ספציפיים אם רלוונטי), או [] אם אין
+3. reasoning: שורה אחת בעברית עד 80 תווים — חובה ללא גרשיים בתוך הטקסט (אל תשתמש בקיצורים כמו ת״י)
 
 הרשימה:
 ${list}
 
-החזר JSON בלבד (ללא markdown, ללא הסברים מחוץ ל-JSON):
+החזר JSON תקין בלבד (ללא markdown, ללא הסברים מחוץ ל-JSON):
 {"classifications": [
-  {"index": 1, "import_group": 3, "sii_required": true, "reasoning": "...", "tests": ["ת"י 60598"]},
-  ...
+  {"index": 1, "import_group": 3, "sii_required": true, "reasoning": "מוצר חשמלי דורש בדיקת בטיחות"},
+  {"index": 2, "import_group": 1, "sii_required": false, "reasoning": "מוצר טקסטיל פטור"}
 ]}`;
 }
 
@@ -77,11 +76,7 @@ async function classifyOneBatch(items) {
   }
 
   const text = data.content?.[0]?.text?.trim() || '';
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error('AI לא החזיר JSON תקין');
-
-  const parsed = JSON.parse(match[0]);
-  const list   = parsed.classifications || [];
+  const list = parseClassifications(text);
 
   return items.map((it, idx) => {
     const c = list.find(x => x.index === idx + 1) || {};
@@ -91,9 +86,39 @@ async function classifyOneBatch(items) {
       import_group: group >= 1 && group <= 4 ? group : null,
       sii_required: !!c.sii_required,
       reasoning:    c.reasoning || '',
-      tests:        Array.isArray(c.tests) ? c.tests : [],
     };
   });
+}
+
+// Robust parser: try clean JSON first, then fall back to per-object regex if
+// the AI returned a slightly malformed batch (e.g. an unescaped quote in
+// "reasoning"). One bad row should not drop the entire batch.
+function parseClassifications(text) {
+  const block = text.match(/\{[\s\S]*\}/);
+  if (block) {
+    try {
+      const parsed = JSON.parse(block[0]);
+      if (Array.isArray(parsed.classifications)) return parsed.classifications;
+    } catch {}
+  }
+
+  // Fallback: scrape individual classification objects.
+  const results = [];
+  const objRegex = /\{[^{}]*"index"\s*:\s*(\d+)[^{}]*"import_group"\s*:\s*(\d+)[^{}]*"sii_required"\s*:\s*(true|false)[^{}]*\}/g;
+  let m;
+  while ((m = objRegex.exec(text)) !== null) {
+    const reasoningMatch = m[0].match(/"reasoning"\s*:\s*"([^"]*)"/);
+    results.push({
+      index:        Number(m[1]),
+      import_group: Number(m[2]),
+      sii_required: m[3] === 'true',
+      reasoning:    reasoningMatch ? reasoningMatch[1] : '',
+    });
+  }
+  if (results.length === 0) {
+    throw new Error('AI לא החזיר JSON תקין');
+  }
+  return results;
 }
 
 export async function classifyImportGroup(name, hsCode, notes) {
