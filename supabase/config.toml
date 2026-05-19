@@ -1,0 +1,8 @@
+# Supabase project config — function-level settings persist across deploys.
+project_id = "eginihtpqahpejnkqznn"
+
+[functions.anthropic-proxy]
+verify_jwt = false
+
+[functions.boi-usd-rate]
+verify_jwt = false
