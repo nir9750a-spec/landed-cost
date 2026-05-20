@@ -17,10 +17,11 @@ function daysSince(iso) {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
 }
 
+// Stale threshold: 3 days (matches App.js FREIGHT_STALE_DAYS)
 function freshnessColor(days) {
   if (days === null) return 'var(--text3)';
-  if (days > 7) return 'var(--red)';
-  if (days > 4) return 'var(--gold)';
+  if (days >= 3) return 'var(--red)';
+  if (days >= 1) return 'var(--gold)';
   return 'var(--green)';
 }
 
@@ -137,12 +138,21 @@ function MarketRatesBanner({ rates, onUpdate, onApply, activeProject, settings }
         )}
 
         {/* Staleness */}
-        <span style={{ color: fColor, marginRight: 4, fontWeight: 600 }}>
+        <span style={{
+          color: fColor, marginRight: 4, fontWeight: 600,
+          ...(days !== null && days >= 3 ? { animation: 'pulse 2s ease-in-out infinite' } : {}),
+        }}>
           {days !== null
             ? days === 0 ? '● עודכן היום'
             : days === 1 ? `● לפני יום`
             : `● לפני ${days} ימים`
             : ''}
+          {days !== null && days >= 3 && (
+            <span style={{
+              marginRight: 6, padding: '1px 6px', borderRadius: 4,
+              background: 'var(--red)', color: '#fff', fontSize: 10, fontWeight: 700,
+            }}>צריך לעדכן</span>
+          )}
         </span>
 
         {/* Source */}

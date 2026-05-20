@@ -6,3 +6,6 @@ verify_jwt = false
 
 [functions.boi-usd-rate]
 verify_jwt = false
+
+[functions.freight-rates-fetch]
+verify_jwt = false

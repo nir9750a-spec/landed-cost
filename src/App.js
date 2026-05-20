@@ -13,6 +13,8 @@ import SettingsPage from './components/SettingsPage';
 import BreakdownPage from './components/BreakdownPage';
 import CompliancePage from './components/CompliancePage';
 
+const FREIGHT_STALE_DAYS = 3;
+
 // String-typed setting keys (must not be cast to Number)
 const STRING_KEYS = new Set([
   'margin_type',
@@ -101,6 +103,42 @@ export default function App() {
     async function initMarketRates() {
       const data = await loadMarketRates(supabase);
       setMarketRates(data);
+      await checkFreightStaleness(data);
+    }
+
+    async function checkFreightStaleness(rates) {
+      if (!rates || rates.length === 0) return;
+      const tracked = ['fcl_40ft_china_med', 'lcl_per_cbm', 'air_per_kg']
+        .map(p => rates.find(r => r.parameter === p))
+        .filter(Boolean);
+      if (tracked.length === 0) return;
+      const oldest = tracked.reduce((min, r) =>
+        !min || r.updated_at < min ? r.updated_at : min, null);
+      const days = Math.floor((Date.now() - new Date(oldest).getTime()) / 86_400_000);
+      if (days < FREIGHT_STALE_DAYS) return;
+
+      // Try auto-fetch from Edge Function first (placeholder for now).
+      try {
+        const { data, error } = await supabase.functions.invoke('freight-rates-fetch');
+        if (!error && data?.available && data?.rates) {
+          for (const [param, value] of Object.entries(data.rates)) {
+            if (typeof value === 'number' && value > 0) {
+              await saveMarketRate(supabase, param, value);
+            }
+          }
+          const fresh = await loadMarketRates(supabase);
+          setMarketRates(fresh);
+          showToast(`מחירי שילוח עודכנו אוטומטית מ-${data.source || 'מקור שוק'}`);
+          return;
+        }
+      } catch {
+        // Function unavailable — fall through to manual reminder.
+      }
+
+      showToast(
+        `💡 מחירי שילוח לא עודכנו ${days} ימים — עדכן ידנית בבאנר העליון`,
+        'warn',
+      );
     }
 
     async function initContainers() {
