@@ -3,6 +3,7 @@ import { Save, Globe, FolderOpen, Package, AlertTriangle } from 'lucide-react';
 import { fetchUsdRate } from '../lib/exchangeRate';
 import FreightHistoryPanel from './FreightHistoryPanel';
 import DataQualityPanel from './DataQualityPanel';
+import PricingMatrix from './PricingMatrix';
 import { INCOTERMS_LIST, INCOTERMS_DESC, ORIGIN_PORTS } from '../lib/calculations';
 import { selectContainer, resolveFreightPrice, fillPctColor } from '../lib/containerSelection';
 
@@ -48,6 +49,7 @@ export default function SettingsPage({
   activeProjectId, projects = [],
   lastRateFetchAt,
   containerTypes = [], containerPricing = [], products = [], allProducts = [],
+  marketRates = [],
 }) {
   // Global section
   const [globalForm, setGlobalForm]     = useState({
@@ -609,7 +611,15 @@ export default function SettingsPage({
           </div>
         )}
 
-        {/* ════ SECTION 3 — Data Quality ════ */}
+        {/* ════ SECTION 3 — Pricing Matrix ════ */}
+        <PricingMatrix
+          containerTypes={containerTypes}
+          containerPricing={containerPricing}
+          marketRates={marketRates}
+          showToast={showToast}
+        />
+
+        {/* ════ SECTION 4 — Data Quality ════ */}
         <DataQualityPanel
           allProducts={allProducts}
           projects={projects}
