@@ -101,44 +101,63 @@ export default function App() {
     }
 
     async function initMarketRates() {
-      const data = await loadMarketRates(supabase);
+      let data = await loadMarketRates(supabase);
       setMarketRates(data);
-      await checkFreightStaleness(data);
+
+      // Always auto-fetch on mount — same pattern as the USD rate fetch.
+      const updated = await autoFetchFreight(data);
+      if (updated) {
+        data = await loadMarketRates(supabase);
+        setMarketRates(data);
+      }
+
+      // Warn only about rates we can't auto-fetch (LCL, Air).
+      warnIfManualRatesStale(data);
     }
 
-    async function checkFreightStaleness(rates) {
+    async function autoFetchFreight(currentRates) {
+      try {
+        const { data, error } = await supabase.functions.invoke('freight-rates-fetch');
+        if (error || !data?.available || !data?.rates) return false;
+
+        const changes = [];
+        for (const [param, value] of Object.entries(data.rates)) {
+          if (typeof value !== 'number' || value <= 0) continue;
+          const current = currentRates.find(r => r.parameter === param);
+          if (current && Math.abs(Number(current.value) - value) < 0.5) continue;
+          await saveMarketRate(supabase, param, value);
+          changes.push({ param, oldValue: current?.value, newValue: value });
+        }
+
+        if (changes.length > 0) {
+          const fcl = changes.find(c => c.param === 'fcl_40ft_china_med');
+          if (fcl && fcl.oldValue) {
+            showToast(`FCL: $${Math.round(fcl.oldValue)} → $${Math.round(fcl.newValue)} (FBX13)`);
+          }
+          return true;
+        }
+        return false;
+      } catch {
+        return false;
+      }
+    }
+
+    function warnIfManualRatesStale(rates) {
       if (!rates || rates.length === 0) return;
-      const tracked = ['fcl_40ft_china_med', 'lcl_per_cbm', 'air_per_kg']
+      const manualParams = ['lcl_per_cbm', 'air_per_kg'];
+      const tracked = manualParams
         .map(p => rates.find(r => r.parameter === p))
         .filter(Boolean);
       if (tracked.length === 0) return;
       const oldest = tracked.reduce((min, r) =>
         !min || r.updated_at < min ? r.updated_at : min, null);
       const days = Math.floor((Date.now() - new Date(oldest).getTime()) / 86_400_000);
-      if (days < FREIGHT_STALE_DAYS) return;
-
-      // Try auto-fetch from Edge Function first (placeholder for now).
-      try {
-        const { data, error } = await supabase.functions.invoke('freight-rates-fetch');
-        if (!error && data?.available && data?.rates) {
-          for (const [param, value] of Object.entries(data.rates)) {
-            if (typeof value === 'number' && value > 0) {
-              await saveMarketRate(supabase, param, value);
-            }
-          }
-          const fresh = await loadMarketRates(supabase);
-          setMarketRates(fresh);
-          showToast(`מחירי שילוח עודכנו אוטומטית מ-${data.source || 'מקור שוק'}`);
-          return;
-        }
-      } catch {
-        // Function unavailable — fall through to manual reminder.
+      if (days >= FREIGHT_STALE_DAYS) {
+        showToast(
+          `💡 LCL ו-Air לא עודכנו ${days} ימים — עדכן ידנית בבאנר`,
+          'warn',
+        );
       }
-
-      showToast(
-        `💡 מחירי שילוח לא עודכנו ${days} ימים — עדכן ידנית בבאנר העליון`,
-        'warn',
-      );
     }
 
     async function initContainers() {
@@ -155,7 +174,19 @@ export default function App() {
     initMarketRates();
     initContainers();
     const rateInterval = setInterval(autoFetchRate, 6 * 60 * 60 * 1000);
-    return () => clearInterval(rateInterval);
+    // Re-fetch freight rate every 6 hours for long-running tabs.
+    const freightInterval = setInterval(async () => {
+      const fresh = await loadMarketRates(supabase);
+      const changed = await autoFetchFreight(fresh);
+      if (changed) {
+        const refreshed = await loadMarketRates(supabase);
+        setMarketRates(refreshed);
+      }
+    }, 6 * 60 * 60 * 1000);
+    return () => {
+      clearInterval(rateInterval);
+      clearInterval(freightInterval);
+    };
   }, []); // eslint-disable-line
   useEffect(() => { loadEffectiveSettings(activeProjectId); }, [activeProjectId]); // eslint-disable-line
   useEffect(() => {

@@ -157,7 +157,7 @@ function MarketRatesBanner({ rates, onUpdate, onApply, activeProject, settings }
 
         {/* Source */}
         <span style={{ color: 'var(--text3)' }}>
-          Drewry WCI · {fmtDate(oldestIso)}
+          FCL: Freightos FBX13 · LCL/Air: ידני · {fmtDate(oldestIso)}
         </span>
 
         <div style={{ marginRight: 'auto', display: 'flex', gap: 6 }}>
