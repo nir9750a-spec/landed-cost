@@ -58,6 +58,7 @@ export default function PricingMatrix({ containerTypes = [], containerPricing = 
         base:       edit.base !== undefined ? edit.base : (row?.base_price_usd ?? 0),
         war:        edit.war  !== undefined ? edit.war  : (row?.war_risk_usd  ?? 0),
         updatedAt:  row?.updated_at || null,
+        source:     row?.source || 'auto',
         isLcl:      code === 'lcl',
         existing:   !!row,
         id:         row?.id,
@@ -86,6 +87,7 @@ export default function PricingMatrix({ containerTypes = [], containerPricing = 
         war_risk_usd:    Number(r.war) || 0,
         valid_from:      new Date().toISOString().slice(0, 10),
         project_id:      null,
+        source:          'manual', // user edit → protect from future auto-sync
         updated_at:      new Date().toISOString(),
       }));
       if (toUpsert.length === 0) {
@@ -227,6 +229,15 @@ export default function PricingMatrix({ containerTypes = [], containerPricing = 
                   <td style={{ fontSize: 11, color: 'var(--text3)' }}>
                     {fmtDate(r.updatedAt)}
                     {!r.existing && <span style={{ color: 'var(--orange)' }}> · חדש</span>}
+                    {r.existing && (
+                      <span style={{
+                        marginRight: 6, padding: '1px 5px', borderRadius: 3, fontSize: 9, fontWeight: 700,
+                        background: r.source === 'manual' ? 'var(--violet)' : 'var(--bg3)',
+                        color: r.source === 'manual' ? '#fff' : 'var(--text2)',
+                      }} title={r.source === 'manual' ? 'נערך ידנית — לא יידרס בסנכרון' : 'מסונכרן אוטומטית מ-FBX13'}>
+                        {r.source === 'manual' ? 'ידני' : 'אוטו'}
+                      </span>
+                    )}
                   </td>
                 </tr>
               );
@@ -256,8 +267,10 @@ export default function PricingMatrix({ containerTypes = [], containerPricing = 
       </div>
 
       <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text3)', lineHeight: 1.5 }}>
-        💡 ערוך מחירים ידנית או לחץ "סנכרן ממדד שוק" כדי למשוך אוטומטית מ-FCL ו-LCL בבאנר העליון.
-        יחסי הסנכרון: 20ft = 60% מ-40ft, 40hc זהה ל-40ft, 45hc = 130% מ-40ft.
+        💡 שורות "אוטו" (אפור) מתעדכנות אוטומטית בכל פתיחה של האפליקציה מ-FBX13.
+        כשתערוך ידנית — השורה מסומנת "ידני" (סגול) ולא תידרס יותר בסנכרונים הבאים.
+        <br />
+        יחסי סנכרון: 20ft = 60% מ-40ft, 40hc זהה ל-40ft, 45hc = 130% מ-40ft, LCL ישיר.
       </div>
     </div>
   );

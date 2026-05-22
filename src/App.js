@@ -5,6 +5,7 @@ import { fetchUsdRate } from './lib/exchangeRate';
 import { getActiveFreight } from './lib/freightHistory';
 import { loadMarketRates, saveMarketRate } from './lib/marketRates';
 import { loadContainerTypes, loadContainerPricing } from './lib/containerSelection';
+import { syncContainerPricingFromMarket } from './lib/pricingSync';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import ProductsPage from './components/ProductsPage';
@@ -133,6 +134,14 @@ export default function App() {
           const fcl = changes.find(c => c.param === 'fcl_40ft_china_med');
           if (fcl && fcl.oldValue) {
             showToast(`FCL: $${Math.round(fcl.oldValue)} → $${Math.round(fcl.newValue)} (FBX13)`);
+          }
+          // Cascade: update container_pricing rows that are still in 'auto' mode.
+          const freshRates  = await loadMarketRates(supabase);
+          const freshPricing = await loadContainerPricing();
+          const syncedCount = await syncContainerPricingFromMarket(freshRates, freshPricing);
+          if (syncedCount > 0) {
+            const refreshedPricing = await loadContainerPricing();
+            setContainerPricing(refreshedPricing);
           }
           return true;
         }
@@ -292,6 +301,23 @@ export default function App() {
     return true;
   }
 
+  async function saveActualFreightQuote(amount) {
+    if (!activeProjectId) { showToast('בחר פרויקט פעיל', 'error'); return false; }
+    const merged = { ...projectOverrides };
+    if (amount && Number(amount) > 0) {
+      merged.actual_freight_usd = Number(amount);
+    } else {
+      merged.actual_freight_usd = null;
+    }
+    const ok = await saveProjectSettings(merged);
+    if (ok) {
+      showToast(amount > 0
+        ? `🧾 ציטוט אמיתי נשמר: $${Number(amount).toLocaleString()}`
+        : 'ציטוט אמיתי הוסר — חוזרים להערכה מ-FBX13');
+    }
+    return ok;
+  }
+
   async function addProduct(product) {
     const { data, error } = await supabase.from('products')
       .insert([{ ...product, project_id: activeProjectId }]).select().single();
@@ -414,7 +440,7 @@ export default function App() {
   const uniqueProducts = products.filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i);
   const activeProducts = activeProjectId ? uniqueProducts.filter(p => p.project_id === activeProjectId) : [];
   const calcCtx = { containerTypes, pricing: containerPricing, projectId: activeProjectId };
-  const shared = { products: activeProducts, settings, showToast, addProduct, updateProduct, deleteProduct, addProducts, applyShipmentInfo, calcCtx };
+  const shared = { products: activeProducts, settings, showToast, addProduct, updateProduct, deleteProduct, addProducts, applyShipmentInfo, calcCtx, saveActualFreightQuote };
 
   return (
     <Layout page={page} setPage={setPage} activeProject={activeProject}

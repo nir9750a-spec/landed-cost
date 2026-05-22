@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { FolderOpen, Plus, TrendingUp, TrendingDown, DollarSign, Package,
-         RefreshCw, Trash2, Share2, FileDown } from 'lucide-react';
+         RefreshCw, Trash2, Share2, FileDown, Receipt, X as XIcon, Check } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -123,6 +123,7 @@ function KpiCard({ label, value, sub, accent, icon: Icon, featured, loss, badge,
 export default function Dashboard({
   products, settings,
   allProducts, projects, activeProjectId, setActiveProjectId, setPage, calcCtx,
+  saveActualFreightQuote,
 }) {
   const calced = useMemo(() => calcProducts(products, settings, calcCtx), [products, settings, calcCtx]);
   const totals = useMemo(() => calcTotals(calced), [calced]);
@@ -375,6 +376,13 @@ export default function Dashboard({
                 <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12, color: 'var(--text)' }}>
                   מבנה עלות המשלוח ($)
                 </div>
+
+                <ActualQuotePanel
+                  currentActual={Number(settings.actual_freight_usd) || 0}
+                  estimatedFreightUsd={Math.round(totals.freightTotal || 0)}
+                  onSave={saveActualFreightQuote}
+                />
+
                 {pieData.length > 0 ? (
                   <>
                     <div style={{ direction: 'ltr' }}>
@@ -443,6 +451,120 @@ export default function Dashboard({
             </div>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ── ActualQuotePanel ─────────────────────────────────────────────────────────
+// Prominent button + inline editor for the per-project actual_freight_usd
+// override. When set, replaces the FBX13-derived estimate everywhere in the
+// calculation engine.
+function ActualQuotePanel({ currentActual, estimatedFreightUsd, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue]     = useState('');
+  const [saving, setSaving]   = useState(false);
+
+  function startEdit() {
+    setValue(currentActual > 0 ? String(currentActual) : '');
+    setEditing(true);
+  }
+
+  async function handleSave() {
+    if (!onSave) return;
+    setSaving(true);
+    const ok = await onSave(value);
+    setSaving(false);
+    if (ok) setEditing(false);
+  }
+
+  async function handleRemove() {
+    if (!onSave) return;
+    if (!window.confirm('להסיר את הציטוט האמיתי ולחזור להערכה מ-FBX13?')) return;
+    setSaving(true);
+    await onSave(null);
+    setSaving(false);
+    setEditing(false);
+  }
+
+  // ── State 1: no quote entered + not editing — show prominent CTA ─────────
+  if (!editing && !(currentActual > 0)) {
+    return (
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(168,85,247,0.10), rgba(168,85,247,0.04))',
+        border: '1px solid rgba(168,85,247,0.30)',
+        borderRadius: 8, padding: 12, marginBottom: 14,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Receipt size={18} style={{ color: 'var(--violet)' }} />
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 13 }}>קיבלת ציטוט מהפורווארדר?</div>
+            <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+              הערכה נוכחית מ-FBX13: <strong>${estimatedFreightUsd.toLocaleString()}</strong>
+            </div>
+          </div>
+        </div>
+        <button className="btn btn-sm btn-primary" onClick={startEdit}>
+          <Receipt size={13} /> הזן ציטוט אמיתי
+        </button>
+      </div>
+    );
+  }
+
+  // ── State 2: quote saved, not editing — show + edit/remove ───────────────
+  if (!editing && currentActual > 0) {
+    return (
+      <div style={{
+        background: 'rgba(0,212,170,0.06)',
+        border: '1px solid rgba(0,212,170,0.30)',
+        borderRadius: 8, padding: 12, marginBottom: 14,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Receipt size={18} style={{ color: 'var(--green)' }} />
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>
+              🧾 ציטוט אמיתי פעיל: <span style={{ color: 'var(--green)' }}>${currentActual.toLocaleString()}</span>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+              דורס את הערכת FBX13 (${estimatedFreightUsd.toLocaleString()}) בחישוב
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button className="btn btn-sm" onClick={startEdit}>ערוך</button>
+          <button className="btn btn-sm" onClick={handleRemove} disabled={saving} style={{ color: 'var(--red)' }}>
+            הסר
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── State 3: editing — inline input ──────────────────────────────────────
+  return (
+    <div style={{
+      background: 'var(--bg3)', border: '1px solid var(--border)',
+      borderRadius: 8, padding: 12, marginBottom: 14,
+    }}>
+      <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 8 }}>
+        הזן ציטוט אמיתי מהפורווארדר ($). זה ידרוס את הערכת FBX13 לפרויקט הזה בלבד.
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <input
+          type="number" min="0" step="50" autoFocus
+          value={value}
+          onChange={e => setValue(e.target.value)}
+          placeholder={`לדוגמה: ${estimatedFreightUsd}`}
+          style={{ flex: 1, padding: '6px 10px', borderRadius: 4, direction: 'ltr', textAlign: 'right' }}
+        />
+        <button className="btn btn-sm btn-success" onClick={handleSave} disabled={saving || !value}>
+          {saving ? <span className="spinner" /> : <Check size={13} />} שמור
+        </button>
+        <button className="btn btn-sm" onClick={() => setEditing(false)} disabled={saving}>
+          <XIcon size={13} /> ביטול
+        </button>
       </div>
     </div>
   );
