@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { invokeAnthropic } from './anthropicProxy';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Israeli SII (מכון התקנים) import classification via Claude.
@@ -63,19 +64,11 @@ export async function classifyAllBatch(items) {
 }
 
 async function callCombined(items) {
-  const { data, error } = await supabase.functions.invoke('anthropic-proxy', {
-    body: {
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 4096,
-      messages: [{ role: 'user', content: buildCombinedPrompt(items) }],
-    },
+  const data = await invokeAnthropic({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 4096,
+    messages: [{ role: 'user', content: buildCombinedPrompt(items) }],
   });
-
-  if (error) throw new Error(error.message || 'שגיאת AI');
-  if (data?.error) {
-    const msg = data.error?.message || data.error;
-    throw new Error(typeof msg === 'string' ? msg : 'שגיאת AI');
-  }
 
   const text = data.content?.[0]?.text?.trim() || '';
   const list = parseCombined(text);
@@ -191,19 +184,11 @@ export async function classifyImportGroupBatch(items) {
 }
 
 async function classifyOneBatch(items) {
-  const { data, error } = await supabase.functions.invoke('anthropic-proxy', {
-    body: {
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 4096,
-      messages: [{ role: 'user', content: buildPrompt(items) }],
-    },
+  const data = await invokeAnthropic({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 4096,
+    messages: [{ role: 'user', content: buildPrompt(items) }],
   });
-
-  if (error) throw new Error(error.message || 'שגיאת AI');
-  if (data?.error) {
-    const msg = data.error?.message || data.error;
-    throw new Error(typeof msg === 'string' ? msg : 'שגיאת AI');
-  }
 
   const text = data.content?.[0]?.text?.trim() || '';
   const list = parseClassifications(text);

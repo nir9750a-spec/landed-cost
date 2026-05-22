@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { invokeAnthropic } from './anthropicProxy';
 
 export async function classifyHsCode(productName, notes) {
   const prompt = `אתה מומחה לסיווג מכס ישראלי (תעריף המכס הישראלי).
@@ -17,19 +17,11 @@ export async function classifyHsCode(productName, notes) {
 - customs_rate: מספר אחוז (לדוגמה: 0, 5, 12, 18)
 - אם המוצר פטור ממכס: customs_rate = 0`;
 
-  const { data, error } = await supabase.functions.invoke('anthropic-proxy', {
-    body: {
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 512,
-      messages: [{ role: 'user', content: prompt }],
-    },
+  const data = await invokeAnthropic({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 512,
+    messages: [{ role: 'user', content: prompt }],
   });
-
-  if (error) throw new Error(error.message || 'שגיאת AI');
-  if (data?.error) {
-    const msg = data.error?.message || data.error;
-    throw new Error(typeof msg === 'string' ? msg : 'שגיאת AI');
-  }
 
   const text = data.content?.[0]?.text?.trim() || '';
   const match = text.match(/\{[\s\S]*\}/);

@@ -69,21 +69,46 @@ Deno.serve(async (req) => {
       return jsonResponse(400, { error: 'max_tokens cannot exceed 8192' }, cors);
     }
 
-    let upstream: Response;
-    try {
-      upstream = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify(payload),
-      });
-    } catch (err) {
+    // Retry transient upstream errors (529 Overloaded, 503/502 transient failures).
+    // Backoff: 1s, 2s, 4s. 4 attempts total.
+    const RETRY_STATUSES = new Set([502, 503, 529]);
+    const MAX_RETRIES = 3;
+    let upstream: Response | null = null;
+    let lastErr: unknown = null;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        upstream = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify(payload),
+        });
+        if (!RETRY_STATUSES.has(upstream.status)) break;
+      } catch (err) {
+        lastErr = err;
+      }
+      if (attempt < MAX_RETRIES) {
+        await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
+      }
+    }
+
+    if (!upstream) {
       return jsonResponse(502, {
-        error: 'Upstream fetch failed',
-        detail: err instanceof Error ? err.message : String(err),
+        error: 'שירות ה-AI לא זמין כרגע. נסה שוב בעוד דקה.',
+        detail: lastErr instanceof Error ? lastErr.message : String(lastErr),
+      }, cors);
+    }
+
+    // Still overloaded after retries — translate to a user-friendly message.
+    if (RETRY_STATUSES.has(upstream.status)) {
+      const detail = await upstream.text();
+      return jsonResponse(503, {
+        error: 'שירות ה-AI עמוס כרגע. נסה שוב בעוד דקה-שתיים.',
+        upstream_status: upstream.status,
+        upstream_detail: detail.slice(0, 500),
       }, cors);
     }
 
