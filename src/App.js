@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from './lib/supabase';
 import { DEFAULT_SETTINGS, PROJECT_SETTINGS_KEYS } from './lib/calculations';
 import { fetchUsdRate } from './lib/exchangeRate';
@@ -309,16 +309,12 @@ export default function App() {
 
   async function saveActualFreightQuote(amount) {
     if (!activeProjectId) { showToast('בחר פרויקט פעיל', 'error'); return false; }
-    const merged = { ...projectOverrides };
-    if (amount && Number(amount) > 0) {
-      merged.actual_freight_usd = Number(amount);
-    } else {
-      merged.actual_freight_usd = null;
-    }
+    const n = Number(amount) || 0;
+    const merged = { ...projectOverrides, actual_freight_usd: n > 0 ? n : null };
     const ok = await saveProjectSettings(merged);
     if (ok) {
-      showToast(amount > 0
-        ? `🧾 ציטוט אמיתי נשמר: $${Number(amount).toLocaleString()}`
+      showToast(n > 0
+        ? `🧾 ציטוט אמיתי נשמר: $${n.toLocaleString()}`
         : 'ציטוט אמיתי הוסר — חוזרים להערכה מ-FBX13');
     }
     return ok;
@@ -445,7 +441,10 @@ export default function App() {
   const activeProject  = projects.find(p => p.id === activeProjectId) || null;
   const uniqueProducts = products.filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i);
   const activeProducts = activeProjectId ? uniqueProducts.filter(p => p.project_id === activeProjectId) : [];
-  const calcCtx = { containerTypes, pricing: containerPricing, projectId: activeProjectId };
+  const calcCtx = useMemo(
+    () => ({ containerTypes, pricing: containerPricing, projectId: activeProjectId }),
+    [containerTypes, containerPricing, activeProjectId]
+  );
   const shared = { products: activeProducts, settings, showToast, addProduct, updateProduct, deleteProduct, addProducts, applyShipmentInfo, calcCtx, saveActualFreightQuote };
 
   return (

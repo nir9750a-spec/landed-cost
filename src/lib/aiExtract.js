@@ -1,5 +1,7 @@
 import * as XLSX from 'xlsx';
-import { supabase } from './supabase';
+import { invokeAnthropic } from './anthropicProxy';
+
+const MAX_AI_FILE_BYTES = 20 * 1024 * 1024; // 20 MB — Anthropic limit is 32 MB raw / ~24 MB after base64 inflation
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -146,13 +148,17 @@ function extractFromExcel(file) {
 // ── PDF / Image via Claude AI ──────────────────────────────────────────────
 
 async function extractFromAI(file, ext) {
-  const base64 = await fileToBase64(file);
   const isPdf    = ext === 'pdf';
   const isImage  = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
 
   if (!isPdf && !isImage) {
     throw new Error('פורמט קובץ לא נתמך. השתמש ב-PDF, תמונה (JPG/PNG/WEBP), או Excel.');
   }
+  if (file.size > MAX_AI_FILE_BYTES) {
+    const mb = Math.round(file.size / (1024 * 1024));
+    throw new Error(`הקובץ גדול מדי (${mb}MB). המקסימום הוא 20MB — דחוס או חתוך את ה-PDF.`);
+  }
+  const base64 = await fileToBase64(file);
 
   const mediaType   = isPdf ? 'application/pdf' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
   const contentType = isPdf ? 'document' : 'image';
@@ -187,28 +193,17 @@ async function extractFromAI(file, ext) {
 החזר JSON object בלבד, ללא markdown, ללא טקסט לפני/אחרי:
 {"products":[{"name":"","item_no":"","qty":0,"fob_price":0,"cbm":0,"supplier":"","notes":""}],"shipment":{"incoterms":"FOB","origin_port":"","supplier":"","invoice_date":"","payment_terms":""}}`;
 
-  const { data: result, error } = await supabase.functions.invoke('anthropic-proxy', {
-    body: {
-      model: 'claude-opus-4-7',
-      max_tokens: 4096,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: contentType, source: { type: 'base64', media_type: mediaType, data: base64 } },
-          { type: 'text', text: prompt },
-        ],
-      }],
-    },
+  const result = await invokeAnthropic({
+    model: 'claude-opus-4-7',
+    max_tokens: 4096,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: contentType, source: { type: 'base64', media_type: mediaType, data: base64 } },
+        { type: 'text', text: prompt },
+      ],
+    }],
   });
-
-  if (error) {
-    const msg = error.message || 'שגיאת AI';
-    throw new Error(msg.includes('overloaded') ? 'שרת ה-AI עמוס כרגע — נסה שוב בעוד מספר שניות' : msg);
-  }
-  if (result?.error) {
-    const msg = result.error?.message || result.error;
-    throw new Error(typeof msg === 'string' ? msg : 'שגיאת AI');
-  }
 
   const text = result.content?.[0]?.text?.trim() || '';
 
