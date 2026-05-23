@@ -121,13 +121,18 @@ export default function App() {
         const { data, error } = await supabase.functions.invoke('freight-rates-fetch');
         if (error || !data?.available || !data?.rates) return false;
 
+        // Always save — refreshes updated_at so the staleness badge clears
+        // even if the value itself didn't change. Toast only when value
+        // genuinely changed.
         const changes = [];
         for (const [param, value] of Object.entries(data.rates)) {
           if (typeof value !== 'number' || value <= 0) continue;
           const current = currentRates.find(r => r.parameter === param);
-          if (current && Math.abs(Number(current.value) - value) < 0.5) continue;
+          const valueChanged = !current || Math.abs(Number(current.value) - value) >= 0.5;
           await saveMarketRate(supabase, param, value);
-          changes.push({ param, oldValue: current?.value, newValue: value });
+          if (valueChanged) {
+            changes.push({ param, oldValue: current?.value, newValue: value });
+          }
         }
 
         if (changes.length > 0) {
@@ -143,18 +148,19 @@ export default function App() {
             const refreshedPricing = await loadContainerPricing();
             setContainerPricing(refreshedPricing);
           }
-          return true;
         }
-        return false;
+        return true;
       } catch {
         return false;
       }
     }
 
     function warnIfManualRatesStale(rates) {
+      // All 3 rates are now auto-fetched. If any is stale here, the
+      // auto-fetch failed (network / Freightos down / Edge Function broken).
       if (!rates || rates.length === 0) return;
-      const manualParams = ['lcl_per_cbm', 'air_per_kg'];
-      const tracked = manualParams
+      const allParams = ['fcl_40ft_china_med', 'lcl_per_cbm', 'air_per_kg'];
+      const tracked = allParams
         .map(p => rates.find(r => r.parameter === p))
         .filter(Boolean);
       if (tracked.length === 0) return;
@@ -163,8 +169,8 @@ export default function App() {
       const days = Math.floor((Date.now() - new Date(oldest).getTime()) / 86_400_000);
       if (days >= FREIGHT_STALE_DAYS) {
         showToast(
-          `💡 LCL ו-Air לא עודכנו ${days} ימים — עדכן ידנית בבאנר`,
-          'warn',
+          `⚠️ שערי שילוח לא עודכנו ${days} ימים — בדוק חיבור או נסה שוב`,
+          'error',
         );
       }
     }
