@@ -45,6 +45,8 @@ export default function CompliancePage({ products, activeProject, settings, show
   const [autoProgress, setAutoProgress] = useState({ done: 0, total: 0 });
   const [manualEdit, setManualEdit]     = useState({}); // { productId: { group, sii_required } }
   const autoRunRef = useRef({}); // per-project flag so we only auto-run once per visit
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
 
   // Summary stats — fully classified means BOTH hs_code and import_group are set
   const summary = useMemo(() => {
@@ -78,8 +80,10 @@ export default function CompliancePage({ products, activeProject, settings, show
       const results = await classifyAllBatch(needs.map(p => ({
         id: p.id, name: p.name, notes: p.notes || '',
       })));
+      if (!mountedRef.current) return;
       let success = 0;
       for (const r of results) {
+        if (!mountedRef.current) return;
         const p = products.find(x => x.id === r.id);
         if (!p) continue;
 
@@ -102,19 +106,24 @@ export default function CompliancePage({ products, activeProject, settings, show
         try {
           const { error } = await supabase.from('products').update(updates).eq('id', r.id);
           if (error) throw error;
+          if (!mountedRef.current) return;
           updateProduct(r.id, updates);
           success++;
           setAutoProgress({ done: success, total: needs.length });
         } catch {}
       }
+      if (!mountedRef.current) return;
       if (!silent || success !== needs.length) {
         showToast(`סווגו ${success}/${needs.length} מוצרים`);
       }
     } catch (err) {
+      if (!mountedRef.current) return;
       showToast('שגיאה בסיווג: ' + err.message, 'error');
     } finally {
-      setBulkRunning(false);
-      setAutoProgress({ done: 0, total: 0 });
+      if (mountedRef.current) {
+        setBulkRunning(false);
+        setAutoProgress({ done: 0, total: 0 });
+      }
     }
   }
 

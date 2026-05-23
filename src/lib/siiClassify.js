@@ -55,10 +55,19 @@ ${list}
 export async function classifyAllBatch(items) {
   const BATCH = 12; // smaller batch — combined output is longer per item
   const out = [];
+  const failed = [];
   for (let i = 0; i < items.length; i += BATCH) {
     const slice = items.slice(i, i + BATCH);
-    const result = await callCombined(slice);
-    out.push(...result);
+    try {
+      const result = await callCombined(slice);
+      out.push(...result);
+    } catch (err) {
+      // Don't drop already-classified batches — keep going and report at end.
+      failed.push({ from: i, to: i + slice.length, message: err?.message || String(err) });
+    }
+  }
+  if (failed.length && out.length === 0) {
+    throw new Error(failed[0].message);
   }
   return out;
 }
@@ -175,10 +184,18 @@ export async function classifyImportGroupBatch(items) {
   // Returns array of { id, import_group, sii_required, reasoning, tests }
   const BATCH = 15; // smaller than HS batch — reasoning per item is longer
   const out = [];
+  const failed = [];
   for (let i = 0; i < items.length; i += BATCH) {
     const slice = items.slice(i, i + BATCH);
-    const result = await classifyOneBatch(slice);
-    out.push(...result);
+    try {
+      const result = await classifyOneBatch(slice);
+      out.push(...result);
+    } catch (err) {
+      failed.push({ from: i, to: i + slice.length, message: err?.message || String(err) });
+    }
+  }
+  if (failed.length && out.length === 0) {
+    throw new Error(failed[0].message);
   }
   return out;
 }
