@@ -1,0 +1,8 @@
+{
+  "model": "claude-haiku-4-5-20251001",
+  "max_tokens": 2048,
+  "messages": [{
+    "role": "user",
+    "content": "אתה מומחה לסיווג מכס ישראלי ולקבוצות יבוא של מכון התקנים הישראלי (SII).\n\nעבור כל מוצר, ספק:\nא. hs_code — קוד 8 ספרות בדיוק\nב. customs_rate — שיעור המכס באחוזים (0-100)\nג. import_group — 1/2/3/4\nד. sii_required — true/false\n\nקבוצות:\n1 = יבוא חופשי | 2 = הצהרת יבואן | 3 = בדיקת מטען | 4 = רישוי + פיקוח\n\nכללי החלטה:\n- סוללה ליתיום > 100Wh: קבוצה 3+\n- חשמלי 230V: קבוצה 4\n- גז דליק: קבוצה 3-4\n\nהרשימה:\n1. שם: 4-Person Family Tent Waterproof · הערות: 190T polyester PU3000\n2. שם: Brightenlux 600lm Camp Lantern 18650 · הערות: USB-C charging 18650 included\n3. שם: 12V/220V Portable Fridge 40L · הערות: Compressor -20C to +20C\n\nהחזר JSON תקין בלבד (ללא markdown):\n{\"classifications\":[{\"index\":1,\"hs_code\":\"XXXXXXXX\",\"customs_rate\":N,\"import_group\":N,\"sii_required\":true|false,\"reasoning\":\"...\"}]}"
+  }]
+}
