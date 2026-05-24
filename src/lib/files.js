@@ -24,12 +24,24 @@ export const CATEGORY_BY_VALUE = Object.fromEntries(
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function sanitizeFilename(name) {
-  // Strip path separators and risky characters; keep Hebrew letters and dots.
-  return name
-    .replace(/[\\/]/g, '_')
-    // eslint-disable-next-line no-control-regex
-    .replace(/[<>:"|?*\x00-\x1f]/g, '_')
-    .slice(-150); // cap length
+  // Supabase Storage keys must be ASCII — Hebrew and other non-ASCII chars
+  // are rejected. We strip them for the storage path but keep the original
+  // filename in the file_name column so the user still sees the real name.
+  const dotIdx = name.lastIndexOf('.');
+  const stem = (dotIdx > 0 ? name.slice(0, dotIdx) : name);
+  const ext  = (dotIdx > 0 ? name.slice(dotIdx)   : '');
+
+  const safe = (s) => s
+    .replace(/[^\x20-\x7E]/g, '')         // drop everything outside printable ASCII
+    .replace(/[\\/<>:"|?*]/g, '_')        // forbidden filesystem chars
+    .replace(/\s+/g, '_')                 // collapse spaces
+    .replace(/_+/g, '_')                  // collapse underscores
+    .replace(/^[_.]+|[_.]+$/g, '')        // trim leading/trailing _ or .
+    .slice(0, 80);
+
+  const cleanStem = safe(stem) || 'file';
+  const cleanExt  = safe(ext.replace(/^\./, ''));
+  return cleanExt ? `${cleanStem}.${cleanExt}` : cleanStem;
 }
 
 function buildStoragePath(projectId, filename) {
