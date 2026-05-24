@@ -428,7 +428,7 @@ export default function ProductsPage({
         <ProductForm product={editProd} onSave={handleSave} onClose={closeForm} settings={settings} />
       )}
       {showUpload && (
-        <FileUpload settings={settings} onSave={addProducts} onClose={() => setShowUpload(false)} showToast={showToast} onApplyShipment={applyShipmentInfo} />
+        <FileUpload settings={settings} onSave={addProducts} onClose={() => setShowUpload(false)} showToast={showToast} onApplyShipment={applyShipmentInfo} activeProjectId={activeProject?.id} />
       )}
     </div>
   );
