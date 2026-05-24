@@ -7,6 +7,7 @@ import {
 } from 'recharts';
 import { calcProducts, calcTotals, fmt } from '../lib/calculations';
 import { STATUS_LABEL, STATUS_CLASS } from './ProjectsPage';
+import ShipmentsPanel from './ShipmentsPanel';
 
 const CHART_COLORS = {
   cost:     '#00d4aa',
@@ -121,7 +122,7 @@ function KpiCard({ label, value, sub, accent, icon: Icon, featured, loss, badge,
 
 // ── Component ──────────────────────────────────────────────────────────────
 export default function Dashboard({
-  products, settings,
+  products, settings, showToast,
   allProducts, projects, activeProjectId, setActiveProjectId, setPage, calcCtx,
   saveActualFreightQuote,
 }) {
@@ -449,6 +450,9 @@ export default function Dashboard({
                 </div>
               </div>
             </div>
+
+            {/* ── Container tracking ── */}
+            <ShipmentsPanel activeProjectId={activeProjectId} showToast={showToast} />
           </>
         )}
       </div>
@@ -553,7 +557,7 @@ function ActualQuotePanel({ currentActual, estimatedFreightUsd, onSave }) {
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <input
-          type="number" min="0" step="50" autoFocus
+          type="number" min="0" step="any" autoFocus
           value={value}
           onChange={e => setValue(e.target.value)}
           placeholder={`לדוגמה: ${estimatedFreightUsd}`}
