@@ -1,11 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { X, Check, AlertCircle, Upload, AlertTriangle } from 'lucide-react';
 import { extractProductsFromFile } from '../lib/aiExtract';
+import { uploadProjectFile } from '../lib/files';
 
-export default function FileUpload({ onSave, onClose, showToast, onApplyShipment }) {
+export default function FileUpload({ onSave, onClose, showToast, onApplyShipment, activeProjectId }) {
   const [dragging, setDragging]   = useState(false);
   const [loading, setLoading]     = useState(false);
   const [fileName, setFileName]   = useState('');
+  const [originalFile, setOriginalFile] = useState(null);
   const [extracted, setExtracted] = useState(null);
   const [shipment, setShipment]   = useState(null);
   const [applying, setApplying]   = useState(false);
@@ -17,6 +19,7 @@ export default function FileUpload({ onSave, onClose, showToast, onApplyShipment
     setError('');
     setExtracted(null);
     setShipment(null);
+    setOriginalFile(file);
     setFileName(file.name);
     setLoading(true);
     try {
@@ -66,6 +69,22 @@ export default function FileUpload({ onSave, onClose, showToast, onApplyShipment
       notes:     String(p.notes     || '').trim(),
     }));
     const ok = await onSave(rows);
+
+    // Best-effort: archive the original file under the project as an invoice
+    // attachment. Failure here doesn't roll back the product save.
+    if (ok && originalFile && activeProjectId) {
+      try {
+        await uploadProjectFile({
+          file: originalFile,
+          projectId: activeProjectId,
+          category: 'invoice',
+          notes: 'נשמר אוטומטית בעת ייבוא מוצרים',
+        });
+      } catch (err) {
+        showToast?.('המוצרים נשמרו אך שמירת הקובץ נכשלה: ' + err.message, 'error');
+      }
+    }
+
     setSaving(false);
     if (ok) onClose();
   }

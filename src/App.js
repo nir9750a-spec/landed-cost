@@ -13,6 +13,7 @@ import ProjectsPage from './components/ProjectsPage';
 import SettingsPage from './components/SettingsPage';
 import BreakdownPage from './components/BreakdownPage';
 import CompliancePage from './components/CompliancePage';
+import DocumentsPage from './components/DocumentsPage';
 
 const FREIGHT_STALE_DAYS = 3;
 
@@ -456,6 +457,7 @@ export default function App() {
       {page === 'products'   && <ProductsPage {...shared} activeProject={activeProject} setPage={setPage} />}
       {page === 'compliance' && <CompliancePage {...shared} activeProject={activeProject} setPage={setPage} />}
       {page === 'breakdown'  && <BreakdownPage {...shared} activeProject={activeProject} />}
+      {page === 'documents'  && <DocumentsPage activeProject={activeProject} activeProjectId={activeProjectId} showToast={showToast} />}
       {page === 'projects'   && <ProjectsPage projects={projects} products={products} settings={settings}
                                   addProject={addProject} updateProject={updateProject} duplicateProject={duplicateProject}
                                   deleteProject={deleteProject} calcCtx={calcCtx}
