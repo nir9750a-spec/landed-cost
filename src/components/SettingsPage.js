@@ -10,21 +10,21 @@ import { selectContainer, resolveFreightPrice, fillPctColor } from '../lib/conta
 // ── Field definitions ──────────────────────────────────────────────────────
 
 const GLOBAL_FIELDS = [
-  { key: 'vat',              label: 'מע"מ (%)',           type: 'number', step: '0.5',  min: '0', max: '100' },
-  { key: 'customs',          label: 'מכס (%)',             type: 'number', step: '0.5',  min: '0', max: '100',
+  { key: 'vat',              label: 'מע"מ (%)',           type: 'number', step: 'any',  min: '0', max: '100' },
+  { key: 'customs',          label: 'מכס (%)',             type: 'number', step: 'any',  min: '0', max: '100',
     hint: 'שיעור מכס כללי — נדרס אוטומטית אם למוצר יש קוד HS מסווג' },
-  { key: 'purchase_tax_rate', label: 'מס קניה (%)',        type: 'number', step: '0.5',  min: '0', max: '100',
+  { key: 'purchase_tax_rate', label: 'מס קניה (%)',        type: 'number', step: 'any',  min: '0', max: '100',
     hint: 'מס קניה ישראלי (ברירת מחדל 0%)' },
-  { key: 'agent_fee',        label: 'עמלת סוכן (₪)',      type: 'number', step: '100',  min: '0' },
-  { key: 'port_fees',        label: 'אגרות נמל (₪)',      type: 'number', step: '100',  min: '0' },
-  { key: 'local_transport',  label: 'הובלה מקומית (₪)',   type: 'number', step: '100',  min: '0' },
+  { key: 'agent_fee',        label: 'עמלת סוכן (₪)',      type: 'number', step: 'any',  min: '0' },
+  { key: 'port_fees',        label: 'אגרות נמל (₪)',      type: 'number', step: 'any',  min: '0' },
+  { key: 'local_transport',  label: 'הובלה מקומית (₪)',   type: 'number', step: 'any',  min: '0' },
 ];
 
 // Numeric project fields (margin_type handled separately; incoterms/shipping handled as custom UI)
 const PROJECT_NUM_FIELDS = [
-  { key: 'usd_rate',  label: 'שער דולר (₪/$)',   type: 'number', step: '0.001', min: '0' },
-  { key: 'insurance', label: 'ביטוח (%)',          type: 'number', step: '0.1',   min: '0', max: '10' },
-  { key: 'margin',    label: 'מרווח (%)',          type: 'number', step: '1',     min: '0', max: '500',
+  { key: 'usd_rate',  label: 'שער דולר (₪/$)',   type: 'number', step: 'any', min: '0' },
+  { key: 'insurance', label: 'ביטוח (%)',          type: 'number', step: 'any', min: '0', max: '10' },
+  { key: 'margin',    label: 'מרווח (%)',          type: 'number', step: 'any', min: '0', max: '500',
     hint: 'מומלץ: 25-35% לרוב המוצרים' },
 ];
 
@@ -458,7 +458,7 @@ export default function SettingsPage({
                       <div className="form-group" style={{ maxWidth: 220 }}>
                         <label>מחיר לק"ג ($)</label>
                         <input
-                          type="number" min="0" step="0.1"
+                          type="number" min="0" step="any"
                           value={projValues.air_price_per_kg ?? globalSettings.air_price_per_kg ?? ''}
                           onChange={e => handleProjChange('air_price_per_kg', e.target.value)}
                           className="sfield-input sfield-overridden"
@@ -472,7 +472,7 @@ export default function SettingsPage({
                       <div className="form-group" style={{ maxWidth: 220 }}>
                         <label>הובלה מקומית סין ($)</label>
                         <input
-                          type="number" min="0" step="10"
+                          type="number" min="0" step="any"
                           value={projValues.china_local_transport ?? globalSettings.china_local_transport ?? ''}
                           onChange={e => handleProjChange('china_local_transport', e.target.value)}
                           className="sfield-input sfield-overridden"
@@ -811,7 +811,7 @@ function ContainerSelectionCard({
             🧾 הזן ציטוט אמיתי מ-forwarder ($) — דורס את ההערכה
           </label>
           <input
-            type="number" min="0" step="50"
+            type="number" min="0" step="any"
             placeholder="לדוגמה: 2800"
             value={actualFreightUsd ?? ''}
             onChange={e => onActualFreightChange(e.target.value)}

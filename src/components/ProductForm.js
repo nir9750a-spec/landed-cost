@@ -107,7 +107,7 @@ export default function ProductForm({ product, onSave, onClose, settings }) {
               </div>
               <div className="form-group">
                 <label>מחיר FOB ליח' ($)</label>
-                <input type="number" value={form.fob_price} onChange={e => set('fob_price', e.target.value)} placeholder="0.00" min="0" step="0.01" />
+                <input type="number" value={form.fob_price} onChange={e => set('fob_price', e.target.value)} placeholder="0.0000" min="0" step="any" />
               </div>
               <div className="form-group">
                 <label>CBM ליח'</label>
@@ -115,7 +115,7 @@ export default function ProductForm({ product, onSave, onClose, settings }) {
               </div>
               <div className="form-group">
                 <label>משקל ברוטו ק"ג ליח'</label>
-                <input type="number" value={form.gross_weight_kg} onChange={e => set('gross_weight_kg', e.target.value)} placeholder="0.00" min="0" step="0.01" />
+                <input type="number" value={form.gross_weight_kg} onChange={e => set('gross_weight_kg', e.target.value)} placeholder="0.000" min="0" step="any" />
               </div>
 
               {/* Box dimensions for air volumetric */}
@@ -130,7 +130,7 @@ export default function ProductForm({ product, onSave, onClose, settings }) {
 
               <div className="form-group">
                 <label>מס קניה ספציפי % (override)</label>
-                <input type="number" value={form.purchase_tax_rate_override} onChange={e => set('purchase_tax_rate_override', e.target.value)} placeholder="ברירת מחדל: 0%" min="0" max="200" step="0.5" />
+                <input type="number" value={form.purchase_tax_rate_override} onChange={e => set('purchase_tax_rate_override', e.target.value)} placeholder="ברירת מחדל: 0%" min="0" max="200" step="any" />
               </div>
 
               <div className="form-group full">
@@ -174,7 +174,7 @@ export default function ProductForm({ product, onSave, onClose, settings }) {
                       placeholder={`ברירת מחדל: ${settings?.customs ?? 5}%`}
                       min="0"
                       max="200"
-                      step="0.5"
+                      step="any"
                     />
                   </div>
                 </div>
