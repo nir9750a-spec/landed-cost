@@ -191,7 +191,7 @@ function MarketRatesBanner({ rates, onUpdate, onApply, activeProject, settings }
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: 10, color: 'var(--text2)', fontWeight: 600 }}>FCL 40ft ($)</label>
               <input
-                type="number" min="0" step="10"
+                type="number" min="0" step="any"
                 defaultValue={fcl.value}
                 onChange={e => setF('fcl_40ft_china_med', e.target.value)}
                 style={{ width: 100 }}
@@ -202,7 +202,7 @@ function MarketRatesBanner({ rates, onUpdate, onApply, activeProject, settings }
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: 10, color: 'var(--text2)', fontWeight: 600 }}>LCL ($/CBM)</label>
               <input
-                type="number" min="0" step="1"
+                type="number" min="0" step="any"
                 defaultValue={lcl.value}
                 onChange={e => setF('lcl_per_cbm', e.target.value)}
                 style={{ width: 80 }}
@@ -213,7 +213,7 @@ function MarketRatesBanner({ rates, onUpdate, onApply, activeProject, settings }
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: 10, color: 'var(--text2)', fontWeight: 600 }}>אוויר ($/ק"ג)</label>
               <input
-                type="number" min="0" step="0.1"
+                type="number" min="0" step="any"
                 defaultValue={air.value}
                 onChange={e => setF('air_per_kg', e.target.value)}
                 style={{ width: 80 }}

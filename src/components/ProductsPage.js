@@ -173,7 +173,7 @@ export default function ProductsPage({
                 <td>
                   <input className="cc-input" type="number" value={agentCustomsRate}
                     onChange={e => setAgentField('agentCustomsRate', e.target.value)}
-                    placeholder="0" min="0" max="200" step="0.5" />
+                    placeholder="0" min="0" max="200" step="any" />
                 </td>
                 <td className="cc-val">
                   {hasAgentRate ? `₪${n(agentCost)}` : <span className="text-muted">—</span>}

@@ -208,7 +208,7 @@ export default function PricingMatrix({ containerTypes = [], containerPricing = 
                   </td>
                   <td>
                     <input
-                      type="number" min="0" step={r.isLcl ? '1' : '50'}
+                      type="number" min="0" step="any"
                       value={r.base}
                       onChange={e => setRowField(r.code, 'base', e.target.value)}
                       style={{ width: 100, direction: 'ltr', textAlign: 'right' }}
@@ -216,7 +216,7 @@ export default function PricingMatrix({ containerTypes = [], containerPricing = 
                   </td>
                   <td>
                     <input
-                      type="number" min="0" step={r.isLcl ? '1' : '50'}
+                      type="number" min="0" step="any"
                       value={r.war}
                       onChange={e => setRowField(r.code, 'war', e.target.value)}
                       style={{ width: 100, direction: 'ltr', textAlign: 'right' }}

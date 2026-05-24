@@ -356,7 +356,7 @@ export default function DataQualityPanel({ allProducts = [], projects = [], show
 
                   <input
                     type="number"
-                    step="0.1"
+                    step="any"
                     min="0"
                     placeholder="ק״ג"
                     value={override !== undefined ? override : (est?.estimated_kg ?? '')}

@@ -282,7 +282,7 @@ export default function FileUpload({ onSave, onClose, showToast, onApplyShipment
                             onChange={e => update(i, 'fob_price', e.target.value)}
                             style={{ width: 80 }}
                             min="0"
-                            step="0.01"
+                            step="any"
                           />
                         </td>
                         <td>
