@@ -409,7 +409,12 @@ export default function App() {
     if (!activeProjectId) { showToast('בחר פרויקט פעיל', 'error'); return; }
     const updates = {};
     if (shipment.incoterms)   updates.incoterms   = shipment.incoterms;
-    if (shipment.origin_port) updates.origin_port = shipment.origin_port;
+    if (shipment.origin_port) {
+      // Normalize AI-extracted port names ("Shanghai", "SHANGHAI", "上海")
+      // so they match the Hebrew seed in container_pricing.
+      const { normalizePort } = await import('./lib/containerSelection');
+      updates.origin_port = normalizePort(shipment.origin_port);
+    }
     const merged = { ...projectOverrides, ...updates };
     const ok = await saveProjectSettings(merged);
     if (ok) {

@@ -1,5 +1,36 @@
 import { supabase } from './supabase';
 
+// ─── Port-name normalization ─────────────────────────────────────────────────
+// AI extraction can return port names in English ("Shanghai", "SHANGHAI"),
+// while the pricing table is seeded with Hebrew ("שנגחאי"). Normalize both
+// sides of the lookup so user typos / AI output don't break pricing.
+
+const PORT_ALIASES = {
+  // shanghai
+  'shanghai': 'שנגחאי', 'shang hai': 'שנגחאי', '上海': 'שנגחאי', 'שנגחאי': 'שנגחאי',
+  // shenzhen
+  'shenzhen': 'שנזן', 'shen zhen': 'שנזן', '深圳': 'שנזן', 'שנזן': 'שנזן',
+  // guangzhou
+  'guangzhou': 'גואנגג׳ו', 'guang zhou': 'גואנגג׳ו', '广州': 'גואנגג׳ו',
+  'גואנגג׳ו': 'גואנגג׳ו', 'גואנגגו': 'גואנגג׳ו', 'גואנזו': 'גואנגג׳ו',
+  // ningbo
+  'ningbo': 'נינגבו', 'ning bo': 'נינגבו', '宁波': 'נינגבו', 'נינגבו': 'נינגבו',
+  // tianjin
+  'tianjin': 'טיאנג׳ין', 'tian jin': 'טיאנג׳ין', 'xingang': 'טיאנג׳ין',
+  '天津': 'טיאנג׳ין', 'טיאנג׳ין': 'טיאנג׳ין', 'טיאנגין': 'טיאנג׳ין',
+  // qingdao
+  'qingdao': 'קינגדאו', 'qing dao': 'קינגדאו', 'tsingtao': 'קינגדאו',
+  '青岛': 'קינגדאו', 'קינגדאו': 'קינגדאו',
+  // yongkang (inland city; often shipped through ningbo)
+  'yongkang': 'יונגקאנג', '永康': 'יונגקאנג', 'יונגקאנג': 'יונגקאנג',
+};
+
+export function normalizePort(port) {
+  if (!port) return port;
+  const key = String(port).trim().toLowerCase();
+  return PORT_ALIASES[key] || port;
+}
+
 // ─── Hard-coded fallback (used if DB unavailable) ──────────────────────────
 //   These thresholds must mirror public.container_types.min_cbm_to_select.
 //   Source of truth = the DB row; this is only a safety net.
@@ -43,11 +74,13 @@ export async function loadContainerPricing() {
 }
 
 // Find the active price for (port, container, projectId). Project-specific
-// override beats global; latest valid_from wins.
+// override beats global; latest valid_from wins. Port name is normalized so
+// "Shanghai", "SHANGHAI", "上海" and "שנגחאי" all match the same row.
 export function findActivePrice(pricing, originPort, containerCode, projectId) {
   const today = new Date().toISOString().slice(0, 10);
+  const target = normalizePort(originPort);
   const eligible = pricing.filter(p =>
-    p.origin_port === originPort &&
+    normalizePort(p.origin_port) === target &&
     p.container_code === containerCode &&
     p.valid_from <= today
   );
