@@ -128,6 +128,7 @@ export async function refreshFromShipsGo(shipmentId) {
     body: {
       containerNumber: existing.container_number,
       shippingLine:    existing.carrier || undefined,
+      mode:            isAir(existing) ? 'air' : 'sea',
     },
   });
   if (invokeErr) {

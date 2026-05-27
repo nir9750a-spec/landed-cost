@@ -15,7 +15,8 @@ const ALLOWED_ORIGINS = new Set([
   'http://localhost:3000',
 ]);
 
-const SHIPSGO_BASE = 'https://api.shipsgo.com/v2/tracking/container';
+const SHIPSGO_CONTAINER = 'https://api.shipsgo.com/v2/tracking/container';
+const SHIPSGO_AWB       = 'https://api.shipsgo.com/v2/tracking/airwaybill';
 
 function corsHeaders(origin: string | null) {
   const allow = origin && (ALLOWED_ORIGINS.has(origin) || ALLOWED_ORIGIN_REGEX.test(origin))
@@ -83,9 +84,16 @@ function mapShipsGo(raw: ShipsGoResponse) {
   };
 }
 
-async function callShipsGo(token: string, containerNumber: string, shippingLine?: string) {
+async function callShipsGo(token: string, trackingNumber: string, mode: 'sea' | 'air', shippingLine?: string) {
+  const base = mode === 'air' ? SHIPSGO_AWB : SHIPSGO_CONTAINER;
+  const numberKey = mode === 'air' ? 'airWaybillNumber' : 'containerNumber';
+  const carrierKey = mode === 'air' ? 'airline' : 'shippingLine';
+
   // Try POST to register first (idempotent — ShipsGo returns existing record if already tracked)
-  const postRes = await fetch(SHIPSGO_BASE, {
+  const postBodyObj: Record<string, string> = { [numberKey]: trackingNumber };
+  if (shippingLine) postBodyObj[carrierKey] = shippingLine;
+
+  const postRes = await fetch(base, {
     method: 'POST',
     headers: {
       'X-Shipsgo-User-Token': token,
@@ -93,12 +101,12 @@ async function callShipsGo(token: string, containerNumber: string, shippingLine?
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    body: JSON.stringify(shippingLine ? { containerNumber, shippingLine } : { containerNumber }),
+    body: JSON.stringify(postBodyObj),
   });
   const postBody = await postRes.text();
 
-  // Now GET the current state. ShipsGo v2 supports lookup by container number directly.
-  const getUrl = `${SHIPSGO_BASE}/${encodeURIComponent(containerNumber)}`;
+  // Now GET the current state.
+  const getUrl = `${base}/${encodeURIComponent(trackingNumber)}`;
   const getRes = await fetch(getUrl, {
     headers: {
       'X-Shipsgo-User-Token': token,
@@ -116,6 +124,7 @@ async function callShipsGo(token: string, containerNumber: string, shippingLine?
     postStatus: postRes.status,
     postBody:   postBody.slice(0, 500),  // truncated for debug
     data,
+    mode,
   };
 }
 
@@ -135,7 +144,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  let body: { containerNumber?: string; shippingLine?: string } = {};
+  let body: { containerNumber?: string; shippingLine?: string; mode?: 'sea' | 'air' } = {};
   try { body = await req.json(); } catch {}
   const containerNumber = (body.containerNumber || '').trim().toUpperCase();
   if (!containerNumber) {
@@ -143,9 +152,10 @@ Deno.serve(async (req) => {
       status: 400, headers: { ...cors, 'Content-Type': 'application/json' },
     });
   }
+  const mode: 'sea' | 'air' = body.mode === 'air' ? 'air' : 'sea';
 
   try {
-    const result = await callShipsGo(token, containerNumber, body.shippingLine);
+    const result = await callShipsGo(token, containerNumber, mode, body.shippingLine);
     if (result.httpStatus >= 400) {
       return new Response(JSON.stringify({
         error: 'ShipsGo returned an error',
