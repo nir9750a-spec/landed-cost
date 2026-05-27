@@ -513,6 +513,92 @@ export async function extractPackingFromFile(file) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  Payment-receipt extraction — bank transfer receipts, supplier paid invoices,
+//  PayPal / credit-card confirmations. Separates goods total from shipping fee
+//  so the user can route each amount to the right project field.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const RECEIPT_PROMPT = `You are an expert at reading payment receipts and proof-of-payment documents for international trade. The attached file is a receipt for payment to a supplier or forwarder (bank transfer confirmation, credit card receipt, PayPal/Wise/wire receipt, paid commercial invoice).
+
+Extract the following fields. Documents may be in English, Hebrew, or Chinese.
+
+- payee: the company that received the money (the supplier/forwarder name)
+- payer: the company that paid (Nir's company, usually Israeli)
+- payment_date: in YYYY-MM-DD format
+- payment_method: one of "wire_transfer" (T/T, SWIFT, bank wire), "credit_card", "paypal", "wise", "cash", "other"
+- reference_number: transaction ID, SWIFT reference, or receipt number
+- currency: ISO code — "USD", "ILS", "CNY", "EUR" — whatever the totals are in
+- subtotal_goods: amount paid for the goods themselves (before shipping/tax)
+- shipping_fee: shipping/freight charged on this receipt as a SEPARATE line, if shown
+- other_fees: any other charges (handling, insurance, tax) as a single number
+- total_paid: the grand total amount paid
+- invoice_reference: invoice number this payment relates to, if shown
+- notes: anything important (partial payment, deposit, etc.)
+
+Rules:
+1. Numeric field missing → 0
+2. Text field missing → ""
+3. If the receipt only shows a single total and doesn't split shipping out, put everything in subtotal_goods and leave shipping_fee = 0
+4. Currency: just the three-letter code. If a symbol like $ is shown alone, assume USD.
+5. If the document is NOT a payment receipt (it's an invoice that hasn't been paid yet), still extract what you can but set payment_date to "" and total_paid to 0.
+
+Return ONLY this JSON, no markdown:
+{"payee":"","payer":"","payment_date":"","payment_method":"","reference_number":"","currency":"USD","subtotal_goods":0,"shipping_fee":0,"other_fees":0,"total_paid":0,"invoice_reference":"","notes":""}`;
+
+export async function extractReceiptFromFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  const isPdf   = ext === 'pdf';
+  const isImage = ['jpg','jpeg','png','gif','webp'].includes(ext);
+  if (!isPdf && !isImage) {
+    throw new Error(`סוג קובץ ".${ext}" לא נתמך לקבלה — השתמש ב-PDF או תמונה.`);
+  }
+  if (file.size > MAX_AI_FILE_BYTES) {
+    const mb = Math.round(file.size / (1024 * 1024));
+    throw new Error(`הקובץ גדול מדי (${mb}MB).`);
+  }
+  const base64 = await fileToBase64(file);
+  const mediaType   = isPdf ? 'application/pdf' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+  const contentType = isPdf ? 'document' : 'image';
+
+  const result = await invokeAnthropic({
+    model: 'claude-opus-4-7',
+    max_tokens: 2048,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: contentType, source: { type: 'base64', media_type: mediaType, data: base64 } },
+        { type: 'text', text: RECEIPT_PROMPT },
+      ],
+    }],
+  });
+
+  const text = result.content?.[0]?.text?.trim() || '';
+  const m = text.match(/\{[\s\S]*\}/);
+  if (!m) {
+    // eslint-disable-next-line no-console
+    console.warn('[extractReceiptFromFile] raw AI response:', text);
+    throw new Error('ה-AI לא החזיר JSON לקבלה.');
+  }
+  let p;
+  try { p = JSON.parse(m[0]); } catch { throw new Error('ה-AI החזיר JSON לא תקין לקבלה.'); }
+
+  return {
+    payee:             String(p.payee || '').trim(),
+    payer:             String(p.payer || '').trim(),
+    payment_date:      normalizeDate(p.payment_date),
+    payment_method:    String(p.payment_method || '').trim(),
+    reference_number:  String(p.reference_number || '').trim(),
+    currency:          (String(p.currency || 'USD').toUpperCase().replace(/[^A-Z]/g, '') || 'USD').slice(0, 3),
+    subtotal_goods:    Number(p.subtotal_goods)   || 0,
+    shipping_fee:      Number(p.shipping_fee)     || 0,
+    other_fees:        Number(p.other_fees)       || 0,
+    total_paid:        Number(p.total_paid)       || 0,
+    invoice_reference: String(p.invoice_reference || '').trim(),
+    notes:             String(p.notes || '').trim(),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 //  Helper — download a file already in Supabase Storage as a browser File
 // ─────────────────────────────────────────────────────────────────────────────
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Check, AlertCircle, Ship, Package, FileText } from 'lucide-react';
+import { X, Check, AlertCircle, Ship, Package, FileText, Receipt } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  ExtractPreviewModal — common shell for "AI extracted X from your file,
@@ -27,9 +27,13 @@ export default function ExtractPreviewModal({ kind, payload, fileName, onConfirm
   const title =
     kind === 'shipment' ? 'תצוגה מקדימה — מכולה' :
     kind === 'products' ? 'תצוגה מקדימה — מוצרים' :
+    kind === 'receipt'  ? 'תצוגה מקדימה — קבלת תשלום' :
     'תצוגה מקדימה — Packing List';
 
-  const Icon = kind === 'shipment' ? Ship : kind === 'packing' ? Package : FileText;
+  const Icon =
+    kind === 'shipment' ? Ship :
+    kind === 'packing'  ? Package :
+    kind === 'receipt'  ? Receipt : FileText;
 
   return (
     <div className="modal-overlay">
@@ -55,6 +59,9 @@ export default function ExtractPreviewModal({ kind, payload, fileName, onConfirm
           )}
           {kind === 'packing' && (
             <PackingPreview value={edited} onChange={setEdited} />
+          )}
+          {kind === 'receipt' && (
+            <ReceiptPreview value={edited} onChange={setEdited} />
           )}
         </div>
 
@@ -218,6 +225,61 @@ function PackingPreview({ value, onChange }) {
       {items.length === 0 && (
         <div style={{ color: 'var(--text3)', padding: 12, textAlign: 'center' }}>
           <AlertCircle size={16} style={{ marginInlineEnd: 6 }} /> לא נמצאו פריטים במסמך
+        </div>
+      )}
+    </>
+  );
+}
+
+// ── Receipt preview with apply-shipping-to-X actions ───────────────────────
+
+function ReceiptPreview({ value, onChange }) {
+  const set = (k, v) => onChange({ ...value, [k]: v });
+  const applyTarget = value._applyShipping || 'none';
+  return (
+    <>
+      <div className="form-grid">
+        <Field label="ספק/מקבל התשלום" value={value.payee} onChange={v => set('payee', v)} />
+        <Field label="משלם" value={value.payer} onChange={v => set('payer', v)} />
+        <Field label="תאריך תשלום" value={value.payment_date} onChange={v => set('payment_date', v)} type="date" />
+        <Field label="שיטת תשלום" value={value.payment_method} onChange={v => set('payment_method', v)} />
+        <Field label="מספר אסמכתא" value={value.reference_number} onChange={v => set('reference_number', v)} />
+        <Field label="מטבע" value={value.currency} onChange={v => set('currency', v.toUpperCase())} />
+        <Field label="סכום למוצרים" value={value.subtotal_goods} onChange={v => set('subtotal_goods', Number(v) || 0)} type="number" />
+        <Field label="עלות משלוח" value={value.shipping_fee} onChange={v => set('shipping_fee', Number(v) || 0)} type="number" />
+        <Field label="עלויות נוספות" value={value.other_fees} onChange={v => set('other_fees', Number(v) || 0)} type="number" />
+        <Field label="סה״כ ששולם" value={value.total_paid} onChange={v => set('total_paid', Number(v) || 0)} type="number" />
+        <Field label="חשבונית קשורה" value={value.invoice_reference} onChange={v => set('invoice_reference', v)} />
+      </div>
+
+      {value.shipping_fee > 0 && (
+        <div style={{
+          marginTop: 14, padding: 10, borderRadius: 6,
+          background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.3)',
+        }}>
+          <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 6, fontWeight: 600 }}>
+            💡 זיהיתי דמי משלוח בסך {value.shipping_fee} {value.currency} — לאן להחיל אותם?
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', fontSize: 12 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <input type="radio" name="apply" checked={applyTarget === 'none'} onChange={() => set('_applyShipping', 'none')} />
+              לא להחיל (רק לשמור את הקבלה)
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <input type="radio" name="apply" checked={applyTarget === 'china_local'} onChange={() => set('_applyShipping', 'china_local')} />
+              הובלה מקומית סין (factory→port)
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <input type="radio" name="apply" checked={applyTarget === 'actual_freight'} onChange={() => set('_applyShipping', 'actual_freight')} />
+              ציטוט אמיתי לסעיף freight בפרויקט
+            </label>
+          </div>
+        </div>
+      )}
+
+      {value.notes && (
+        <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text3)' }}>
+          הערות: {value.notes}
         </div>
       )}
     </>

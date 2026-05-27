@@ -6,7 +6,7 @@ import {
 } from '../lib/files';
 import {
   extractProductsFromFile, extractShipmentFromFile, extractPackingFromFile,
-  fileFromStorageUrl,
+  extractReceiptFromFile, fileFromStorageUrl,
 } from '../lib/aiExtract';
 import { createShipment } from '../lib/shipments';
 import { supabase } from '../lib/supabase';
@@ -185,6 +185,7 @@ export default function DocumentsPage({ activeProject, activeProjectId, showToas
   function pickExtractor(category) {
     if (category === 'invoice') return 'products';
     if (category === 'packing_list') return 'packing';
+    if (category === 'receipt') return 'receipt';
     const shipmentCats = ['bill_of_lading', 'air_waybill', 'logistics_agent', 'customs_agent', 'screenshot'];
     if (shipmentCats.includes(category)) return 'shipment';
     return null; // 'other' or unknown — no auto-route
@@ -242,6 +243,9 @@ export default function DocumentsPage({ activeProject, activeProjectId, showToas
         const products = await loadProductsForMatching();
         const matches = autoMatch(items, products);
         setPreview({ kind: 'packing', payload: { items, matches, _products: products }, file });
+      } else if (kind === 'receipt') {
+        const data = await extractReceiptFromFile(blob);
+        setPreview({ kind: 'receipt', payload: { ...data, _applyShipping: 'none' }, file });
       }
     } catch (err) {
       showToast?.('שגיאת חילוץ: ' + err.message, 'error');
@@ -289,6 +293,29 @@ export default function DocumentsPage({ activeProject, activeProjectId, showToas
           if (!error) updated++;
         }
         showToast?.(`עודכנו ${updated} מוצרים מ-Packing List`);
+      } else if (kind === 'receipt') {
+        // Update the file's notes with a structured summary of what was extracted.
+        const summary = `קבלה: ${edited.payee || '?'} | ${edited.payment_date || ''} | סה״כ ${edited.total_paid || 0} ${edited.currency}` +
+                        (edited.shipping_fee ? ` | משלוח ${edited.shipping_fee} ${edited.currency}` : '');
+        await updateProjectFile(preview.file.id, { notes: summary });
+
+        // Apply shipping if user picked a target. Money paid in USD goes straight
+        // to the corresponding USD field; otherwise we just log.
+        const target = edited._applyShipping;
+        if (target && target !== 'none' && edited.shipping_fee > 0) {
+          // Load current project overrides, merge, save
+          const { data: row } = await supabase.from('settings')
+            .select('*').eq('project_id', activeProjectId).maybeSingle();
+          const currentOverrides = row || {};
+          const patch = { ...currentOverrides, project_id: activeProjectId };
+          if (target === 'china_local')    patch.china_local_transport = edited.shipping_fee;
+          if (target === 'actual_freight') patch.actual_freight_usd    = edited.shipping_fee;
+          const { error: upErr } = await supabase.from('settings').upsert(patch, { onConflict: 'project_id' });
+          if (upErr) throw new Error(upErr.message);
+          showToast?.(`קבלה נשמרה והוחל סך ${edited.shipping_fee} ${edited.currency} על הפרויקט`);
+        } else {
+          showToast?.('נתוני הקבלה נשמרו עם הקובץ');
+        }
       }
       setPreview(null);
     } catch (err) {
