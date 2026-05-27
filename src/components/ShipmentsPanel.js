@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Ship, Plus, Pencil, Trash2, MapPin, Calendar, Anchor, ChevronDown, ChevronUp } from 'lucide-react';
+import { Ship, Plus, Pencil, Trash2, MapPin, Calendar, Anchor, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import {
-  loadShipments, createShipment, updateShipment, deleteShipment,
+  loadShipments, createShipment, updateShipment, deleteShipment, refreshFromShipsGo,
   SHIPMENT_STATUSES, CONTAINER_TYPES_HE, daysUntilEta,
 } from '../lib/shipments';
 import ShipmentForm from './ShipmentForm';
@@ -53,7 +53,7 @@ function fmtDate(d) {
   return `${day}/${m}/${y}`;
 }
 
-function ShipmentCard({ shipment, onEdit, onDelete }) {
+function ShipmentCard({ shipment, onEdit, onDelete, onRefresh, refreshing }) {
   const [expanded, setExpanded] = useState(false);
   const events = Array.isArray(shipment.events) ? shipment.events : [];
   const sorted = [...events].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
@@ -100,6 +100,9 @@ function ShipmentCard({ shipment, onEdit, onDelete }) {
               {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />} {events.length}
             </button>
           )}
+          <button className="btn btn-sm" onClick={onRefresh} disabled={refreshing} title="רענן מ-ShipsGo">
+            <RefreshCw size={13} style={refreshing ? { animation: 'spin 1s linear infinite' } : undefined} />
+          </button>
           <button className="btn btn-sm" onClick={onEdit} title="ערוך"><Pencil size={13} /></button>
           <button className="btn btn-sm btn-danger" onClick={onDelete} title="מחק"><Trash2 size={13} /></button>
         </div>
@@ -138,6 +141,7 @@ export default function ShipmentsPanel({ activeProjectId, showToast }) {
   const [loading, setLoading]     = useState(false);
   const [editing, setEditing]     = useState(null); // null = closed, {} = new, object = edit
   const [errorMsg, setErrorMsg]   = useState('');
+  const [refreshingId, setRefreshingId] = useState(null);
 
   const refresh = useCallback(async () => {
     if (!activeProjectId) { setShipments([]); return; }
@@ -168,6 +172,19 @@ export default function ShipmentsPanel({ activeProjectId, showToast }) {
       refresh();
     } catch (err) {
       showToast?.('שגיאה: ' + err.message, 'error');
+    }
+  }
+
+  async function handleRefresh(s) {
+    setRefreshingId(s.id);
+    try {
+      const updated = await refreshFromShipsGo(s.id);
+      setShipments(prev => prev.map(x => x.id === s.id ? updated : x));
+      showToast?.(`עודכן מ-ShipsGo: ${updated.container_number}`);
+    } catch (err) {
+      showToast?.('שגיאה ברענון מ-ShipsGo: ' + err.message, 'error');
+    } finally {
+      setRefreshingId(null);
     }
   }
 
@@ -220,6 +237,8 @@ export default function ShipmentsPanel({ activeProjectId, showToast }) {
           shipment={s}
           onEdit={() => setEditing(s)}
           onDelete={() => handleDelete(s)}
+          onRefresh={() => handleRefresh(s)}
+          refreshing={refreshingId === s.id}
         />
       ))}
 

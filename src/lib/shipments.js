@@ -102,6 +102,56 @@ export async function addShipmentEvent(id, event) {
   return data;
 }
 
+// ─── ShipsGo carrier sync ───────────────────────────────────────────────────
+
+// Fetch the latest tracking from ShipsGo and merge into an existing shipment.
+// Server function: supabase/functions/shipsgo-track.
+export async function refreshFromShipsGo(shipmentId) {
+  const { data: existing, error: e1 } = await supabase
+    .from('shipments').select('*').eq('id', shipmentId).single();
+  if (e1) throw new Error(e1.message);
+  if (!existing.container_number) throw new Error('אין מספר מכולה לרענון');
+
+  const { data: tracking, error: invokeErr } = await supabase.functions.invoke('shipsgo-track', {
+    body: {
+      containerNumber: existing.container_number,
+      shippingLine:    existing.carrier || undefined,
+    },
+  });
+  if (invokeErr) {
+    throw new Error(invokeErr.message || 'ShipsGo refresh failed');
+  }
+  if (tracking?.error) {
+    throw new Error(tracking.error);
+  }
+
+  // Only overwrite fields ShipsGo actually returned — preserve manual edits.
+  const patch = {};
+  const fields = [
+    'container_type', 'carrier', 'vessel_name', 'voyage',
+    'origin_port', 'pod_port', 'terminal',
+    'departure_date', 'eta_date', 'actual_arrival_date',
+  ];
+  for (const k of fields) {
+    if (tracking[k]) patch[k] = tracking[k];
+  }
+  if (Array.isArray(tracking.events) && tracking.events.length) {
+    patch.events = tracking.events;
+    const top = [...tracking.events].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
+    if (top) {
+      patch.last_event           = top.description || null;
+      patch.last_event_location  = top.location    || null;
+      patch.last_event_at        = top.date ? `${top.date}T00:00:00Z` : null;
+    }
+  }
+  patch.status = inferStatus({ ...existing, ...patch });
+
+  const { data: updated, error: e2 } = await supabase
+    .from('shipments').update(patch).eq('id', shipmentId).select().single();
+  if (e2) throw new Error(e2.message);
+  return updated;
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function normalize(input, { partial = false } = {}) {
