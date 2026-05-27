@@ -163,34 +163,37 @@ async function extractFromAI(file, ext) {
   const mediaType   = isPdf ? 'application/pdf' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
   const contentType = isPdf ? 'document' : 'image';
 
-  const prompt = `אתה מומחה לחילוץ נתונים מחשבוניות ספקים וניירות אריזה (Packing List / Commercial Invoice).
+  const prompt = `You are an expert at extracting line items from supplier invoices and packing lists from any country (Chinese, English, Hebrew). The attached document is an import document.
 
-המסמך המצורף הוא מסמך יבוא. חלץ שני דברים:
+Extract two things:
 
-## 1. פרטי המשלוח (ברמת המסמך כולו)
-- incoterms: תנאי המסירה — חפש: FOB, CIF, EXW, FCA, CFR, DAP וכו' (החזר קוד באותיות גדולות בלבד, למשל "FOB")
-- origin_port: נמל המוצא — חפש: Port of Loading, Shipment Port, Port, נמל טעינה (החזר שם באנגלית, למשל "NINGBO")
-- supplier: שם הספק / מוכר — חפש: Seller, Vendor, Supplier, Manufacturer, From (בכותרת המסמך)
-- invoice_date: תאריך החשבונית בפורמט YYYY-MM-DD
-- payment_terms: תנאי תשלום — חפש: Payment Terms, T/T, L/C, D/P
+## 1. Shipment details (document-wide)
+- incoterms: delivery terms — FOB, CIF, EXW, FCA, CFR, CIP, DAP, DDP, etc. Return only the uppercase code.
+- origin_port: port of loading. Look for: Port of Loading, Shipment Port, POL, 装运港, 港口, נמל טעינה. Return in English (e.g. "NINGBO").
+- supplier: seller / vendor / manufacturer name from the document header.
+- invoice_date: in YYYY-MM-DD format.
+- payment_terms: T/T, L/C, D/P, etc.
 
-## 2. שורות המוצרים
-עבור כל מוצר חלץ:
-- name: שם המוצר / תיאור (חפש: Product Description, Item, Goods)
-- item_no: קוד מוצר / SKU (חפש: Item No., Part No., Model No., SKU)
-- qty: כמות יחידות (חפש: Quantity, Qty, PCS, Units)
-- fob_price: מחיר ליחידה בדולר (חפש: Unit Price, FOB Price, Price/Unit)
-- cbm: נפח ליחידה במ"ק — אם CBM הוא סה"כ לשורה, חלק ב-qty
-- supplier: שם הספק (לרוב מכותרת המסמך)
-- notes: מידע נוסף
+## 2. Product rows
+For EACH product line in the goods table, extract:
+- name: product description (may be in Chinese, English, or mixed)
+- item_no: SKU / Part No / Model No / Article No
+- qty: quantity (PCS / Units / Sets / Pairs / 个 / 件)
+- fob_price: UNIT price in USD. If the document shows total only, divide by qty.
+- cbm: cubic meters per unit. If total CBM given for the line, divide by qty.
+- supplier: usually from document header
+- notes: anything relevant (color, size, material)
 
-כללים:
-1. שדה מספרי שאינו קיים → 0
-2. שדה טקסטואלי שאינו קיים → ""
-3. אל תכלול שורות סיכום, כותרות, שורות ריקות
-4. מחיר תמיד ליחידה בודדת
+Important rules:
+1. Numeric field missing → 0
+2. Text field missing → ""
+3. SKIP summary/total/shipping/tax rows — only real product lines
+4. SKIP empty rows and column headers
+5. Price is ALWAYS per single unit, never total
+6. If the document is a Chinese invoice (报关资料, 装箱单, 形式发票), the product columns are usually labeled: 品名 (name), 货号/型号 (item_no), 数量 (qty), 单价 (unit price), 总价 (total), 体积 (CBM)
+7. If the document doesn't look like a goods invoice at all (e.g. it's a bank statement or a contract), return empty products array
 
-החזר JSON object בלבד, ללא markdown, ללא טקסט לפני/אחרי:
+Return ONLY a JSON object, no markdown fences, no prose:
 {"products":[{"name":"","item_no":"","qty":0,"fob_price":0,"cbm":0,"supplier":"","notes":""}],"shipment":{"incoterms":"FOB","origin_port":"","supplier":"","invoice_date":"","payment_terms":""}}`;
 
   const result = await invokeAnthropic({
@@ -214,6 +217,7 @@ async function extractFromAI(file, ext) {
 
   let products = [];
   let shipment = null;
+  let parseErr = null;
 
   if (objMatch) {
     try {
@@ -223,19 +227,29 @@ async function extractFromAI(file, ext) {
         shipment = obj.shipment || null;
       } else if (Array.isArray(obj) && obj.length > 0) {
         products = obj;
+      } else if (obj.products && obj.products.length === 0) {
+        parseErr = 'AI החזיר products: [] — לא זיהה שורות מוצר במסמך';
       }
-    } catch { /* fall through */ }
+    } catch (err) { parseErr = 'JSON.parse נכשל: ' + err.message; }
   }
 
   if (products.length === 0 && arrMatch) {
     try {
       const arr = JSON.parse(arrMatch[0]);
       if (Array.isArray(arr)) products = arr;
-    } catch { /* fall through */ }
+    } catch (err) { parseErr = parseErr || ('JSON.parse נכשל: ' + err.message); }
   }
 
   if (products.length === 0) {
-    throw new Error('ה-AI לא החזיר רשימת מוצרים תקינה. ודא שהמסמך מכיל חשבונית עם שורות מוצר ברורות.');
+    // Log raw response so we can debug what the AI actually saw.
+    // eslint-disable-next-line no-console
+    console.warn('[extractFromAI] AI raw response:', text);
+    const preview = text.slice(0, 200).replace(/\s+/g, ' ');
+    const detail = parseErr ? ` (${parseErr})` : '';
+    throw new Error(
+      `ה-AI לא החזיר רשימת מוצרים תקינה${detail}. תגובת AI (תחילית): "${preview}". ` +
+      `פתח את ה-Console (F12) לראות את התגובה המלאה.`
+    );
   }
 
   // Normalise shipment fields
