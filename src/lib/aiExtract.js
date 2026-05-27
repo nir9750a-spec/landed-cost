@@ -272,3 +272,225 @@ export async function extractProductsFromFile(file) {
 
   return extractFromAI(file, ext);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Shipment-tracking extraction (logistics agent / carrier screenshots)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SHIPMENT_PROMPT = `אתה מומחה לחילוץ נתוני מעקב מכולות ממסכי tracking של חברות ספנות וסוכני לוגיסטיקה.
+המסמך המצורף הוא מסך מעקב או מסמך מחברת ספנות (MSC, COSCO, Maersk, ZIM וכו'). חלץ את הנתונים הבאים:
+
+## פרטי המכולה
+- container_number: מספר המכולה (4 אותיות גדולות + 7 ספרות, למשל TGBU7941499)
+- container_type: סוג מכולה — אחד מ: 20GP, 40GP, 40HC, 45HC, LCL (אם כתוב "40' HIGH CUBE" החזר 40HC)
+- carrier: שם חברת הספנות (MSC, COSCO, Maersk, ZIM, Hapag-Lloyd, CMA CGM, Evergreen, ONE, Yang Ming)
+- vessel_name: שם האונייה הנוכחית/הראשית (למשל "MSC OSCAR")
+- voyage: קוד מסע (למשל "GT619W")
+- origin_port: נמל מוצא — שם + מדינה (למשל "Ningbo, CN")
+- pod_port: נמל יעד (Port Of Discharge) — לרוב "Ashdod, IL"
+- terminal: שם הטרמינל ביעד (למשל "Hadarom Container Terminal")
+- departure_date: תאריך טעינה על האונייה (Loaded on Vessel / Export Loaded) בפורמט YYYY-MM-DD
+- eta_date: ETA לנמל היעד בפורמט YYYY-MM-DD
+- actual_arrival_date: תאריך הגעה בפועל (Actual Time of Arrival) — אם עוד לא הגיע החזר ריק
+
+## טיים-ליין אירועים
+מערך events לפי סדר כרונולוגי (חדש ראשון). לכל אירוע:
+- date: YYYY-MM-DD
+- location: עיר + מדינה (למשל "Ningbo, CN")
+- description: תיאור האירוע באנגלית (למשל "Export Loaded on Vessel", "Empty to Shipper", "Export received at CY")
+- vessel_voyage: שילוב שם אונייה + קוד מסע אם רלוונטי (למשל "MSC OSCAR GT619W")
+- terminal: שם הטרמינל אם מצוין
+
+כללים:
+1. תאריכים: אם בפורמט DD/MM/YYYY המר ל-YYYY-MM-DD
+2. שדה ריק → ""
+3. אל תמציא נתונים שלא רואים במסמך
+4. אם אין מספר מכולה כלל — החזר container_number: "" ושאר הנתונים אם קיימים
+
+החזר JSON object בלבד:
+{"container_number":"","container_type":"","carrier":"","vessel_name":"","voyage":"","origin_port":"","pod_port":"","terminal":"","departure_date":"","eta_date":"","actual_arrival_date":"","events":[{"date":"","location":"","description":"","vessel_voyage":"","terminal":""}]}`;
+
+export async function extractShipmentFromFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  const isPdf   = ext === 'pdf';
+  const isImage = ['jpg','jpeg','png','gif','webp'].includes(ext);
+  if (!isPdf && !isImage) {
+    throw new Error('חילוץ מכולה נתמך רק על PDF או תמונה. ל-Excel השתמש בעמוד המוצרים.');
+  }
+  if (file.size > MAX_AI_FILE_BYTES) {
+    const mb = Math.round(file.size / (1024 * 1024));
+    throw new Error(`הקובץ גדול מדי (${mb}MB). מקסימום 20MB.`);
+  }
+  const base64 = await fileToBase64(file);
+  const mediaType   = isPdf ? 'application/pdf' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+  const contentType = isPdf ? 'document' : 'image';
+
+  const result = await invokeAnthropic({
+    model: 'claude-opus-4-7',
+    max_tokens: 4096,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: contentType, source: { type: 'base64', media_type: mediaType, data: base64 } },
+        { type: 'text', text: SHIPMENT_PROMPT },
+      ],
+    }],
+  });
+
+  const text = result.content?.[0]?.text?.trim() || '';
+  const m = text.match(/\{[\s\S]*\}/);
+  if (!m) throw new Error('ה-AI לא החזיר JSON. ייתכן שהמסמך אינו מסך מעקב מכולה.');
+
+  let parsed;
+  try { parsed = JSON.parse(m[0]); }
+  catch { throw new Error('ה-AI החזיר JSON לא תקין.'); }
+
+  // Light normalization
+  const out = {
+    container_number:    String(parsed.container_number || '').trim().toUpperCase(),
+    container_type:      String(parsed.container_type   || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '') || null,
+    carrier:             String(parsed.carrier          || '').trim() || null,
+    vessel_name:         String(parsed.vessel_name      || '').trim() || null,
+    voyage:              String(parsed.voyage           || '').trim() || null,
+    origin_port:         String(parsed.origin_port      || '').trim() || null,
+    pod_port:            String(parsed.pod_port         || '').trim() || null,
+    terminal:            String(parsed.terminal         || '').trim() || null,
+    departure_date:      normalizeDate(parsed.departure_date),
+    eta_date:            normalizeDate(parsed.eta_date),
+    actual_arrival_date: normalizeDate(parsed.actual_arrival_date),
+    events:              Array.isArray(parsed.events) ? parsed.events.map(normalizeEvent).filter(Boolean) : [],
+  };
+
+  if (!out.container_number && out.events.length === 0) {
+    throw new Error('לא נמצא מספר מכולה או אירועים במסמך.');
+  }
+  return out;
+}
+
+function normalizeDate(d) {
+  if (!d) return null;
+  const s = String(d).trim();
+  // YYYY-MM-DD as-is
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // DD/MM/YYYY
+  const m1 = s.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
+  if (m1) return `${m1[3]}-${m1[2].padStart(2,'0')}-${m1[1].padStart(2,'0')}`;
+  // YYYY/MM/DD
+  const m2 = s.match(/^(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})$/);
+  if (m2) return `${m2[1]}-${m2[2].padStart(2,'0')}-${m2[3].padStart(2,'0')}`;
+  return null;
+}
+
+function normalizeEvent(e) {
+  if (!e || typeof e !== 'object') return null;
+  const date = normalizeDate(e.date);
+  const description = String(e.description || '').trim();
+  if (!date && !description) return null;
+  return {
+    date,
+    location:      String(e.location      || '').trim(),
+    description,
+    vessel_voyage: String(e.vessel_voyage || '').trim(),
+    terminal:      String(e.terminal      || '').trim(),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Packing-list extraction — line items with refined CBM/weight/dimensions
+//  for matching back to existing products
+// ─────────────────────────────────────────────────────────────────────────────
+
+const PACKING_PROMPT = `אתה מומחה לחילוץ מידע מ-Packing List לייבוא ימי / אווירי.
+המסמך המצורף הוא רשימת אריזה. לכל שורת מוצר חלץ:
+
+- name: שם המוצר / תיאור
+- item_no: קוד מוצר / SKU / Part No.
+- qty: כמות יחידות
+- cbm: נפח ליחידה במ״ק (אם המסמך נותן סה״כ — חלק ב-qty)
+- gross_weight_kg: משקל ברוטו ליחידה בק״ג (אם סה״כ — חלק ב-qty)
+- box_l, box_w, box_h: מידות אריזה ליחידה בס״מ (אורך, רוחב, גובה)
+- cartons: מספר קרטונים (אם מצוין)
+- notes: מידע נוסף
+
+כללים:
+1. שדה מספרי חסר → 0
+2. שדה טקסטואלי חסר → ""
+3. דלג על שורות סיכום וכותרות
+4. כל מידה תמיד ליחידה בודדת
+
+החזר JSON בלבד:
+{"items":[{"name":"","item_no":"","qty":0,"cbm":0,"gross_weight_kg":0,"box_l":0,"box_w":0,"box_h":0,"cartons":0,"notes":""}]}`;
+
+export async function extractPackingFromFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+
+  if (['xlsx', 'xls', 'csv'].includes(ext)) {
+    // Reuse Excel reader — it already returns rows we can re-shape
+    const products = await extractFromExcel(file);
+    return { items: products.map(p => ({
+      name: p.name, item_no: p.item_no, qty: p.qty, cbm: p.cbm,
+      gross_weight_kg: 0, box_l: 0, box_w: 0, box_h: 0, cartons: 0, notes: p.notes || '',
+    })) };
+  }
+
+  const isPdf   = ext === 'pdf';
+  const isImage = ['jpg','jpeg','png','gif','webp'].includes(ext);
+  if (!isPdf && !isImage) {
+    throw new Error(`סוג קובץ ".${ext}" לא נתמך לחילוץ Packing List.`);
+  }
+  if (file.size > MAX_AI_FILE_BYTES) {
+    const mb = Math.round(file.size / (1024 * 1024));
+    throw new Error(`הקובץ גדול מדי (${mb}MB).`);
+  }
+  const base64 = await fileToBase64(file);
+  const mediaType   = isPdf ? 'application/pdf' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+  const contentType = isPdf ? 'document' : 'image';
+
+  const result = await invokeAnthropic({
+    model: 'claude-opus-4-7',
+    max_tokens: 4096,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: contentType, source: { type: 'base64', media_type: mediaType, data: base64 } },
+        { type: 'text', text: PACKING_PROMPT },
+      ],
+    }],
+  });
+
+  const text = result.content?.[0]?.text?.trim() || '';
+  const m = text.match(/\{[\s\S]*\}/);
+  if (!m) throw new Error('ה-AI לא החזיר JSON. ייתכן שזה לא Packing List.');
+
+  let parsed;
+  try { parsed = JSON.parse(m[0]); }
+  catch { throw new Error('ה-AI החזיר JSON לא תקין.'); }
+  const items = Array.isArray(parsed.items) ? parsed.items : [];
+  return {
+    items: items.map(it => ({
+      name:            String(it.name || '').trim(),
+      item_no:         String(it.item_no || '').trim(),
+      qty:             Number(it.qty) || 0,
+      cbm:             Number(it.cbm) || 0,
+      gross_weight_kg: Number(it.gross_weight_kg) || 0,
+      box_l:           Number(it.box_l) || 0,
+      box_w:           Number(it.box_w) || 0,
+      box_h:           Number(it.box_h) || 0,
+      cartons:         Number(it.cartons) || 0,
+      notes:           String(it.notes || '').trim(),
+    })).filter(it => it.name || it.item_no),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Helper — download a file already in Supabase Storage as a browser File
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function fileFromStorageUrl(url, fallbackName = 'document') {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('שגיאה בהורדת הקובץ מהאחסון: ' + res.status);
+  const blob = await res.blob();
+  // Try to keep a reasonable filename + mime
+  const name = (url.split('/').pop() || fallbackName).split('?')[0];
+  return new File([blob], name, { type: blob.type || 'application/octet-stream' });
+}

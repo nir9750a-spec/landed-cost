@@ -1,9 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FileText, Upload, Download, Trash2, ExternalLink, Filter, Image as ImageIcon, FolderOpen } from 'lucide-react';
+import { FileText, Upload, Download, Trash2, ExternalLink, Filter, Image as ImageIcon, FolderOpen, Sparkles } from 'lucide-react';
 import {
   listProjectFiles, uploadProjectFile, updateProjectFile, deleteProjectFile,
   FILE_CATEGORIES, CATEGORY_BY_VALUE, getPublicUrl, fmtSize,
 } from '../lib/files';
+import {
+  extractProductsFromFile, extractShipmentFromFile, extractPackingFromFile,
+  fileFromStorageUrl,
+} from '../lib/aiExtract';
+import { createShipment } from '../lib/shipments';
+import { supabase } from '../lib/supabase';
+import ExtractPreviewModal from './ExtractPreviewModal';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Documents page — every file attached to the active project.
@@ -28,7 +35,7 @@ function isImage(mime) {
   return typeof mime === 'string' && mime.startsWith('image/');
 }
 
-function FileCard({ file, onDelete, onCategoryChange }) {
+function FileCard({ file, onDelete, onCategoryChange, onExtract, extracting }) {
   const url = getPublicUrl(file.storage_path);
   const dateStr = file.uploaded_at
     ? new Date(file.uploaded_at).toLocaleString('he-IL', {
@@ -81,6 +88,15 @@ function FileCard({ file, onDelete, onCategoryChange }) {
         </select>
         {url && (
           <>
+            <button
+              className="btn btn-sm btn-primary"
+              onClick={() => onExtract(file)}
+              disabled={extracting || file.category === 'other'}
+              title="חלץ נתונים עם AI"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}
+            >
+              <Sparkles size={12} /> {extracting ? '...' : 'חלץ'}
+            </button>
             <a className="btn btn-sm" href={url} target="_blank" rel="noopener noreferrer" title="פתח בכרטיסייה חדשה">
               <ExternalLink size={13} />
             </a>
@@ -106,6 +122,8 @@ export default function DocumentsPage({ activeProject, activeProjectId, showToas
   const [pendingCategory, setPendingCategory] = useState('logistics_agent');
   const [pendingNotes, setPendingNotes] = useState('');
   const [dragging, setDragging]       = useState(false);
+  const [extractingId, setExtractingId] = useState(null);
+  const [preview, setPreview]         = useState(null);  // { kind, payload, file }
   const fileRef = useRef();
 
   const refresh = useCallback(async () => {
@@ -161,6 +179,119 @@ export default function DocumentsPage({ activeProject, activeProjectId, showToas
       setFiles(prev => prev.map(f => f.id === id ? { ...f, category } : f));
     } catch (err) {
       showToast?.('שגיאה בעדכון קטגוריה: ' + err.message, 'error');
+    }
+  }
+
+  function pickExtractor(category) {
+    if (category === 'invoice') return 'products';
+    if (category === 'packing_list') return 'packing';
+    if (category === 'bill_of_lading' || category === 'logistics_agent' || category === 'customs_agent' || category === 'screenshot') return 'shipment';
+    return null; // 'other' or unknown — no auto-route
+  }
+
+  async function loadProductsForMatching() {
+    const { data, error } = await supabase
+      .from('products')
+      .select('id, name, item_no, cbm, gross_weight_kg, box_l, box_w, box_h')
+      .eq('project_id', activeProjectId);
+    if (error) throw new Error(error.message);
+    return data || [];
+  }
+
+  function autoMatch(items, products) {
+    return items.map(it => {
+      // First try exact item_no match
+      if (it.item_no) {
+        const p = products.find(x => (x.item_no || '').trim().toLowerCase() === it.item_no.trim().toLowerCase());
+        if (p) return p.id;
+      }
+      // Then loose name match
+      if (it.name) {
+        const needle = it.name.trim().toLowerCase();
+        const p = products.find(x => {
+          const n = (x.name || '').trim().toLowerCase();
+          return n === needle || (n.length > 3 && needle.includes(n)) || (needle.length > 3 && n.includes(needle));
+        });
+        if (p) return p.id;
+      }
+      return null;
+    });
+  }
+
+  async function handleExtract(file) {
+    const kind = pickExtractor(file.category);
+    if (!kind) {
+      showToast?.('קטגוריה זו לא תומכת בחילוץ אוטומטי', 'error');
+      return;
+    }
+    setExtractingId(file.id);
+    try {
+      const url = getPublicUrl(file.storage_path);
+      if (!url) throw new Error('הקובץ לא זמין להורדה');
+      const blob = await fileFromStorageUrl(url, file.file_name);
+
+      if (kind === 'shipment') {
+        const data = await extractShipmentFromFile(blob);
+        setPreview({ kind: 'shipment', payload: data, file });
+      } else if (kind === 'products') {
+        const { products, shipment } = await extractProductsFromFile(blob);
+        setPreview({ kind: 'products', payload: { products, shipment }, file });
+      } else if (kind === 'packing') {
+        const { items } = await extractPackingFromFile(blob);
+        const products = await loadProductsForMatching();
+        const matches = autoMatch(items, products);
+        setPreview({ kind: 'packing', payload: { items, matches, _products: products }, file });
+      }
+    } catch (err) {
+      showToast?.('שגיאת חילוץ: ' + err.message, 'error');
+    } finally {
+      setExtractingId(null);
+    }
+  }
+
+  async function handleConfirmExtract(edited) {
+    if (!preview) return;
+    const { kind } = preview;
+    try {
+      if (kind === 'shipment') {
+        await createShipment({ ...edited, project_id: activeProjectId, status: 'planned' });
+        showToast?.('המכולה נשמרה במעקב');
+      } else if (kind === 'products') {
+        const rows = (edited.products || []).map(p => ({
+          name:      String(p.name      || '').trim(),
+          item_no:   String(p.item_no   || '').trim(),
+          qty:       Number(p.qty)       || 0,
+          fob_price: Number(p.fob_price) || 0,
+          cbm:       Number(p.cbm)       || 0,
+          supplier:  String(p.supplier  || '').trim(),
+          notes:     String(p.notes     || '').trim(),
+          project_id: activeProjectId,
+        }));
+        const { error } = await supabase.from('products').insert(rows);
+        if (error) throw new Error(error.message);
+        showToast?.(`נוספו ${rows.length} מוצרים`);
+      } else if (kind === 'packing') {
+        const { items, matches } = edited;
+        let updated = 0;
+        for (let i = 0; i < items.length; i++) {
+          const pid = matches[i];
+          if (!pid) continue;
+          const it = items[i];
+          const patch = {};
+          if (it.cbm > 0)             patch.cbm = it.cbm;
+          if (it.gross_weight_kg > 0) patch.gross_weight_kg = it.gross_weight_kg;
+          if (it.box_l > 0)           patch.box_l = it.box_l;
+          if (it.box_w > 0)           patch.box_w = it.box_w;
+          if (it.box_h > 0)           patch.box_h = it.box_h;
+          if (Object.keys(patch).length === 0) continue;
+          const { error } = await supabase.from('products').update(patch).eq('id', pid);
+          if (!error) updated++;
+        }
+        showToast?.(`עודכנו ${updated} מוצרים מ-Packing List`);
+      }
+      setPreview(null);
+    } catch (err) {
+      showToast?.('שגיאה בשמירה: ' + err.message, 'error');
     }
   }
 
@@ -301,8 +432,20 @@ export default function DocumentsPage({ activeProject, activeProjectId, showToas
           file={f}
           onDelete={handleDelete}
           onCategoryChange={handleCategoryChange}
+          onExtract={handleExtract}
+          extracting={extractingId === f.id}
         />
       ))}
+
+      {preview && (
+        <ExtractPreviewModal
+          kind={preview.kind}
+          payload={preview.payload}
+          fileName={preview.file.file_name}
+          onConfirm={handleConfirmExtract}
+          onClose={() => setPreview(null)}
+        />
+      )}
     </div>
   );
 }
