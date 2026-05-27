@@ -18,9 +18,21 @@ export const CONTAINER_TYPES_HE = {
   '40HC':  '40ft High Cube',
   '45HC':  '45ft High Cube',
   'LCL':   'LCL — חלק מקונטיינר',
+  'AIR':   'שטר אווירי (DHL/FedEx/UPS)',
 };
 
-export const CARRIERS = ['MSC', 'COSCO', 'Maersk', 'ZIM', 'Hapag-Lloyd', 'CMA CGM', 'Evergreen', 'ONE', 'Yang Ming', 'אחר'];
+export const CARRIERS = [
+  // Sea
+  'MSC', 'COSCO', 'Maersk', 'ZIM', 'Hapag-Lloyd', 'CMA CGM', 'Evergreen', 'ONE', 'Yang Ming',
+  // Air courier
+  'DHL', 'FedEx', 'UPS', 'TNT', 'ARAMEX', 'SF Express', 'EMS',
+  'אחר',
+];
+
+export function isAir(shipment) {
+  return shipment?.container_type === 'AIR'
+      || ['DHL', 'FedEx', 'UPS', 'TNT', 'ARAMEX', 'SF Express', 'EMS'].includes(shipment?.carrier);
+}
 
 // Status inference — if the user fills events but not status, we can guess.
 export function inferStatus(shipment) {

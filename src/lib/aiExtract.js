@@ -291,37 +291,53 @@ export async function extractProductsFromFile(file) {
 //  Shipment-tracking extraction (logistics agent / carrier screenshots)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SHIPMENT_PROMPT = `אתה מומחה לחילוץ נתוני מעקב מכולות ממסכי tracking של חברות ספנות וסוכני לוגיסטיקה.
-המסמך המצורף הוא מסך מעקב או מסמך מחברת ספנות (MSC, COSCO, Maersk, ZIM וכו'). חלץ את הנתונים הבאים:
+const SHIPMENT_PROMPT = `You are an expert at extracting shipment-tracking data from any kind of freight document: sea-container tracking pages, ocean bills of lading, AND air courier waybills (DHL, FedEx, UPS, TNT, ARAMEX), and air-freight house/master AWBs.
 
-## פרטי המכולה
-- container_number: מספר המכולה (4 אותיות גדולות + 7 ספרות, למשל TGBU7941499)
-- container_type: סוג מכולה — אחד מ: 20GP, 40GP, 40HC, 45HC, LCL (אם כתוב "40' HIGH CUBE" החזר 40HC)
-- carrier: שם חברת הספנות (MSC, COSCO, Maersk, ZIM, Hapag-Lloyd, CMA CGM, Evergreen, ONE, Yang Ming)
-- vessel_name: שם האונייה הנוכחית/הראשית (למשל "MSC OSCAR")
-- voyage: קוד מסע (למשל "GT619W")
-- origin_port: נמל מוצא — שם + מדינה (למשל "Ningbo, CN")
-- pod_port: נמל יעד (Port Of Discharge) — לרוב "Ashdod, IL"
-- terminal: שם הטרמינל ביעד (למשל "Hadarom Container Terminal")
-- departure_date: תאריך טעינה על האונייה (Loaded on Vessel / Export Loaded) בפורמט YYYY-MM-DD
-- eta_date: ETA לנמל היעד בפורמט YYYY-MM-DD
-- actual_arrival_date: תאריך הגעה בפועל (Actual Time of Arrival) — אם עוד לא הגיע החזר ריק
+Detect the document type first, then map fields onto the SAME schema:
 
-## טיים-ליין אירועים
-מערך events לפי סדר כרונולוגי (חדש ראשון). לכל אירוע:
+## SEA CONTAINER (MSC, COSCO, Maersk, ZIM, Hapag, CMA CGM, Evergreen, ONE, Yang Ming)
+- container_number: 4 uppercase letters + 7 digits (e.g. TGBU7941499)
+- container_type: one of 20GP / 40GP / 40HC / 45HC / LCL. "40' HIGH CUBE" → "40HC".
+- carrier: shipping line name
+- vessel_name: ocean vessel (e.g. "MSC OSCAR")
+- voyage: voyage code (e.g. "GT619W")
+- origin_port: load port + country (e.g. "Ningbo, CN")
+- pod_port: discharge port + country (usually "Ashdod, IL" or "Haifa, IL")
+- terminal: discharge terminal
+
+## AIR COURIER WAYBILL (DHL Express, FedEx, UPS, TNT, ARAMEX, SF Express)
+For courier documents, REUSE the same fields:
+- container_number: the tracking/waybill number. For DHL use the WAYBILL number (e.g. "5726803283"); for FedEx the tracking number; for UPS the 1Z tracking. Strip spaces.
+- container_type: "AIR" (one keyword — the UI knows this means air courier).
+- carrier: DHL / FedEx / UPS / TNT / ARAMEX (whatever brand the waybill shows).
+- vessel_name: service name shown on the waybill — DHL: "WPX" or "EXPRESS WORLDWIDE", FedEx: "IP" / "IE", UPS: "EXPRESS SAVER", etc. If unclear, use the carrier name.
+- voyage: flight number if printed, else leave "".
+- origin_port: origin airport code + country (e.g. "HKG, HK" for Hong Kong, "PVG, CN" for Shanghai Pudong). If only city name shown, use the city.
+- pod_port: destination airport + country (e.g. "TLV, IL" for Tel Aviv).
+- terminal: leave "" — courier doesn't have terminals.
+
+## SHARED FIELDS (both types)
+- departure_date: pickup or "Loaded on Vessel" date in YYYY-MM-DD
+- eta_date: expected delivery / arrival in YYYY-MM-DD. For courier, if not printed, leave "".
+- actual_arrival_date: actual delivery date if shown.
+
+## EVENT TIMELINE
+Array of events newest first. For courier docs there may be no timeline on the waybill itself — return an empty array in that case.
+Each event:
 - date: YYYY-MM-DD
-- location: עיר + מדינה (למשל "Ningbo, CN")
-- description: תיאור האירוע באנגלית (למשל "Export Loaded on Vessel", "Empty to Shipper", "Export received at CY")
-- vessel_voyage: שילוב שם אונייה + קוד מסע אם רלוונטי (למשל "MSC OSCAR GT619W")
-- terminal: שם הטרמינל אם מצוין
+- location: city + country
+- description: short English description ("Export Loaded on Vessel", "Picked up", "In transit", "Arrived at destination facility")
+- vessel_voyage: vessel + voyage for sea, flight number for air, "" if N/A
+- terminal: optional
 
-כללים:
-1. תאריכים: אם בפורמט DD/MM/YYYY המר ל-YYYY-MM-DD
-2. שדה ריק → ""
-3. אל תמציא נתונים שלא רואים במסמך
-4. אם אין מספר מכולה כלל — החזר container_number: "" ושאר הנתונים אם קיימים
+## RULES
+1. Convert DD/MM/YYYY → YYYY-MM-DD.
+2. Missing field → "".
+3. Don't invent data not shown in the document.
+4. If container_number/tracking_number is missing AND no events present, return container_number: "" and let the user fill it.
+5. Strip spaces/dashes from tracking numbers (DHL often prints "57 2680 3283" — return "5726803283").
 
-החזר JSON object בלבד:
+Return ONLY this JSON object, no markdown:
 {"container_number":"","container_type":"","carrier":"","vessel_name":"","voyage":"","origin_port":"","pod_port":"","terminal":"","departure_date":"","eta_date":"","actual_arrival_date":"","events":[{"date":"","location":"","description":"","vessel_voyage":"","terminal":""}]}`;
 
 export async function extractShipmentFromFile(file) {

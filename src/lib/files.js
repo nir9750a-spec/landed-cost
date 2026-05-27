@@ -11,6 +11,7 @@ export const FILE_CATEGORIES = [
   { value: 'invoice',         label: 'חשבונית',           color: '#3b82f6' },
   { value: 'packing_list',    label: 'רשימת אריזה',       color: '#10b981' },
   { value: 'bill_of_lading',  label: 'שטר מטען (BL)',     color: '#8b5cf6' },
+  { value: 'air_waybill',     label: 'שטר אווירי (DHL/FedEx)', color: '#0ea5e9' },
   { value: 'logistics_agent', label: 'סוכן לוגיסטיקה',    color: '#f59e0b' },
   { value: 'customs_agent',   label: 'סוכן מכס',          color: '#ef4444' },
   { value: 'screenshot',      label: 'צילום מסך',         color: '#6b7280' },

@@ -185,7 +185,8 @@ export default function DocumentsPage({ activeProject, activeProjectId, showToas
   function pickExtractor(category) {
     if (category === 'invoice') return 'products';
     if (category === 'packing_list') return 'packing';
-    if (category === 'bill_of_lading' || category === 'logistics_agent' || category === 'customs_agent' || category === 'screenshot') return 'shipment';
+    const shipmentCats = ['bill_of_lading', 'air_waybill', 'logistics_agent', 'customs_agent', 'screenshot'];
+    if (shipmentCats.includes(category)) return 'shipment';
     return null; // 'other' or unknown — no auto-route
   }
 
