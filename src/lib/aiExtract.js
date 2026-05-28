@@ -527,11 +527,11 @@ Extract the following fields. Documents may be in English, Hebrew, or Chinese.
 - payment_date: in YYYY-MM-DD format
 - payment_method: one of "wire_transfer" (T/T, SWIFT, bank wire), "credit_card", "paypal", "wise", "cash", "other"
 - reference_number: transaction ID, SWIFT reference, or receipt number
-- currency: ISO code — "USD", "ILS", "CNY", "EUR" — whatever the totals are in
-- subtotal_goods: amount paid for the goods themselves (before shipping/tax)
-- shipping_fee: shipping/freight charged on this receipt as a SEPARATE line, if shown
-- other_fees: any other charges (handling, insurance, tax) as a single number
-- total_paid: the grand total amount paid
+- currency: ISO code in which the SUPPLIER PRICED THE GOODS — most Chinese suppliers quote in USD, then PayPal/Wise show both USD and the buyer's local currency (ILS, EUR). Pick the supplier's original currency, NOT the buyer's wallet currency.
+- subtotal_goods: amount paid for the goods themselves (before shipping/tax) in the chosen currency
+- shipping_fee: shipping/freight charged on this receipt as a SEPARATE line in the chosen currency. ONLY return a value if shipping is explicitly listed as a separate line item. NEVER use the ILS-conversion column as shipping.
+- other_fees: any other charges (handling, insurance, tax) as a single number in the chosen currency
+- total_paid: the grand total amount paid in the chosen currency
 - invoice_reference: invoice number this payment relates to, if shown
 - notes: anything important (partial payment, deposit, etc.)
 
@@ -540,7 +540,9 @@ Rules:
 2. Text field missing → ""
 3. If the receipt only shows a single total and doesn't split shipping out, put everything in subtotal_goods and leave shipping_fee = 0
 4. Currency: just the three-letter code. If a symbol like $ is shown alone, assume USD.
-5. If the document is NOT a payment receipt (it's an invoice that hasn't been paid yet), still extract what you can but set payment_date to "" and total_paid to 0.
+5. PAYPAL / WISE / CREDIT CARD trap: these show two parallel columns — the supplier's USD prices on the left, and the converted ILS / EUR / etc. amount the buyer was charged on the right. ALWAYS use the supplier's USD column for all numeric fields, and put "USD" as the currency. The ILS conversion goes in notes only ("paid via PayPal at rate X").
+6. ALIBABA orders almost always: currency = USD. Sum of items + shipping = order total. The "Order total" line in PayPal IS the supplier's total in USD.
+7. If the document is NOT a payment receipt (unpaid invoice), still extract what you can but set payment_date to "" and total_paid to 0.
 
 Return ONLY this JSON, no markdown:
 {"payee":"","payer":"","payment_date":"","payment_method":"","reference_number":"","currency":"USD","subtotal_goods":0,"shipping_fee":0,"other_fees":0,"total_paid":0,"invoice_reference":"","notes":""}`;

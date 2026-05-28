@@ -299,20 +299,44 @@ export default function DocumentsPage({ activeProject, activeProjectId, showToas
                         (edited.shipping_fee ? ` | משלוח ${edited.shipping_fee} ${edited.currency}` : '');
         await updateProjectFile(preview.file.id, { notes: summary });
 
-        // Apply shipping if user picked a target. Money paid in USD goes straight
-        // to the corresponding USD field; otherwise we just log.
+        // Apply shipping if user picked a target. Project freight fields are
+        // stored in USD — convert if the receipt is in a different currency.
         const target = edited._applyShipping;
         if (target && target !== 'none' && edited.shipping_fee > 0) {
-          // Load current project overrides, merge, save
-          const { data: row } = await supabase.from('settings')
-            .select('*').eq('project_id', activeProjectId).maybeSingle();
-          const currentOverrides = row || {};
-          const patch = { ...currentOverrides, project_id: activeProjectId };
-          if (target === 'china_local')    patch.china_local_transport = edited.shipping_fee;
-          if (target === 'actual_freight') patch.actual_freight_usd    = edited.shipping_fee;
-          const { error: upErr } = await supabase.from('settings').upsert(patch, { onConflict: 'project_id' });
-          if (upErr) throw new Error(upErr.message);
-          showToast?.(`קבלה נשמרה והוחל סך ${edited.shipping_fee} ${edited.currency} על הפרויקט`);
+          // Resolve a USD amount for the freight field
+          let shippingUsd = Number(edited.shipping_fee);
+          const ccy = (edited.currency || 'USD').toUpperCase();
+          if (ccy !== 'USD') {
+            // Pull current project usd_rate to convert; fallback to global, then 3.7
+            const { data: projSettings } = await supabase.from('settings')
+              .select('usd_rate').eq('project_id', activeProjectId).maybeSingle();
+            const { data: globalSettings } = await supabase.from('settings')
+              .select('usd_rate').eq('id', 'global').maybeSingle();
+            const rate = Number(projSettings?.usd_rate || globalSettings?.usd_rate || 3.7);
+            if (ccy === 'ILS') shippingUsd = Number(edited.shipping_fee) / rate;
+            // For CNY and others we'd need separate rates — leave as-is and let
+            // the user adjust; warn via toast below.
+          }
+          shippingUsd = Math.round(shippingUsd * 100) / 100;
+
+          // Find existing project settings row by project_id; UPDATE if found,
+          // INSERT if not (no unique constraint on project_id so upsert won't work).
+          const { data: existing } = await supabase.from('settings')
+            .select('id').eq('project_id', activeProjectId).maybeSingle();
+          const patch = {};
+          if (target === 'china_local')    patch.china_local_transport = shippingUsd;
+          if (target === 'actual_freight') patch.actual_freight_usd    = shippingUsd;
+          let writeErr;
+          if (existing?.id) {
+            const { error } = await supabase.from('settings').update(patch).eq('id', existing.id);
+            writeErr = error;
+          } else {
+            const { error } = await supabase.from('settings').insert({ project_id: activeProjectId, ...patch });
+            writeErr = error;
+          }
+          if (writeErr) throw new Error(writeErr.message);
+          const ccyNote = ccy !== 'USD' ? ` (מ-${edited.shipping_fee} ${ccy} בשער ${(Number(edited.shipping_fee)/shippingUsd).toFixed(3)})` : '';
+          showToast?.(`קבלה נשמרה. הוחלו $${shippingUsd}${ccyNote} על הפרויקט`);
         } else {
           showToast?.('נתוני הקבלה נשמרו עם הקובץ');
         }
