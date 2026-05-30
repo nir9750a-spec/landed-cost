@@ -10,6 +10,7 @@ import { STATUS_LABEL, STATUS_CLASS } from './ProjectsPage';
 import ShipmentsPanel from './ShipmentsPanel';
 import { seedDemoProject } from '../lib/demoSeed';
 import { confirmAsync } from './ConfirmDialog';
+import AccountantExport from './AccountantExport';
 
 const CHART_COLORS = {
   cost:     '#00d4aa',
@@ -128,6 +129,7 @@ export default function Dashboard({
   allProducts, projects, activeProjectId, setActiveProjectId, setPage, calcCtx,
   saveActualFreightQuote,
 }) {
+  const [showAccountantExport, setShowAccountantExport] = useState(false);
   const calced = useMemo(() => calcProducts(products, settings, calcCtx), [products, settings, calcCtx]);
   const totals = useMemo(() => calcTotals(calced), [calced]);
 
@@ -249,6 +251,16 @@ export default function Dashboard({
           )}
         </div>
         <div className="flex gap-2 items-center">
+          {products.length > 0 && (
+            <button
+              className="btn btn-sm"
+              onClick={() => setShowAccountantExport(true)}
+              title="ייצא PDF לרואה חשבון או עמיל מכס"
+              style={{ background: 'var(--bg3)', borderColor: 'var(--green)' }}
+            >
+              <FileDown size={13} /> לרו״ח / עמיל
+            </button>
+          )}
           <button className="btn btn-sm" onClick={() => window.location.reload()} title="רענן נתונים">
             <RefreshCw size={13} />
           </button>
@@ -456,6 +468,16 @@ export default function Dashboard({
           </>
         )}
       </div>
+
+      {showAccountantExport && (
+        <AccountantExport
+          project={activeProject}
+          products={products}
+          settings={settings}
+          calcCtx={calcCtx}
+          onClose={() => setShowAccountantExport(false)}
+        />
+      )}
     </div>
   );
 }
