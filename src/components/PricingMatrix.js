@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Save, RefreshCw, DollarSign, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { ORIGIN_PORTS } from '../lib/calculations';
+import { confirmAsync } from './ConfirmDialog';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Container pricing matrix editor.
@@ -116,17 +117,20 @@ export default function PricingMatrix({ containerTypes = [], containerPricing = 
     }
   }
 
-  function handleSyncFromMarket() {
+  async function handleSyncFromMarket() {
     if (!fcl40ftRate && !lclRate) {
       showToast('אין מחירי שוק בבאנר. עדכן קודם שם.', 'error');
       return;
     }
-    if (!window.confirm(
-      `לסנכרן מחירים ממדד השוק עבור "${selectedPort}"?\n\n` +
-      `FCL 40ft: $${fcl40ftRate || '—'} → 40ft, 40hc, 20ft (60%), 45hc (130%)\n` +
-      `LCL: $${lclRate || '—'}/CBM\n\n` +
-      `מחירי War Risk לא ישתנו. תוכל לערוך ידנית אחרי הסנכרון.`,
-    )) return;
+    const ok = await confirmAsync({
+      title:        `סנכרון מחירים — ${selectedPort}`,
+      message:
+        `FCL 40ft: $${fcl40ftRate || '—'} → 40ft, 40hc, 20ft (60%), 45hc (130%)\n` +
+        `LCL: $${lclRate || '—'}/CBM\n\n` +
+        `מחירי War Risk לא ישתנו. ניתן לערוך ידנית אחרי הסנכרון.`,
+      confirmLabel: 'סנכרן',
+    });
+    if (!ok) return;
 
     setSyncing(true);
     const newEdits = { ...edits };

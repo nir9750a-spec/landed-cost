@@ -2,6 +2,17 @@ import React, { useState, useMemo } from 'react';
 import { Plus, Copy, Archive, FolderOpen, RotateCcw, Trash2 } from 'lucide-react';
 import { calcProducts, calcTotals, fmt } from '../lib/calculations';
 import ProjectForm from './ProjectForm';
+import { confirmAsync } from './ConfirmDialog';
+
+async function confirmDeleteProject(proj, deleteProject) {
+  const ok = await confirmAsync({
+    title:        'מחיקת פרויקט',
+    message:      `הפרויקט "${proj.name}" יימחק לצמיתות, כולל כל המוצרים, הקבצים, וההגדרות הקשורים אליו. הפעולה לא ניתנת לשחזור.`,
+    confirmLabel: 'מחק את הפרויקט',
+    danger:       true,
+  });
+  if (ok) deleteProject(proj.id);
+}
 
 function fmtDate(ts) {
   return ts ? new Date(ts).toLocaleDateString('he-IL') : '';
@@ -158,7 +169,7 @@ export default function ProjectsPage({
                     </button>
                     <button
                       className="btn btn-sm btn-danger"
-                      onClick={() => { if (window.confirm('למחוק את הפרויקט וכל מוצריו?')) deleteProject(proj.id); }}
+                      onClick={() => confirmDeleteProject(proj, deleteProject)}
                       title="מחק פרויקט"
                       style={{ marginRight: 'auto' }}
                     >

@@ -8,6 +8,8 @@ import {
 import { calcProducts, calcTotals, fmt } from '../lib/calculations';
 import { STATUS_LABEL, STATUS_CLASS } from './ProjectsPage';
 import ShipmentsPanel from './ShipmentsPanel';
+import { seedDemoProject } from '../lib/demoSeed';
+import { confirmAsync } from './ConfirmDialog';
 
 const CHART_COLORS = {
   cost:     '#00d4aa',
@@ -183,14 +185,10 @@ export default function Dashboard({
         </div>
         <div className="page-body">
           {projects.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-icon">📁</div>
-              <div className="empty-text">אין פרויקטים עדיין</div>
-              <div className="empty-hint">צור פרויקט חדש כדי להתחיל</div>
-              <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => setPage('projects')}>
-                <Plus size={15} /> פרויקט חדש
-              </button>
-            </div>
+            <EmptyStateWithDemo
+              setActiveProjectId={setActiveProjectId}
+              setPage={setPage}
+            />
           ) : (
             <>
               <div className="dashboard-section-title">בחר פרויקט לפתיחה</div>
@@ -260,7 +258,7 @@ export default function Dashboard({
                 navigator.share({ title: activeProject.name, url: window.location.href }).catch(()=>{});
               } else if (navigator.clipboard) {
                 navigator.clipboard.writeText(window.location.href);
-                alert('הקישור הועתק');
+                showToast?.('הקישור הועתק');
               }
             }}
             title="שתף">
@@ -283,7 +281,7 @@ export default function Dashboard({
             rawValue={totals.landedIlsTotal}
             formatter={fmt.ils}
             value={fmt.ils(totals.landedIlsTotal)}
-            sub={`${fmt.usd(totals.landedUsdTotal)} · ${n(totals.totalCbm, 2)} m³`}
+            sub={totals.landedUsdTotal > 0 ? `${fmt.usd(totals.landedUsdTotal)} · ${n(totals.totalCbm, 2)} m³` : 'הוסף מוצרים כדי לראות סיכום'}
             accent="#22d3ee"
             icon={Package}
             sparklineData={kpiSparklines.landed}
@@ -303,7 +301,7 @@ export default function Dashboard({
             rawValue={totals.profitTotal}
             formatter={fmt.ils}
             value={fmt.ils(totals.profitTotal)}
-            sub={`ROI ${n(totals.roiTotal, 1)}% · מרווח ${n(totals.marginPctTotal, 1)}%`}
+            sub={totals.profitTotal !== 0 ? `ROI ${n(totals.roiTotal, 1)}% · מרווח ${n(totals.marginPctTotal, 1)}%` : 'יחושב לאחר הוספת מוצרים'}
             accent={totals.profitTotal >= 0 ? '#10b981' : '#ef4444'}
             icon={totals.profitTotal >= 0 ? TrendingUp : TrendingDown}
             featured={totals.profitTotal > 0}
@@ -444,17 +442,66 @@ export default function Dashboard({
                 <div className="roi-label">רווח כולל</div>
                 <div className="roi-value" style={{ color: 'var(--gold)' }}>{fmt.ils(totals.profitTotal)}</div>
               </div>
-              <div style={{ flex: 1 }}>
-                <div className="roi-note">
-                  💡 מע״מ ({settings.vat}%) לא כלול בחישוב — כעוסק מורשה תקבל החזר {fmt.ils(vatEstimate)} (הערכה)
+              {vatEstimate > 0 && (
+                <div style={{ flex: 1 }}>
+                  <div className="roi-note">
+                    💡 מע״מ ({settings.vat}%) לא כלול בחישוב — כעוסק מורשה תקבל החזר {fmt.ils(vatEstimate)} (הערכה)
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* ── Container tracking ── */}
             <ShipmentsPanel activeProjectId={activeProjectId} showToast={showToast} />
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ── EmptyStateWithDemo ───────────────────────────────────────────────────────
+// First-time visitor sees this. Big proactive "try with demo data" CTA so
+// they aren't staring at an empty wasteland.
+function EmptyStateWithDemo({ setActiveProjectId, setPage }) {
+  const [seeding, setSeeding] = useState(false);
+  const [error, setError]     = useState('');
+
+  async function handleSeed() {
+    setSeeding(true);
+    setError('');
+    try {
+      const projectId = await seedDemoProject();
+      setActiveProjectId(projectId);
+      setPage('dashboard');
+    } catch (err) {
+      setError(err.message);
+      setSeeding(false);
+    }
+  }
+
+  return (
+    <div className="empty-state" style={{ padding: '48px 24px', textAlign: 'center' }}>
+      <div className="empty-icon" style={{ fontSize: 48, marginBottom: 8 }}>📦</div>
+      <div className="empty-text" style={{ fontSize: 22, fontWeight: 700 }}>ברוך הבא ל-Importly</div>
+      <div className="empty-hint" style={{ maxWidth: 460, margin: '12px auto 28px', color: 'var(--text2)', fontSize: 14, lineHeight: 1.6 }}>
+        Importly מחשב עלות נחיתה אמיתית לכל מוצר ביבוא לישראל — מע"מ, מכס, ביטוח, הובלה, אגרות — בלי אקסל ובלי שאלות לעמיל. נסה עכשיו עם פרויקט דמו או צור פרויקט אמיתי.
+      </div>
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+        <button className="btn btn-primary" onClick={handleSeed} disabled={seeding} style={{ fontSize: 14, padding: '10px 18px' }}>
+          {seeding ? '⏳ מכין דמו...' : '✨ נסה עם פרויקט דמו'}
+        </button>
+        <button className="btn" onClick={() => setPage('projects')} style={{ fontSize: 14, padding: '10px 18px' }}>
+          <Plus size={14} /> פרויקט חדש
+        </button>
+      </div>
+      {error && (
+        <div style={{ marginTop: 14, color: 'var(--red)', fontSize: 12 }}>
+          {error}
+        </div>
+      )}
+      <div style={{ marginTop: 28, fontSize: 11, color: 'var(--text3)', maxWidth: 460, margin: '28px auto 0', lineHeight: 1.6 }}>
+        הדמו כולל 8 מוצרי קמפינג טיפוסיים מספק ב-Yongkang, מכולה 40HC משנגחאי, והגדרות מכס ישראליות מעודכנות. תוכל לערוך, לשכפל, או למחוק בכל עת.
       </div>
     </div>
   );
@@ -484,7 +531,13 @@ function ActualQuotePanel({ currentActual, estimatedFreightUsd, onSave }) {
 
   async function handleRemove() {
     if (!onSave) return;
-    if (!window.confirm('להסיר את הציטוט האמיתי ולחזור להערכה מ-FBX13?')) return;
+    const ok = await confirmAsync({
+      title:        'הסר ציטוט אמיתי',
+      message:      'הציטוט האמיתי יוסר והמערכת תחזור להערכה מ-FBX13. להמשיך?',
+      confirmLabel: 'הסר',
+      danger:       true,
+    });
+    if (!ok) return;
     setSaving(true);
     await onSave(null);
     setSaving(false);

@@ -11,6 +11,7 @@ import {
 import { createShipment } from '../lib/shipments';
 import { supabase } from '../lib/supabase';
 import ExtractPreviewModal from './ExtractPreviewModal';
+import { confirmAsync } from './ConfirmDialog';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Documents page — every file attached to the active project.
@@ -348,7 +349,13 @@ export default function DocumentsPage({ activeProject, activeProjectId, showToas
   }
 
   async function handleDelete(file) {
-    if (!window.confirm(`למחוק את ${file.file_name}?`)) return;
+    const ok = await confirmAsync({
+      title:        'מחיקת קובץ',
+      message:      `הקובץ "${file.file_name}" יימחק מהאחסון לצמיתות. להמשיך?`,
+      confirmLabel: 'מחק',
+      danger:       true,
+    });
+    if (!ok) return;
     try {
       await deleteProjectFile(file);
       setFiles(prev => prev.filter(f => f.id !== file.id));

@@ -14,6 +14,7 @@ import SettingsPage from './components/SettingsPage';
 import BreakdownPage from './components/BreakdownPage';
 import CompliancePage from './components/CompliancePage';
 import DocumentsPage from './components/DocumentsPage';
+import ConfirmDialogHost from './components/ConfirmDialog';
 
 const FREIGHT_STALE_DAYS = 3;
 
@@ -476,6 +477,7 @@ export default function App() {
                                   containerTypes={containerTypes} containerPricing={containerPricing}
                                   products={activeProducts} allProducts={uniqueProducts} marketRates={marketRates} />}
 
+      <ConfirmDialogHost />
       <div className="toast-container">
         {toasts.map(t => <div key={t.id} className={`toast ${t.type}`}>{t.msg}</div>)}
       </div>

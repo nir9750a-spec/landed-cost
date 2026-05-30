@@ -7,6 +7,7 @@ import {
   applyCbmFix,
   applyWeightFix,
 } from '../lib/dataQuality';
+import { confirmAsync } from './ConfirmDialog';
 
 export default function DataQualityPanel({ allProducts = [], projects = [], showToast }) {
   const [cbmChoices, setCbmChoices]     = useState({}); // { productId: suggestionIndex }
@@ -63,7 +64,12 @@ export default function DataQualityPanel({ allProducts = [], projects = [], show
   async function applyAllAutoCbm() {
     const eligible = cbmAnomalies.filter(a => a.suggestions.length > 0 && a.suggestions[0].score >= 0.9);
     if (eligible.length === 0) { showToast('אין תיקונים אוטומטיים בטוחים', 'error'); return; }
-    if (!window.confirm(`לתקן אוטומטית ${eligible.length} מוצרים עם הצעה תואמת מאוד?`)) return;
+    const ok = await confirmAsync({
+      title:        'תיקון אוטומטי',
+      message:      `${eligible.length} מוצרים יתעדכנו עם ערכי CBM מההצעה התואמת ביותר. ניתן לשחזר ידנית בכל זמן. להמשיך?`,
+      confirmLabel: 'תקן הכול',
+    });
+    if (!ok) return;
     let success = 0;
     for (const a of eligible) {
       try {
@@ -122,7 +128,12 @@ export default function DataQualityPanel({ allProducts = [], projects = [], show
       e.confidence === 'high' && e.estimated_kg > 0,
     );
     if (eligible.length === 0) { showToast('אין הערכות בביטחון גבוה', 'error'); return; }
-    if (!window.confirm(`לשמור ${eligible.length} הערכות משקל ברמת ביטחון גבוהה?`)) return;
+    const ok = await confirmAsync({
+      title:        'שמירת הערכות משקל',
+      message:      `${eligible.length} הערכות משקל בביטחון גבוה יישמרו כמשקל ברוטו. ניתן לשנות ידנית אחר כך. להמשיך?`,
+      confirmLabel: 'שמור הכול',
+    });
+    if (!ok) return;
     let success = 0;
     for (const e of eligible) {
       try {

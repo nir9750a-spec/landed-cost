@@ -4,6 +4,7 @@ import {
   loadShipments, createShipment, updateShipment, deleteShipment, refreshFromShipsGo,
   SHIPMENT_STATUSES, CONTAINER_TYPES_HE, daysUntilEta,
 } from '../lib/shipments';
+import { confirmAsync } from './ConfirmDialog';
 import ShipmentForm from './ShipmentForm';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -189,7 +190,13 @@ export default function ShipmentsPanel({ activeProjectId, showToast }) {
   }
 
   async function handleDelete(s) {
-    if (!window.confirm(`למחוק את מכולה ${s.container_number}?`)) return;
+    const ok = await confirmAsync({
+      title:        'מחיקת מכולה',
+      message:      `המכולה ${s.container_number} תימחק לצמיתות, כולל כל היסטוריית המעקב. להמשיך?`,
+      confirmLabel: 'מחק',
+      danger:       true,
+    });
+    if (!ok) return;
     try {
       await deleteShipment(s.id);
       showToast?.('המכולה נמחקה');
