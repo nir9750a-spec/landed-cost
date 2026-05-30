@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Copy, Archive, FolderOpen, RotateCcw, Trash2 } from 'lucide-react';
+import { Plus, Copy, Archive, FolderOpen, RotateCcw, Trash2, Sparkles } from 'lucide-react';
 import { calcProducts, calcTotals, fmt } from '../lib/calculations';
 import ProjectForm from './ProjectForm';
+import BundleExtractModal from './BundleExtractModal';
 import { confirmAsync } from './ConfirmDialog';
 
 async function confirmDeleteProject(proj, deleteProject) {
@@ -27,6 +28,7 @@ export default function ProjectsPage({
   setActiveProjectId, setPage, showToast,
 }) {
   const [showForm, setShowForm] = useState(false);
+  const [showBundle, setShowBundle] = useState(false);
   const [editProj, setEditProj] = useState(null);
   const [filter, setFilter]     = useState('all');
 
@@ -78,6 +80,9 @@ export default function ProjectsPage({
               </button>
             ))}
           </div>
+          <button className="btn" onClick={() => setShowBundle(true)} style={{ borderColor: 'var(--orange)' }}>
+            <Sparkles size={15} /> מקבצים (AI)
+          </button>
           <button className="btn btn-primary" onClick={openAdd}>
             <Plus size={15} /> פרויקט חדש
           </button>
@@ -184,6 +189,17 @@ export default function ProjectsPage({
       </div>
 
       {showForm && <ProjectForm project={editProj} onSave={handleSave} onClose={closeForm} />}
+      {showBundle && (
+        <BundleExtractModal
+          showToast={showToast}
+          onClose={() => setShowBundle(false)}
+          onCreated={(projectId) => {
+            setShowBundle(false);
+            setActiveProjectId(projectId);
+            setPage('dashboard');
+          }}
+        />
+      )}
     </div>
   );
 }

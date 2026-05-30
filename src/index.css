@@ -872,6 +872,7 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
   animation: spin 0.7s linear infinite; display: inline-block; flex-shrink: 0;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 1s linear infinite; }
 
 /* ── Toasts ──────────────────────────────────────────────────────────────── */
 .toast-container { position: fixed; bottom: 20px; left: 20px;
