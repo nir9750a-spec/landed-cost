@@ -313,7 +313,7 @@ export default function Layout({
           </div>
           <div className="sidebar-logo-text">
             <span className="sidebar-logo-name">Importly</span>
-            <span className="sidebar-logo-tagline">עלות ממונפת</span>
+            <span className="sidebar-logo-tagline">עלות נחיתה</span>
           </div>
           <ChevronDown size={14} style={{ color: 'var(--text3)', marginRight: 'auto' }} />
         </div>

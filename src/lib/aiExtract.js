@@ -38,14 +38,55 @@ function getCI(row, ...keywords) {
   return '';
 }
 
+// Parse a number from an arbitrary supplier-invoice string. Handles thousand
+// separators (1,000), currency prefixes/suffixes ($, USD, €, ¥), trailing
+// units (PCS, kg), European decimals (1.000,50), and stray whitespace.
+// Returns 0 when nothing parseable is found — never NaN.
+export function toNumber(raw) {
+  if (raw === null || raw === undefined || raw === '') return 0;
+  if (typeof raw === 'number') return Number.isFinite(raw) ? raw : 0;
+
+  let s = String(raw).trim();
+  // Strip currency, common units, and any stray letters/symbols at edges
+  s = s.replace(/[A-Za-z₪$€¥£%]|usd|cny|eur|ils|pcs|sets|kg|m3|cbm/gi, '');
+  s = s.replace(/[\s']+/g, ''); // spaces and apostrophes as thousand separators
+  if (!s) return 0;
+
+  // If both "." and "," are present, the right-most is the decimal mark.
+  const lastDot   = s.lastIndexOf('.');
+  const lastComma = s.lastIndexOf(',');
+  if (lastDot > -1 && lastComma > -1) {
+    if (lastComma > lastDot) {
+      // European: 1.000,50 → 1000.50
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else {
+      // US: 1,000.50 → 1000.50
+      s = s.replace(/,/g, '');
+    }
+  } else if (lastComma > -1) {
+    // Only commas — treat as thousand separators UNLESS exactly one comma
+    // followed by 1-2 digits (then it's a decimal, e.g. "5,99")
+    const tail = s.slice(lastComma + 1);
+    if (s.indexOf(',') === lastComma && tail.length > 0 && tail.length <= 2) {
+      s = s.replace(',', '.');
+    } else {
+      s = s.replace(/,/g, '');
+    }
+  }
+  // Strip any remaining non-numeric characters except leading minus / decimal
+  s = s.replace(/[^0-9.-]/g, '');
+  const n = Number(s);
+  return Number.isFinite(n) ? n : 0;
+}
+
 // Sanitise a product row so every required field is present and typed correctly.
 function sanitise(raw) {
   return {
     name:      String(raw.name      || '').trim(),
     item_no:   String(raw.item_no   || '').trim(),
-    qty:       Math.max(0, Number(raw.qty)       || 0),
-    fob_price: Math.max(0, Number(raw.fob_price) || 0),
-    cbm:       Math.max(0, Number(raw.cbm)       || 0),
+    qty:       Math.max(0, toNumber(raw.qty)),
+    fob_price: Math.max(0, toNumber(raw.fob_price)),
+    cbm:       Math.max(0, toNumber(raw.cbm)),
     supplier:  String(raw.supplier  || '').trim(),
     notes:     String(raw.notes     || '').trim(),
   };

@@ -1,6 +1,6 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "Importly",
+  "name": "Importly · עלות נחיתה ליבואני ישראל",
   "icons": [
     {
       "src": "favicon.ico",
@@ -20,6 +20,8 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#f59e0b",
+  "background_color": "#0a0e1a",
+  "lang": "he",
+  "dir": "rtl"
 }

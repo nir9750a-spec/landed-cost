@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Importly · עלות נחיתה ליבואני ישראל</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg1:#0a0e1a; --bg2:#111827; --bg3:#1f2937;
+    --text:#f3f4f6; --text2:#9ca3af; --text3:#6b7280;
+    --orange:#f59e0b; --green:#10b981; --blue:#3b82f6; --red:#ef4444;
+    --gold:#fbbf24; --border:#374151;
+    --grad: linear-gradient(135deg,#f59e0b 0%,#ef4444 100%);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Heebo',sans-serif;background:var(--bg1);color:var(--text);line-height:1.6;}
+  .container{max-width:1100px;margin:0 auto;padding:0 24px;}
+  /* HEADER */
+  header{padding:18px 0;border-bottom:1px solid var(--border);background:rgba(10,14,26,.9);backdrop-filter:blur(10px);position:sticky;top:0;z-index:100;}
+  header .container{display:flex;justify-content:space-between;align-items:center;}
+  .logo{font-weight:800;font-size:20px;display:flex;align-items:center;gap:8px;}
+  .logo span{background:var(--grad);color:#0a0e1a;padding:2px 10px;border-radius:8px;font-size:14px;}
+  .header-cta{background:var(--grad);color:#0a0e1a;padding:9px 18px;border-radius:8px;font-weight:700;text-decoration:none;font-size:14px;}
+  /* HERO */
+  .hero{padding:96px 0 80px;text-align:center;}
+  .hero h1{font-size:54px;line-height:1.1;font-weight:800;margin-bottom:24px;}
+  .hero h1 .accent{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+  .hero .lede{font-size:20px;color:var(--text2);max-width:720px;margin:0 auto 36px;}
+  .hero .cta{background:var(--grad);color:#0a0e1a;font-weight:700;padding:16px 36px;font-size:17px;border-radius:10px;text-decoration:none;display:inline-block;margin-left:8px;}
+  .hero .cta-secondary{border:1px solid var(--border);color:var(--text);padding:16px 36px;border-radius:10px;text-decoration:none;display:inline-block;font-weight:600;}
+  .hero .trust{margin-top:32px;color:var(--text3);font-size:13px;}
+  /* PAIN */
+  .pain{padding:72px 0;background:var(--bg2);}
+  .pain h2{font-size:32px;text-align:center;margin-bottom:48px;}
+  .pain-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
+  .pain-card{background:var(--bg3);padding:28px;border-radius:12px;border:1px solid var(--border);}
+  .pain-card .num{font-size:36px;font-weight:800;color:var(--orange);margin-bottom:8px;}
+  .pain-card h3{font-size:18px;margin-bottom:10px;}
+  .pain-card p{color:var(--text2);font-size:14px;}
+  /* FEATURES */
+  .features{padding:80px 0;}
+  .features h2{font-size:32px;text-align:center;margin-bottom:14px;}
+  .features .sub{text-align:center;color:var(--text2);margin-bottom:56px;font-size:16px;}
+  .feature-row{display:flex;gap:48px;align-items:center;padding:48px 0;border-bottom:1px solid var(--border);}
+  .feature-row:last-child{border-bottom:none;}
+  .feature-row.flip{flex-direction:row-reverse;}
+  .feature-text{flex:1;}
+  .feature-text .tag{display:inline-block;background:var(--bg3);color:var(--orange);padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600;margin-bottom:12px;}
+  .feature-text h3{font-size:26px;margin-bottom:14px;}
+  .feature-text p{color:var(--text2);font-size:15px;margin-bottom:14px;}
+  .feature-text ul{list-style:none;padding:0;}
+  .feature-text li{padding:4px 0;color:var(--text2);font-size:14px;}
+  .feature-text li::before{content:"✓ ";color:var(--green);font-weight:bold;margin-left:6px;}
+  .feature-img{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:28px;min-height:220px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px;}
+  /* PRICING */
+  .pricing{padding:80px 0;background:var(--bg2);}
+  .pricing h2{font-size:32px;text-align:center;margin-bottom:14px;}
+  .pricing .sub{text-align:center;color:var(--text2);margin-bottom:56px;}
+  .price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
+  .price-card{background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:32px;position:relative;}
+  .price-card.featured{border:2px solid var(--orange);transform:scale(1.04);}
+  .price-card .badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--grad);color:#0a0e1a;padding:4px 14px;border-radius:20px;font-size:11px;font-weight:700;}
+  .price-card h3{font-size:20px;margin-bottom:8px;}
+  .price-card .price{font-size:42px;font-weight:800;margin-bottom:4px;}
+  .price-card .per{color:var(--text3);font-size:13px;margin-bottom:24px;}
+  .price-card ul{list-style:none;padding:0;margin-bottom:24px;}
+  .price-card li{padding:6px 0;font-size:14px;color:var(--text2);}
+  .price-card li::before{content:"✓ ";color:var(--green);font-weight:bold;margin-left:6px;}
+  .price-card .cta{display:block;text-align:center;background:var(--bg1);color:var(--text);padding:12px;border-radius:8px;text-decoration:none;font-weight:600;border:1px solid var(--border);}
+  .price-card.featured .cta{background:var(--grad);color:#0a0e1a;border:none;}
+  .price-soon{opacity:.6;}
+  .price-soon .cta{pointer-events:none;background:var(--bg1);color:var(--text3);}
+  /* CTA SECTION */
+  .final-cta{padding:96px 0;text-align:center;}
+  .final-cta h2{font-size:38px;margin-bottom:16px;}
+  .final-cta p{color:var(--text2);margin-bottom:32px;}
+  .lead-form{max-width:480px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;}
+  .lead-form input{flex:1;min-width:220px;padding:14px 16px;border-radius:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:14px;}
+  .lead-form button{background:var(--grad);color:#0a0e1a;font-weight:700;padding:14px 28px;border-radius:8px;border:none;cursor:pointer;font-size:14px;}
+  /* FOOTER */
+  footer{padding:32px 0;border-top:1px solid var(--border);color:var(--text3);font-size:13px;text-align:center;}
+  @media (max-width:768px){
+    .hero h1{font-size:36px;}
+    .pain-grid,.price-grid{grid-template-columns:1fr;}
+    .feature-row,.feature-row.flip{flex-direction:column;}
+    .price-card.featured{transform:none;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="logo">Importly <span>BETA</span></div>
+    <a href="#pricing" class="header-cta">תקופת השקה</a>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <h1>סוף לאקסל. סוף לעמיל המכס.<br/><span class="accent">עלות נחיתה אמיתית</span> ב-4 דקות.</h1>
+    <p class="lede">Importly מחשב את העלות הכוללת של כל מוצר ביבוא לישראל — מע"מ, מכס, ביטוח, הובלה, אגרות נמל, מס קניה — אוטומטית מהחשבונית ומשטר המטען. בלי שגיאות. בלי שאלות מאוחרות לעמיל.</p>
+    <a href="#pricing" class="cta">ל-7 הראשונים — 3 חודשים חינם →</a>
+    <a href="#features" class="cta-secondary">מה זה עושה?</a>
+    <div class="trust">בנוי על-ידי יבואן ישראלי פעיל · עברית מלאה · נתוני מכס ישראלים מעודכנים</div>
+  </div>
+</section>
+
+<section class="pain">
+  <div class="container">
+    <h2>למה אתה כאן עכשיו</h2>
+    <div class="pain-grid">
+      <div class="pain-card">
+        <div class="num">4 שעות</div>
+        <h3>הזמן הממוצע למשלוח</h3>
+        <p>אקסל, שיחות, צ'אט עם עמיל מכס, בדיקת תעריפים, השוואת מחירונים. בזבוז זמן ענק על משהו שצריך להיות אוטומטי.</p>
+      </div>
+      <div class="pain-card">
+        <div class="num">₪2,500</div>
+        <h3>אתה משלם לרו״ח על זה</h3>
+        <p>מינימום בחודש — וההנהלת חשבונות בכל זאת חוזרת אליך עם שאלות. עדיף לעשות את זה לבד ב-5 דקות.</p>
+      </div>
+      <div class="pain-card">
+        <div class="num">18%</div>
+        <h3>מע"מ שמחלצים לא נכון</h3>
+        <p>בסיס המע"מ הוא CIF + מכס + מס קניה. רוב היבואנים מחשבים על FOB. ההפרש בין רווח להפסד.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="container">
+    <h2>איך זה עובד</h2>
+    <p class="sub">תגרור מסמך. תקבל מספרים.</p>
+
+    <div class="feature-row">
+      <div class="feature-text">
+        <span class="tag">חילוץ AI</span>
+        <h3>גרור חשבונית — הכל מתמלא לבד</h3>
+        <p>חשבונית מסין? PDF, תמונה, סרוק. ה-AI שלנו מזהה שורות מוצרים, מחיר FOB, CBM, יחידות אריזה. אין יותר הקלדה ידנית.</p>
+        <ul>
+          <li>תומך בעברית, אנגלית, וסינית מקורית</li>
+          <li>מחלץ גם רשימת אריזה, BL, שטר אווירי</li>
+          <li>זוהה ספק, ECOTERMS, נמל מוצא בלי לבקש</li>
+        </ul>
+      </div>
+      <div class="feature-img">📄 → ✨ → 📊<br/><small>(תמונת מסך כאן בגרסה הסופית)</small></div>
+    </div>
+
+    <div class="feature-row flip">
+      <div class="feature-text">
+        <span class="tag">חישוב מדויק</span>
+        <h3>שיטת CIF הרשמית של מכס ישראל</h3>
+        <p>לא הערכה. החישוב הוא בדיוק כפי שמכס ישראל דורש: מכס על CIF, מס קניה אם רלוונטי, מע"מ על הבסיס הנכון.</p>
+        <ul>
+          <li>11 תנאי Incoterms עם מטריצת "מי משלם מה"</li>
+          <li>פיצול הוצאות לפי CBM ו-FOB share</li>
+          <li>מס קניה ייחודי לכל פריט עם override ידני</li>
+        </ul>
+      </div>
+      <div class="feature-img">CIF × Rate × Customs% = ₪<br/><small>(תמונת מסך כאן)</small></div>
+    </div>
+
+    <div class="feature-row">
+      <div class="feature-text">
+        <span class="tag">מעקב חי</span>
+        <h3>המכולה שלך — בלי לפתוח 5 אתרים</h3>
+        <p>מספר מכולה אחד או שטר אווירי DHL — המערכת מושכת בעצמה את האונייה, ה-voyage, ה-ETA, וכל אירוע בדרך מ-ShipsGo.</p>
+        <ul>
+          <li>סי, אווירי, FCL, LCL — באותו מסך</li>
+          <li>התראה לקראת ETA לעמיל מכס</li>
+          <li>היסטוריית אירועים מלאה לכל מכולה</li>
+        </ul>
+      </div>
+      <div class="feature-img">🚢 NINGBO → ASHDOD · 12 ימים<br/><small>(תמונת מסך כאן)</small></div>
+    </div>
+  </div>
+</section>
+
+<section class="pricing" id="pricing">
+  <div class="container">
+    <h2>תמחור פשוט — שלם רק על מה שצריך</h2>
+    <p class="sub">ל-7 הראשונים שנרשמים השבוע — 3 חודשים חינם בכל תוכנית</p>
+
+    <div class="price-grid">
+      <div class="price-card">
+        <h3>Solo · יבואן יחיד</h3>
+        <div class="price">₪79<small style="font-size:14px;color:var(--text3);"> / חודש</small></div>
+        <div class="per">עד 5 פרויקטים פעילים, 20 חילוצי AI לחודש</div>
+        <ul>
+          <li>חישוב עלות נחיתה מלא</li>
+          <li>חילוץ חשבוניות (PDF, Excel, תמונה)</li>
+          <li>5 GB אחסון מסמכים</li>
+          <li>עברית RTL מלאה</li>
+        </ul>
+        <a href="#waitlist" class="cta">הצטרף לרשימת המתנה</a>
+      </div>
+
+      <div class="price-card featured">
+        <div class="badge">המומלץ ליבואן ישראלי</div>
+        <h3>Team · עד 5 משתמשים</h3>
+        <div class="price">₪199<small style="font-size:14px;color:var(--text3);"> / חודש</small></div>
+        <div class="per">פרויקטים ללא הגבלה, 100 חילוצי AI לחודש</div>
+        <ul>
+          <li>הכל מ-Solo</li>
+          <li>חילוץ Packing List, BL, DHL/FedEx</li>
+          <li>מעקב מכולות ShipsGo (סי + אוויר)</li>
+          <li>חילוץ קבלות תשלום + סנכרון פרויקט</li>
+          <li>50 GB אחסון</li>
+          <li>תמיכה בעברית</li>
+        </ul>
+        <a href="#waitlist" class="cta">קבל גישה מוקדמת</a>
+      </div>
+
+      <div class="price-card price-soon">
+        <h3>Pro · חיבור הנהלת חשבונות</h3>
+        <div class="price">₪399<small style="font-size:14px;color:var(--text3);"> / חודש</small></div>
+        <div class="per">הכל מ-Team + Rivhit/חשבשבת auto-sync</div>
+        <ul>
+          <li>שליחת עלות נחיתה אוטומטית לרואה חשבון</li>
+          <li>יבוא ויצוא מ-Rivhit ו-Hashavshevet</li>
+          <li>דוחות מס שנתיים</li>
+          <li>חילוצי AI ללא הגבלה</li>
+          <li>SLA תמיכה ב-4 שעות</li>
+        </ul>
+        <a href="#" class="cta">בקרוב Q4 2026</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="final-cta" id="waitlist">
+  <div class="container">
+    <h2>גרסה ראשונית פתוחה לבדיקה</h2>
+    <p>השאר אימייל וטלפון, ואני אחזור אליך תוך 48 שעות.</p>
+    <form class="lead-form" id="waitlist-form">
+      <input type="text" name="name" placeholder="השם המלא" required />
+      <input type="email" name="email" placeholder="אימייל" required />
+      <input type="tel" name="phone" placeholder="טלפון" required />
+      <button type="submit">קבל גישה</button>
+    </form>
+    <div id="waitlist-msg" style="margin-top:14px;font-size:13px;min-height:18px;"></div>
+
+    <script>
+      (function(){
+        var SUPABASE_URL = 'https://eginihtpqahpejnkqznn.supabase.co';
+        var SUPABASE_KEY = 'sb_publishable_dxvkjrqH1c0SULImna9L2A_qe9AkGTL';
+        var form = document.getElementById('waitlist-form');
+        var msg  = document.getElementById('waitlist-msg');
+        var btn  = form.querySelector('button');
+        form.addEventListener('submit', async function(e){
+          e.preventDefault();
+          btn.disabled = true; btn.textContent = 'שולח...';
+          var data = {
+            name:  form.name.value.trim(),
+            email: form.email.value.trim(),
+            phone: form.phone.value.trim(),
+            source: 'landing_page'
+          };
+          try {
+            var res = await fetch(SUPABASE_URL + '/rest/v1/waitlist', {
+              method: 'POST',
+              headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': 'Bearer ' + SUPABASE_KEY,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal'
+              },
+              body: JSON.stringify(data)
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            msg.textContent = '✓ נרשמת. אני חוזר אליך תוך 48 שעות.';
+            msg.style.color = '#10b981';
+            form.reset();
+            btn.textContent = '✓ נרשמת';
+          } catch (err) {
+            msg.textContent = 'שגיאה: ' + err.message + '. שלח לי באימייל ל-nir9750a@gmail.com';
+            msg.style.color = '#ef4444';
+            btn.disabled = false; btn.textContent = 'קבל גישה';
+          }
+        });
+      })();
+    </script>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    Importly · עלות נחיתה · בנוי על-ידי יבואני 4Elements · 2026
+  </div>
+</footer>
+
+</body>
+</html>
