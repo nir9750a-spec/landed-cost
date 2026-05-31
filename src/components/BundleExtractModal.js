@@ -1,7 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, Upload, Sparkles, Trash2, FileText, AlertCircle, Check, Loader, Package, Ship, Receipt } from 'lucide-react';
 import { extractBundle } from '../lib/bundleExtract';
-import { FILE_CATEGORIES, uploadProjectFile } from '../lib/files';
+import { FILE_CATEGORIES, uploadProjectFile, getPublicUrl } from '../lib/files';
+import { fileFromStorageUrl } from '../lib/aiExtract';
 import { createShipment } from '../lib/shipments';
 import { supabase } from '../lib/supabase';
 import { confirmAsync } from './ConfirmDialog';
@@ -18,6 +19,7 @@ import { confirmAsync } from './ConfirmDialog';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const STAGES = {
+  downloading: 'downloading', // (existing-project mode) pulling files from storage
   setup: 'setup',         // user adding files & picking categories
   extracting: 'extracting',
   preview: 'preview',     // showing consolidated extract
@@ -29,14 +31,62 @@ function n(v, d = 0) {
   return Number(v || 0).toLocaleString('he-IL', { minimumFractionDigits: d, maximumFractionDigits: d });
 }
 
-export default function BundleExtractModal({ onClose, onCreated, showToast }) {
-  const [stage, setStage]         = useState(STAGES.setup);
+// Props:
+//   mode: 'new_project' (default) — user creates a new project from a stack of files
+//         'existing_project' — files are already in Documents tab; extract them in place
+//   existingProjectId: required when mode='existing_project'
+//   existingProjectFiles: required when mode='existing_project' — array of project_files rows
+//   onCreated(projectId) — called after new project is saved
+//   onSaved() — called after existing-project save finishes
+export default function BundleExtractModal({
+  mode = 'new_project',
+  existingProjectId = null,
+  existingProjectFiles = null,
+  onClose, onCreated, onSaved, showToast,
+}) {
+  const isExisting = mode === 'existing_project';
+  const [stage, setStage]         = useState(isExisting ? STAGES.downloading : STAGES.setup);
   const [projectName, setProjectName] = useState('');
   const [supplier, setSupplier]   = useState('');
   const [files, setFiles]         = useState([]); // [{ file, category, status, error }]
   const [bundle, setBundle]       = useState(null);
   const [dragging, setDragging]   = useState(false);
   const fileRef = useRef();
+
+  // When in existing-project mode, download all files from storage on mount,
+  // then move straight to extracting stage.
+  useEffect(() => {
+    if (!isExisting) return;
+    if (!existingProjectFiles?.length) {
+      showToast?.('אין קבצים להריץ עליהם חילוץ', 'error');
+      onClose?.();
+      return;
+    }
+    (async () => {
+      try {
+        const downloaded = await Promise.all(existingProjectFiles.map(async (pf) => {
+          const url = getPublicUrl(pf.storage_path);
+          const file = await fileFromStorageUrl(url, pf.file_name);
+          // Preserve the real display name so the AI sees it
+          const namedFile = new File([file], pf.file_name, { type: file.type });
+          return { file: namedFile, category: pf.category, status: 'pending', error: null };
+        }));
+        setFiles(downloaded);
+        // Kick off extraction immediately
+        setStage(STAGES.extracting);
+        const onProgress = (idx, status, msg) => {
+          setFiles(prev => prev.map((f, i) => i === idx ? { ...f, status, error: msg || null } : f));
+        };
+        const result = await extractBundle(downloaded, onProgress);
+        setBundle(result);
+        setStage(STAGES.preview);
+      } catch (err) {
+        showToast?.('שגיאה בהורדת קבצים: ' + err.message, 'error');
+        onClose?.();
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function addFiles(fileList) {
     const arr = Array.from(fileList || []);
@@ -86,27 +136,38 @@ export default function BundleExtractModal({ onClose, onCreated, showToast }) {
     setStage(STAGES.saving);
 
     try {
-      // 1. Create project
-      const { data: project, error: projErr } = await supabase.from('projects').insert({
-        name:     projectName.trim(),
-        supplier: (supplier || bundle.shipment_settings.supplier || '').trim(),
-        status:   'active',
-        notes:    'נוצר אוטומטית מ-' + files.length + ' מסמכים',
-      }).select().single();
-      if (projErr) throw new Error('יצירת פרויקט: ' + projErr.message);
+      // 1. Resolve project — either create new or use existing
+      let projectId;
+      if (isExisting) {
+        projectId = existingProjectId;
+      } else {
+        const { data: project, error: projErr } = await supabase.from('projects').insert({
+          name:     projectName.trim(),
+          supplier: (supplier || bundle.shipment_settings.supplier || '').trim(),
+          status:   'active',
+          notes:    'נוצר אוטומטית מ-' + files.length + ' מסמכים',
+        }).select().single();
+        if (projErr) throw new Error('יצירת פרויקט: ' + projErr.message);
+        projectId = project.id;
+      }
 
       // 2. Project settings (Incoterms, origin port from extraction)
-      const settingsPatch = { project_id: project.id };
+      const settingsPatch = {};
       if (bundle.shipment_settings.incoterms)   settingsPatch.incoterms = bundle.shipment_settings.incoterms;
       if (bundle.shipment_settings.origin_port) settingsPatch.origin_port = bundle.shipment_settings.origin_port;
-      // From shipment doc: if it was air-courier (container_type=AIR) set shipping_method=air
       if (bundle.shipment?.container_type === 'AIR') settingsPatch.shipping_method = 'air';
-      // If receipt found a shipping fee in USD, apply to china_local_transport by default
       if (bundle.payment?.shipping_fee > 0 && (bundle.payment.currency || 'USD') === 'USD') {
         settingsPatch.china_local_transport = bundle.payment.shipping_fee;
       }
-      if (Object.keys(settingsPatch).length > 1) {
-        await supabase.from('settings').insert(settingsPatch);
+      if (Object.keys(settingsPatch).length > 0) {
+        // Use select-then-update-or-insert (no unique constraint on project_id)
+        const { data: existing } = await supabase.from('settings')
+          .select('id').eq('project_id', projectId).maybeSingle();
+        if (existing?.id) {
+          await supabase.from('settings').update(settingsPatch).eq('id', existing.id);
+        } else {
+          await supabase.from('settings').insert({ project_id: projectId, ...settingsPatch });
+        }
       }
 
       // 3. Products
@@ -123,7 +184,7 @@ export default function BundleExtractModal({ onClose, onCreated, showToast }) {
           box_h:           Number(p.box_h) || 0,
           supplier:        String(p.supplier || supplier || '').trim(),
           notes:           String(p.notes || '').trim(),
-          project_id:      project.id,
+          project_id:      projectId,
         }));
         const { error: prodErr } = await supabase.from('products').insert(productRows);
         if (prodErr) throw new Error('שמירת מוצרים: ' + prodErr.message);
@@ -134,32 +195,39 @@ export default function BundleExtractModal({ onClose, onCreated, showToast }) {
         try {
           await createShipment({
             ...bundle.shipment,
-            project_id: project.id,
+            project_id: projectId,
             status: 'planned',
           });
         } catch (err) {
-          // Don't block the whole save if shipment fails — tell the user
-          showToast?.('הפרויקט נשמר, אך שמירת המכולה נכשלה: ' + err.message, 'error');
+          showToast?.('נשמר, אך שמירת המכולה נכשלה: ' + err.message, 'error');
         }
       }
 
-      // 5. Archive all uploaded files
-      for (const fc of files) {
-        try {
-          await uploadProjectFile({
-            file: fc.file,
-            projectId: project.id,
-            category: fc.category,
-            notes: 'נטען כחלק מחילוץ בונדל',
-          });
-        } catch (err) {
-          // Best-effort — don't fail the whole save
+      // 5. Archive uploaded files (only for new-project mode — existing-project
+      // files were already in the Documents tab)
+      if (!isExisting) {
+        for (const fc of files) {
+          try {
+            await uploadProjectFile({
+              file: fc.file,
+              projectId: projectId,
+              category: fc.category,
+              notes: 'נטען כחלק מחילוץ בונדל',
+            });
+          } catch (err) {
+            // Best-effort
+          }
         }
       }
 
       setStage(STAGES.done);
-      showToast?.(`פרויקט "${project.name}" נוצר עם כל המידע`);
-      onCreated?.(project.id);
+      if (isExisting) {
+        showToast?.('כל המידע מהמסמכים הועבר לפרויקט');
+        onSaved?.();
+      } else {
+        showToast?.(`פרויקט "${projectName.trim()}" נוצר עם כל המידע`);
+        onCreated?.(projectId);
+      }
     } catch (err) {
       showToast?.('שגיאה בשמירה: ' + err.message, 'error');
       setStage(STAGES.preview);
@@ -185,13 +253,20 @@ export default function BundleExtractModal({ onClose, onCreated, showToast }) {
         <div className="modal-header">
           <span className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Sparkles size={16} style={{ color: 'var(--orange)' }} />
-            פרויקט חדש מקבצים — חילוץ אוטומטי
+            {isExisting ? 'חילוץ כל המסמכים בפרויקט' : 'פרויקט חדש מקבצים — חילוץ אוטומטי'}
           </span>
           <button className="btn btn-sm" onClick={handleClose}><X size={15} /></button>
         </div>
 
         <div className="modal-body" style={{ maxHeight: '70vh', overflow: 'auto' }}>
-          {/* Stage 1: setup */}
+          {stage === STAGES.downloading && (
+            <div style={{ padding: 60, textAlign: 'center' }}>
+              <Loader size={32} className="spin" style={{ color: 'var(--orange)', marginBottom: 12 }} />
+              <div style={{ fontSize: 14 }}>מוריד את הקבצים מהאחסון...</div>
+            </div>
+          )}
+
+          {/* Stage 1: setup (new-project mode only) */}
           {stage === STAGES.setup && (
             <SetupStage
               projectName={projectName}
@@ -242,9 +317,11 @@ export default function BundleExtractModal({ onClose, onCreated, showToast }) {
           )}
           {stage === STAGES.preview && (
             <>
-              <button className="btn" onClick={() => setStage(STAGES.setup)}>הוסף עוד קבצים</button>
+              {!isExisting && (
+                <button className="btn" onClick={() => setStage(STAGES.setup)}>הוסף עוד קבצים</button>
+              )}
               <button className="btn btn-primary" onClick={handleConfirmSave}>
-                <Check size={13} /> צור פרויקט עם הנתונים
+                <Check size={13} /> {isExisting ? 'החל על הפרויקט' : 'צור פרויקט עם הנתונים'}
               </button>
             </>
           )}

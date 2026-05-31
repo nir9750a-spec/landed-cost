@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FileText, Upload, Download, Trash2, ExternalLink, Filter, Image as ImageIcon, FolderOpen, Sparkles } from 'lucide-react';
+import { FileText, Upload, Download, Trash2, ExternalLink, Filter, Image as ImageIcon, FolderOpen, Sparkles, Wand2 } from 'lucide-react';
 import {
   listProjectFiles, uploadProjectFile, updateProjectFile, deleteProjectFile,
   FILE_CATEGORIES, CATEGORY_BY_VALUE, getPublicUrl, fmtSize,
@@ -11,7 +11,9 @@ import {
 import { createShipment } from '../lib/shipments';
 import { supabase } from '../lib/supabase';
 import ExtractPreviewModal from './ExtractPreviewModal';
+import BundleExtractModal from './BundleExtractModal';
 import { confirmAsync } from './ConfirmDialog';
+import { pickExtractor } from '../lib/bundleExtract';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Documents page — every file attached to the active project.
@@ -125,6 +127,7 @@ export default function DocumentsPage({ activeProject, activeProjectId, showToas
   const [dragging, setDragging]       = useState(false);
   const [extractingId, setExtractingId] = useState(null);
   const [preview, setPreview]         = useState(null);  // { kind, payload, file }
+  const [showBundleExtract, setShowBundleExtract] = useState(false);
   const fileRef = useRef();
 
   const refresh = useCallback(async () => {
@@ -183,14 +186,6 @@ export default function DocumentsPage({ activeProject, activeProjectId, showToas
     }
   }
 
-  function pickExtractor(category) {
-    if (category === 'invoice') return 'products';
-    if (category === 'packing_list') return 'packing';
-    if (category === 'receipt') return 'receipt';
-    const shipmentCats = ['bill_of_lading', 'air_waybill', 'logistics_agent', 'customs_agent', 'screenshot'];
-    if (shipmentCats.includes(category)) return 'shipment';
-    return null; // 'other' or unknown — no auto-route
-  }
 
   async function loadProductsForMatching() {
     const { data, error } = await supabase
@@ -384,10 +379,24 @@ export default function DocumentsPage({ activeProject, activeProjectId, showToas
 
   return (
     <div className="page">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
         <FileText size={20} style={{ color: 'var(--orange)' }} />
         <h1 className="page-title" style={{ fontSize: 18, margin: 0 }}>מסמכים — {activeProject?.name}</h1>
         <span style={{ color: 'var(--text3)', fontSize: 13 }}>({files.length})</span>
+        {(() => {
+          const extractable = files.filter(f => pickExtractor(f.category));
+          if (extractable.length < 2) return null;
+          return (
+            <button
+              className="btn btn-primary"
+              style={{ marginInlineStart: 'auto', fontSize: 13 }}
+              onClick={() => setShowBundleExtract(true)}
+              title="חלץ נתונים מכל הקבצים בו זמנית"
+            >
+              <Wand2 size={14} /> חלץ הכול ({extractable.length} קבצים)
+            </button>
+          );
+        })()}
       </div>
 
       {/* ── Upload zone ────────────────────────────────────────────────────── */}
@@ -503,6 +512,20 @@ export default function DocumentsPage({ activeProject, activeProjectId, showToas
           fileName={preview.file.file_name}
           onConfirm={handleConfirmExtract}
           onClose={() => setPreview(null)}
+        />
+      )}
+
+      {showBundleExtract && (
+        <BundleExtractModal
+          mode="existing_project"
+          existingProjectId={activeProjectId}
+          existingProjectFiles={files.filter(f => pickExtractor(f.category))}
+          showToast={showToast}
+          onClose={() => setShowBundleExtract(false)}
+          onSaved={() => {
+            setShowBundleExtract(false);
+            showToast?.('✓ הנתונים מכל הקבצים הוחלו על הפרויקט');
+          }}
         />
       )}
     </div>
