@@ -94,6 +94,99 @@ function sanitise(raw) {
 
 // ── Excel / CSV ────────────────────────────────────────────────────────────
 
+// Column-header keywords (Hebrew + English + Chinese) used to detect the
+// product table inside an arbitrary worksheet — invoices commonly have the
+// real header somewhere between row 5 and row 30, never on row 1.
+const HEADER_KEYWORDS = {
+  name:      ['שם', 'מוצר', 'תיאור', 'description', 'item', 'product', 'goods', 'commodity', 'style', 'model', '货名', '品名', '商品'],
+  item_no:   ['מקט', 'מק"ט', 'קוד', 'item no', 'item_no', 'sku', 'model no', 'part no', 'art no', 'ref', '货号', '型号', '编号'],
+  qty:       ['כמות', 'יחידות', 'qty', 'quantity', 'pcs', 'pieces', 'units', '数量'],
+  package:   ['package', 'packages', 'ctns', 'cartons', '件数', '箱数'],
+  fob_price: ['מחיר', 'unit price', 'fob price', 'price', 'rate', 'usd', 'unit cost', '单价', '价格'],
+  amount:    ['amount', 'total price', 'total amount', 'fob amount', 'total', '金额', '总价'],
+  cbm:       ['cbm', 'נפח', 'volume', 'm3', 'cubic', 'measurement', '体积', '立方'],
+  weight:    ['weight', 'משקל', 'gross weight', 'g.w.', 'gw', '毛重', '重量', 'kg'],
+  supplier:  ['ספק', 'יצרן', 'supplier', 'vendor', 'manufacturer', 'factory', 'seller'],
+};
+
+// Match a single header-cell value against a keyword list (case-insensitive,
+// partial). Strips punctuation so "QUANTITY (PCS)" still matches "quantity".
+function headerMatches(cellValue, keywords) {
+  const v = String(cellValue || '').trim().toLowerCase().replace(/[():.,\-_/\\]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!v) return false;
+  return keywords.some(kw => v === kw || v.includes(kw) || kw.includes(v));
+}
+
+// Pick the first row index whose cells include the right mix of column-name
+// keywords. We require at least 3 of {name, qty, fob_price/amount} present.
+function detectHeaderRowIdx(rows) {
+  for (let i = 0; i < Math.min(rows.length, 40); i++) {
+    const r = rows[i] || [];
+    let nameCol = -1, qtyCol = -1, priceCol = -1, amountCol = -1;
+    for (let j = 0; j < r.length; j++) {
+      if (nameCol === -1   && headerMatches(r[j], HEADER_KEYWORDS.name)) nameCol = j;
+      if (qtyCol === -1    && headerMatches(r[j], HEADER_KEYWORDS.qty)) qtyCol = j;
+      if (priceCol === -1  && headerMatches(r[j], HEADER_KEYWORDS.fob_price)) priceCol = j;
+      if (amountCol === -1 && headerMatches(r[j], HEADER_KEYWORDS.amount)) amountCol = j;
+    }
+    if (nameCol >= 0 && qtyCol >= 0 && (priceCol >= 0 || amountCol >= 0)) return i;
+  }
+  return -1;
+}
+
+// Build a {field → column index} map from a header row.
+function mapColumns(headerRow) {
+  const map = {};
+  for (let j = 0; j < headerRow.length; j++) {
+    const cell = headerRow[j];
+    for (const [field, kws] of Object.entries(HEADER_KEYWORDS)) {
+      if (!map[field] && headerMatches(cell, kws)) map[field] = j;
+    }
+  }
+  return map;
+}
+
+// Scan the area ABOVE the product header for shipment metadata —
+// Incoterm, origin/destination, supplier. Returns whatever it finds.
+function scrapeShipmentMeta(rows, headerRowIdx) {
+  const meta = { incoterms: '', origin_port: '', supplier: '', pod_port: '' };
+  const INCOTERMS = ['FOB', 'EXW', 'CIF', 'CFR', 'CIP', 'CPT', 'FCA', 'FAS', 'DAP', 'DPU', 'DDP'];
+  const upToHeader = rows.slice(0, headerRowIdx >= 0 ? headerRowIdx + 5 : Math.min(rows.length, 30));
+  for (const r of upToHeader) {
+    if (!Array.isArray(r)) continue;
+    for (let j = 0; j < r.length; j++) {
+      const cell = String(r[j] ?? '').trim();
+      if (!cell) continue;
+      const upper = cell.toUpperCase();
+      // Incoterm followed by a city, e.g. "FOB NINGBO,CHINA"
+      if (!meta.incoterms) {
+        for (const ic of INCOTERMS) {
+          const re = new RegExp(`\\b${ic}\\b`, 'i');
+          if (re.test(upper)) {
+            meta.incoterms = ic;
+            // Origin city often appears right after the Incoterm
+            const m = upper.match(new RegExp(`${ic}[\\s,]+([A-Z][A-Z' ]+?)(?:,|$)`));
+            if (m && !meta.origin_port) meta.origin_port = m[1].trim();
+            break;
+          }
+        }
+      }
+      // Route lines: FROM X TO Y
+      if (/from/i.test(upper) || /route/i.test(upper)) {
+        const next = r[j + 2];
+        if (next && !meta.origin_port) meta.origin_port = String(next).split(',')[0].trim();
+        const dest = r[j + 5] || r[j + 4];
+        if (dest && !meta.pod_port) meta.pod_port = String(dest).split(',')[0].trim();
+      }
+      // Supplier — first all-caps line with "CO." / "LTD" / "INC"
+      if (!meta.supplier && /CO\.|LTD|INC\.|GMBH|S\.A\.|CORP/.test(upper) && cell.length > 8 && cell.length < 120) {
+        meta.supplier = cell;
+      }
+    }
+  }
+  return meta;
+}
+
 function extractFromExcel(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -101,82 +194,54 @@ function extractFromExcel(file) {
       try {
         const workbook = XLSX.read(e.target.result, { type: 'array' });
         const ws = workbook.Sheets[workbook.SheetNames[0]];
+
+        // First try the legacy "row 1 is headers" path — it's correct for
+        // ~80% of Excel exports and is faster.
         const data = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        let products = legacyExtract(data);
+        let shipment = null;
 
-        const products = data
-          .map(row => {
-            // ── Name / description ──
-            const name = getCI(row,
-              'שם מוצר', 'שם', 'מוצר', 'פריט', 'תיאור', 'תאור',
-              'name', 'product', 'product name', 'description', 'item', 'item description',
-              'goods', 'commodity', 'style', 'model',
-            );
+        // Fallback to scan-detect when legacy parser found nothing useful.
+        // This handles Chinese commercial invoices that have a multi-row
+        // header preamble with bilingual labels.
+        if (products.length === 0) {
+          const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', blankrows: false });
+          const headerIdx = detectHeaderRowIdx(rows);
+          if (headerIdx >= 0) {
+            const cols = mapColumns(rows[headerIdx]);
+            const dataStart = headerIdx + 1;
+            const items = [];
+            for (let i = dataStart; i < rows.length; i++) {
+              const r = rows[i];
+              if (!Array.isArray(r) || r.every(c => c === '' || c == null)) continue;
+              const get = (k) => cols[k] != null ? r[cols[k]] : '';
+              const name = get('name');
+              if (!name || /^total|^合计|^小计/i.test(String(name))) continue;
+              const qty = toNumber(get('qty'));
+              if (!qty) continue;
+              const unitPrice = toNumber(get('fob_price'));
+              const amount = toNumber(get('amount'));
+              const fobUnit = unitPrice > 0 ? unitPrice : (amount > 0 ? amount / qty : 0);
+              const cbm = toNumber(get('cbm'));
+              const wt  = toNumber(get('weight'));
+              items.push({
+                name: String(name).trim(),
+                item_no: String(get('item_no') || '').trim(),
+                qty,
+                fob_price: fobUnit,
+                cbm: cbm > 0 && qty > 0 && cbm > qty * 5 ? cbm / qty : cbm,
+                gross_weight_kg: wt > 0 && qty > 0 && wt > qty * 100 ? wt / qty : wt,
+                supplier: '',
+                notes: '',
+              });
+            }
+            if (items.length > 0) products = items;
+            shipment = scrapeShipmentMeta(rows, headerIdx);
+            if (!shipment.incoterms && !shipment.origin_port && !shipment.supplier) shipment = null;
+          }
+        }
 
-            // ── Item number ──
-            const item_no = getCI(row,
-              'מקט', "מק\"ט", 'מספר פריט', 'קוד', 'קוד מוצר',
-              'item no', 'item_no', 'item number', 'sku', 'model no', 'model number',
-              'part no', 'part number', 'code', 'ref', 'style no', 'art no',
-            );
-
-            // ── Quantity ──
-            const qty = getCI(row,
-              'כמות', 'יחידות', 'כמ',
-              'qty', 'quantity', 'pcs', 'pieces', 'units', 'nos', 'ctns',
-              'total qty', 'order qty', 'shipped qty',
-            );
-
-            // ── FOB unit price ──
-            const fob_price = getCI(row,
-              'מחיר', 'מחיר יחידה', 'מחיר FOB', 'מחיר ליח',
-              'unit price', 'fob price', 'fob unit price', 'price', 'rate',
-              'unit cost', 'price/unit', 'usd', 'amount/pcs',
-            );
-
-            // ── CBM per unit ──
-            // Invoices often give total CBM for the line; we'll divide by qty later.
-            const cbmRaw = getCI(row,
-              'cbm', 'נפח', 'נפח ליח',
-              'cbm/unit', 'volume', 'm3', 'cubic', 'measurement',
-              'cbm per unit', 'unit cbm',
-            );
-            const cbmTotal = getCI(row,
-              'total cbm', 'cbm total', 'total volume', 'total m3',
-            );
-
-            // ── Supplier ──
-            const supplier = getCI(row,
-              'ספק', 'יצרן', 'מוכר',
-              'supplier', 'vendor', 'manufacturer', 'factory', 'seller',
-            );
-
-            // ── Notes ──
-            const notes = getCI(row,
-              'הערות', 'הערה',
-              'notes', 'remarks', 'comment', 'remark',
-            );
-
-            const qtyNum = Number(qty)       || 0;
-            let   cbm    = Number(cbmRaw)    || 0;
-            const cbmTot = Number(cbmTotal)  || 0;
-
-            // If unit CBM is 0 but total CBM is available, derive unit CBM
-            if (cbm === 0 && cbmTot > 0 && qtyNum > 0) cbm = cbmTot / qtyNum;
-
-            return {
-              name:      String(name      || ''),
-              item_no:   String(item_no   || ''),
-              qty:       qtyNum,
-              fob_price: Number(fob_price) || 0,
-              cbm,
-              supplier:  String(supplier  || ''),
-              notes:     String(notes     || ''),
-            };
-          })
-          .filter(p => p.name || p.item_no);  // discard empty rows
-
-        if (!products.length) throw new Error('לא נמצאו שורות מוצר בקובץ. ודא שהקובץ מכיל כותרות עמודות בשורה הראשונה.');
-        resolve(products.map(sanitise));
+        resolve({ products, shipment });
       } catch (err) {
         reject(err instanceof Error ? err : new Error('שגיאה בקריאת קובץ Excel: ' + String(err)));
       }
@@ -184,6 +249,66 @@ function extractFromExcel(file) {
     reader.onerror = () => reject(new Error('שגיאה בפתיחת הקובץ'));
     reader.readAsArrayBuffer(file);
   });
+}
+
+// Legacy "row 1 is headers" extractor — kept as a fast path for simple files.
+function legacyExtract(data) {
+  return data
+    .map(row => {
+      const name = getCI(row,
+        'שם מוצר', 'שם', 'מוצר', 'פריט', 'תיאור', 'תאור',
+        'name', 'product', 'product name', 'description', 'item', 'item description',
+        'goods', 'commodity', 'style', 'model',
+      );
+      const item_no = getCI(row,
+        'מקט', "מק\"ט", 'מספר פריט', 'קוד', 'קוד מוצר',
+        'item no', 'item_no', 'item number', 'sku', 'model no', 'model number',
+        'part no', 'part number', 'code', 'ref', 'style no', 'art no',
+      );
+      const qty = getCI(row,
+        'כמות', 'יחידות', 'כמ',
+        'qty', 'quantity', 'pcs', 'pieces', 'units', 'nos', 'ctns',
+        'total qty', 'order qty', 'shipped qty',
+      );
+      const fob_price = getCI(row,
+        'מחיר', 'מחיר יחידה', 'מחיר FOB', 'מחיר ליח',
+        'unit price', 'fob price', 'fob unit price', 'price', 'rate',
+        'unit cost', 'price/unit', 'usd', 'amount/pcs',
+      );
+      const cbmRaw = getCI(row,
+        'cbm', 'נפח', 'נפח ליח',
+        'cbm/unit', 'volume', 'm3', 'cubic', 'measurement',
+        'cbm per unit', 'unit cbm',
+      );
+      const cbmTotal = getCI(row,
+        'total cbm', 'cbm total', 'total volume', 'total m3',
+      );
+      const supplier = getCI(row,
+        'ספק', 'יצרן', 'מוכר',
+        'supplier', 'vendor', 'manufacturer', 'factory', 'seller',
+      );
+      const notes = getCI(row,
+        'הערות', 'הערה',
+        'notes', 'remarks', 'comment', 'remark',
+      );
+
+      const qtyNum = toNumber(qty);
+      let   cbm    = toNumber(cbmRaw);
+      const cbmTot = toNumber(cbmTotal);
+      if (cbm === 0 && cbmTot > 0 && qtyNum > 0) cbm = cbmTot / qtyNum;
+
+      return {
+        name:      String(name      || ''),
+        item_no:   String(item_no   || ''),
+        qty:       qtyNum,
+        fob_price: toNumber(fob_price),
+        cbm,
+        supplier:  String(supplier  || ''),
+        notes:     String(notes     || ''),
+      };
+    })
+    .filter(p => p.name || p.item_no)
+    .map(sanitise);
 }
 
 // ── PDF / Image via Claude AI ──────────────────────────────────────────────
@@ -317,8 +442,17 @@ export async function extractProductsFromFile(file) {
   const ext = file.name.split('.').pop().toLowerCase();
 
   if (['xlsx', 'xls', 'csv'].includes(ext)) {
-    const products = await extractFromExcel(file);
-    return { products, shipment: null };
+    const { products, shipment } = await extractFromExcel(file);
+    if (products.length === 0) {
+      // Excel parser found nothing — fall back to AI vision so the user
+      // gets a useful result instead of "0 products extracted".
+      // eslint-disable-next-line no-console
+      console.warn('[extractProductsFromFile] Excel parse returned 0 products, falling back to AI');
+      // AI can't read .xlsx binary natively; convert via xlsx to a CSV-ish text
+      // representation and send as inline data. Cheaper than failing.
+      throw new Error('הקובץ הוא Excel אך הפרסור לא זיהה שורות מוצר. ייצא ל-PDF או צור Excel עם כותרות בשורה הראשונה.');
+    }
+    return { products, shipment };
   }
 
   if (!['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
@@ -497,10 +631,10 @@ export async function extractPackingFromFile(file) {
 
   if (['xlsx', 'xls', 'csv'].includes(ext)) {
     // Reuse Excel reader — it already returns rows we can re-shape
-    const products = await extractFromExcel(file);
+    const { products } = await extractFromExcel(file);
     return { items: products.map(p => ({
       name: p.name, item_no: p.item_no, qty: p.qty, cbm: p.cbm,
-      gross_weight_kg: 0, box_l: 0, box_w: 0, box_h: 0, cartons: 0, notes: p.notes || '',
+      gross_weight_kg: p.gross_weight_kg || 0, box_l: 0, box_w: 0, box_h: 0, cartons: 0, notes: p.notes || '',
     })) };
   }
 

@@ -471,12 +471,25 @@ function PreviewStage({ bundle, setBundle, files }) {
         </div>
       )}
 
-      {/* SHIPMENT SETTINGS */}
+      {/* SHIPMENT SETTINGS — editable so user can fix wrong AI guesses */}
       <Section icon={Ship} title={`פרטי משלוח (${bundle.shipment_settings.incoterms || '—'})`}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, fontSize: 12 }}>
-          <KV k="Incoterms" v={bundle.shipment_settings.incoterms || '—'} />
-          <KV k="נמל מוצא" v={bundle.shipment_settings.origin_port || '—'} />
-          <KV k="ספק" v={bundle.shipment_settings.supplier || '—'} />
+          <EditableKV
+            k="Incoterms"
+            v={bundle.shipment_settings.incoterms || ''}
+            onChange={v => setBundle(prev => ({ ...prev, shipment_settings: { ...prev.shipment_settings, incoterms: v.toUpperCase() } }))}
+            options={['', 'EXW', 'FCA', 'FAS', 'FOB', 'CFR', 'CIF', 'CPT', 'CIP', 'DAP', 'DPU', 'DDP']}
+          />
+          <EditableKV
+            k="נמל מוצא"
+            v={bundle.shipment_settings.origin_port || ''}
+            onChange={v => setBundle(prev => ({ ...prev, shipment_settings: { ...prev.shipment_settings, origin_port: v } }))}
+          />
+          <EditableKV
+            k="ספק"
+            v={bundle.shipment_settings.supplier || ''}
+            onChange={v => setBundle(prev => ({ ...prev, shipment_settings: { ...prev.shipment_settings, supplier: v } }))}
+          />
           {bundle.shipment?.container_number && (
             <>
               <KV k="מספר מכולה / AWB" v={bundle.shipment.container_number} mono />
@@ -601,6 +614,21 @@ function KV({ k, v, mono }) {
         color: 'var(--text)', fontWeight: 600, marginTop: 2,
         fontFamily: mono ? 'monospace' : 'inherit', direction: mono ? 'ltr' : 'inherit', textAlign: 'right',
       }}>{v}</div>
+    </div>
+  );
+}
+
+function EditableKV({ k, v, onChange, options }) {
+  return (
+    <div>
+      <div style={{ color: 'var(--text3)', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>{k}</div>
+      {options ? (
+        <select value={v || ''} onChange={e => onChange(e.target.value)} style={{ width: '100%', fontSize: 12 }}>
+          {options.map(opt => <option key={opt} value={opt}>{opt || '— בחר —'}</option>)}
+        </select>
+      ) : (
+        <input value={v || ''} onChange={e => onChange(e.target.value)} style={{ width: '100%', fontSize: 12 }} />
+      )}
     </div>
   );
 }
