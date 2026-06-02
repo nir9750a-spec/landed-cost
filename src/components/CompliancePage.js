@@ -44,9 +44,40 @@ export default function CompliancePage({ products, activeProject, settings, show
   const [bulkRunning, setBulkRunning]   = useState(false);
   const [autoProgress, setAutoProgress] = useState({ done: 0, total: 0 });
   const [manualEdit, setManualEdit]     = useState({}); // { productId: { group, sii_required } }
+  const [sortBy, setSortBy]             = useState('hs_code'); // 'hs_code' | 'name' | 'original'
   const autoRunRef = useRef({}); // per-project flag so we only auto-run once per visit
   const mountedRef = useRef(true);
   useEffect(() => () => { mountedRef.current = false; }, []);
+
+  // Sort + group products by HS code. Same HS lands together so the user
+  // can spot duplicates / re-orders at a glance.
+  const sortedProducts = useMemo(() => {
+    const arr = [...products];
+    if (sortBy === 'hs_code') {
+      arr.sort((a, b) => {
+        const ah = (a.hs_code || '').trim();
+        const bh = (b.hs_code || '').trim();
+        if (!ah && !bh) return (a.name || '').localeCompare(b.name || '', 'he');
+        if (!ah) return 1;  // unclassified at the bottom
+        if (!bh) return -1;
+        if (ah !== bh) return ah.localeCompare(bh);
+        return (a.name || '').localeCompare(b.name || '', 'he');
+      });
+    } else if (sortBy === 'name') {
+      arr.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'he'));
+    }
+    return arr;
+  }, [products, sortBy]);
+
+  // Group lookup so we can show "X products share this HS" + duplicate flag
+  const hsGroupSize = useMemo(() => {
+    const counts = {};
+    for (const p of products) {
+      const h = (p.hs_code || '').trim();
+      if (h) counts[h] = (counts[h] || 0) + 1;
+    }
+    return counts;
+  }, [products]);
 
   // Summary stats — fully classified means BOTH hs_code and import_group are set
   const summary = useMemo(() => {
@@ -212,6 +243,29 @@ export default function CompliancePage({ products, activeProject, settings, show
           תקינה ומכס — {activeProject.name}
         </h1>
         <div className="flex gap-2">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+            <span style={{ color: 'var(--text3)' }}>מיון:</span>
+            <button
+              className={`btn btn-sm${sortBy === 'hs_code' ? ' btn-primary' : ''}`}
+              onClick={() => setSortBy('hs_code')}
+              title="קבץ מוצרים עם אותו קוד HS"
+            >
+              לפי HS
+            </button>
+            <button
+              className={`btn btn-sm${sortBy === 'name' ? ' btn-primary' : ''}`}
+              onClick={() => setSortBy('name')}
+            >
+              לפי שם
+            </button>
+            <button
+              className={`btn btn-sm${sortBy === 'original' ? ' btn-primary' : ''}`}
+              onClick={() => setSortBy('original')}
+              title="סדר הזנה מקורי"
+            >
+              סדר חשבונית
+            </button>
+          </div>
           <button
             className="btn"
             onClick={() => runBulkClassify()}
@@ -294,17 +348,39 @@ export default function CompliancePage({ products, activeProject, settings, show
               </tr>
             </thead>
             <tbody>
-              {products.map((p, idx) => {
+              {sortedProducts.map((p, idx) => {
                 const customsRate = p.customs_rate_override ?? p.customs_rate ?? settings?.customs ?? 0;
                 const edit = manualEdit[p.id];
+                // When sorted by HS code, draw a thick top-border at the start
+                // of each HS group so the user can scan groupings visually.
+                const prev = idx > 0 ? sortedProducts[idx - 1] : null;
+                const isGroupStart = sortBy === 'hs_code' && (!prev || (prev.hs_code || '') !== (p.hs_code || ''));
+                const groupCount = p.hs_code ? hsGroupSize[p.hs_code.trim()] || 0 : 0;
                 return (
-                  <tr key={p.id}>
+                  <tr
+                    key={p.id}
+                    style={isGroupStart ? { borderTop: '2px solid var(--violet)' } : undefined}
+                  >
                     <td className="td-muted" style={{ textAlign: 'center', fontSize: 11 }}>{idx + 1}</td>
                     <td style={{ fontWeight: 600 }}>{p.name}</td>
                     <td className="td-muted font-mono">{p.item_no || '—'}</td>
                     <td className="td-num">{n(p.qty)}</td>
                     <td className="font-mono">
-                      {p.hs_code || <span className="td-muted">— לא סווג</span>}
+                      {p.hs_code
+                        ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            {p.hs_code}
+                            {groupCount > 1 && (
+                              <span style={{
+                                background: 'rgba(139,92,246,0.2)', color: 'var(--violet)',
+                                padding: '1px 6px', borderRadius: 8, fontSize: 10, fontWeight: 700,
+                              }} title={`${groupCount} מוצרים חולקים את אותו קוד HS`}>
+                                ×{groupCount}
+                              </span>
+                            )}
+                          </span>
+                        )
+                        : <span className="td-muted">— לא סווג</span>}
                     </td>
                     <td className="td-num">{customsRate}%</td>
                     <td>
