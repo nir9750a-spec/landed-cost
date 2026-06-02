@@ -496,6 +496,14 @@ For courier documents, REUSE the same fields:
 - eta_date: expected delivery / arrival in YYYY-MM-DD. For courier, if not printed, leave "".
 - actual_arrival_date: actual delivery date if shown.
 
+## DECLARED TOTALS (from BLs and AWBs — leave 0 if not stated)
+Bills of Lading and Air Waybills typically print totals near the description-of-goods box. Extract them so the importer can cross-check against the invoice and packing list:
+- declared_pieces: total number of individual units shipped (PCS, units, sets). Look for "Total quantity", "Total PCS".
+- declared_packages: total number of outer packages / cartons / pallets. Look for "Total packages", "No. of packages", "CTNS", "PKGS".
+- declared_cbm: total volume in cubic meters. Look for "Measurement", "CBM", "Volume", "m³".
+- declared_weight_kg: total gross weight in kilograms. Look for "Gross weight", "G.W.", "kg". If shown in pounds, convert.
+- declared_value_usd: declared customs value in USD if shown.
+
 ## EVENT TIMELINE
 Array of events newest first. For courier docs there may be no timeline on the waybill itself — return an empty array in that case.
 Each event:
@@ -513,7 +521,7 @@ Each event:
 5. Strip spaces/dashes from tracking numbers (DHL often prints "57 2680 3283" — return "5726803283").
 
 Return ONLY this JSON object, no markdown:
-{"container_number":"","container_type":"","carrier":"","vessel_name":"","voyage":"","origin_port":"","pod_port":"","terminal":"","departure_date":"","eta_date":"","actual_arrival_date":"","events":[{"date":"","location":"","description":"","vessel_voyage":"","terminal":""}]}`;
+{"container_number":"","container_type":"","carrier":"","vessel_name":"","voyage":"","origin_port":"","pod_port":"","terminal":"","departure_date":"","eta_date":"","actual_arrival_date":"","declared_pieces":0,"declared_packages":0,"declared_cbm":0,"declared_weight_kg":0,"declared_value_usd":0,"events":[{"date":"","location":"","description":"","vessel_voyage":"","terminal":""}]}`;
 
 export async function extractShipmentFromFile(file) {
   const ext = file.name.split('.').pop().toLowerCase();
@@ -563,6 +571,11 @@ export async function extractShipmentFromFile(file) {
     departure_date:      normalizeDate(parsed.departure_date),
     eta_date:            normalizeDate(parsed.eta_date),
     actual_arrival_date: normalizeDate(parsed.actual_arrival_date),
+    declared_pieces:     Number(parsed.declared_pieces)    || null,
+    declared_packages:   Number(parsed.declared_packages)  || null,
+    declared_cbm:        Number(parsed.declared_cbm)       || null,
+    declared_weight_kg:  Number(parsed.declared_weight_kg) || null,
+    declared_value_usd:  Number(parsed.declared_value_usd) || null,
     events:              Array.isArray(parsed.events) ? parsed.events.map(normalizeEvent).filter(Boolean) : [],
   };
 

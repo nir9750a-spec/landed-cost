@@ -11,6 +11,7 @@ import ShipmentsPanel from './ShipmentsPanel';
 import { seedDemoProject } from '../lib/demoSeed';
 import { confirmAsync } from './ConfirmDialog';
 import AccountantExport from './AccountantExport';
+import DocVerificationPanel from './DocVerificationPanel';
 
 const CHART_COLORS = {
   cost:     '#00d4aa',
@@ -462,6 +463,13 @@ export default function Dashboard({
                 </div>
               )}
             </div>
+
+            {/* ── Document verification (invoice vs packing vs BL) ── */}
+            <DocVerificationPanel
+              activeProjectId={activeProjectId}
+              products={products}
+              settings={settings}
+            />
 
             {/* ── Container tracking ── */}
             <ShipmentsPanel activeProjectId={activeProjectId} showToast={showToast} />

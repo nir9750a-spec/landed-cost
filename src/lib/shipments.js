@@ -185,6 +185,11 @@ function normalize(input, { partial = false } = {}) {
   set('terminal',             (input.terminal || '').trim() || null);
   set('status',               input.status || (partial ? undefined : 'planned'));
   set('notes',                (input.notes || '').trim() || null);
+  set('declared_pieces',      input.declared_pieces    ?? null);
+  set('declared_packages',    input.declared_packages  ?? null);
+  set('declared_cbm',         input.declared_cbm       ?? null);
+  set('declared_weight_kg',   input.declared_weight_kg ?? null);
+  set('declared_value_usd',   input.declared_value_usd ?? null);
   if (Array.isArray(input.events)) out.events = input.events;
 
   // Drop undefined keys for partial update.

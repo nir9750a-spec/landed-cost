@@ -113,6 +113,8 @@ function mergeResults(results) {
         'container_number', 'container_type', 'carrier', 'vessel_name', 'voyage',
         'origin_port', 'pod_port', 'terminal',
         'departure_date', 'eta_date', 'actual_arrival_date',
+        'declared_pieces', 'declared_packages', 'declared_cbm',
+        'declared_weight_kg', 'declared_value_usd',
       ];
       for (const k of fields) {
         if (!s[k]) continue;
