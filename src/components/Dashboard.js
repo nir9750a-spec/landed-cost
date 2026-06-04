@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { FolderOpen, Plus, TrendingUp, TrendingDown, DollarSign, Package,
-         RefreshCw, Trash2, Share2, FileDown, Receipt, X as XIcon, Check } from 'lucide-react';
+         RefreshCw, Trash2, FileDown, Receipt, X as XIcon, Check, Share2 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -12,6 +12,7 @@ import { seedDemoProject } from '../lib/demoSeed';
 import { confirmAsync } from './ConfirmDialog';
 import AccountantExport from './AccountantExport';
 import DocVerificationPanel from './DocVerificationPanel';
+import ShareManagerModal from './ShareManagerModal';
 
 const CHART_COLORS = {
   cost:     '#00d4aa',
@@ -131,6 +132,7 @@ export default function Dashboard({
   saveActualFreightQuote,
 }) {
   const [showAccountantExport, setShowAccountantExport] = useState(false);
+  const [showShareManager, setShowShareManager]         = useState(false);
   const calced = useMemo(() => calcProducts(products, settings, calcCtx), [products, settings, calcCtx]);
   const totals = useMemo(() => calcTotals(calced), [calced]);
 
@@ -260,6 +262,16 @@ export default function Dashboard({
               style={{ background: 'var(--bg3)', borderColor: 'var(--green)' }}
             >
               <FileDown size={13} /> לרו״ח / עמיל
+            </button>
+          )}
+          {activeProject && (
+            <button
+              className="btn btn-sm"
+              onClick={() => setShowShareManager(true)}
+              title="צור גישת אורח לפורווארדר / עמיל מכס"
+              style={{ background: 'var(--bg3)', borderColor: 'var(--violet)' }}
+            >
+              <Share2 size={13} /> שתף
             </button>
           )}
           <button className="btn btn-sm" onClick={() => window.location.reload()} title="רענן נתונים">
@@ -484,6 +496,15 @@ export default function Dashboard({
           settings={settings}
           calcCtx={calcCtx}
           onClose={() => setShowAccountantExport(false)}
+        />
+      )}
+
+      {showShareManager && activeProject && (
+        <ShareManagerModal
+          projectId={activeProject.id}
+          projectName={activeProject.name}
+          showToast={showToast}
+          onClose={() => setShowShareManager(false)}
         />
       )}
     </div>
