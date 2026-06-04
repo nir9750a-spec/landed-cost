@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { FolderOpen, Plus, TrendingUp, TrendingDown, DollarSign, Package,
-         RefreshCw, Trash2, FileDown, Receipt, X as XIcon, Check, Share2 } from 'lucide-react';
+         RefreshCw, Trash2, FileDown, Receipt, Ship, X as XIcon, Check, Share2 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -13,6 +13,7 @@ import { confirmAsync } from './ConfirmDialog';
 import AccountantExport from './AccountantExport';
 import DocVerificationPanel from './DocVerificationPanel';
 import ShareManagerModal from './ShareManagerModal';
+import BrokerExport from './BrokerExport';
 
 const CHART_COLORS = {
   cost:     '#00d4aa',
@@ -133,6 +134,7 @@ export default function Dashboard({
 }) {
   const [showAccountantExport, setShowAccountantExport] = useState(false);
   const [showShareManager, setShowShareManager]         = useState(false);
+  const [showBrokerExport, setShowBrokerExport]         = useState(false);
   const calced = useMemo(() => calcProducts(products, settings, calcCtx), [products, settings, calcCtx]);
   const totals = useMemo(() => calcTotals(calced), [calced]);
 
@@ -272,6 +274,16 @@ export default function Dashboard({
               style={{ background: 'var(--bg3)', borderColor: 'var(--violet)' }}
             >
               <Share2 size={13} /> שתף
+            </button>
+          )}
+          {products.length > 0 && (
+            <button
+              className="btn btn-sm"
+              onClick={() => setShowBrokerExport(true)}
+              title="דף ריכוז משלוח למוביל / משלח בינלאומי"
+              style={{ background: 'var(--bg3)', borderColor: 'var(--blue)' }}
+            >
+              <Ship size={13} /> למוביל / משלח
             </button>
           )}
           <button className="btn btn-sm" onClick={() => window.location.reload()} title="רענן נתונים">
@@ -505,6 +517,16 @@ export default function Dashboard({
           projectName={activeProject.name}
           showToast={showToast}
           onClose={() => setShowShareManager(false)}
+        />
+      )}
+
+      {showBrokerExport && (
+        <BrokerExport
+          project={activeProject}
+          products={products}
+          settings={settings}
+          calcCtx={calcCtx}
+          onClose={() => setShowBrokerExport(false)}
         />
       )}
     </div>

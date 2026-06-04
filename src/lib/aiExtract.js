@@ -334,9 +334,10 @@ async function extractFromAI(file, ext) {
 Extract two things:
 
 ## 1. Shipment details (document-wide)
-- incoterms: delivery terms — FOB, CIF, EXW, FCA, CFR, CIP, DAP, DDP, etc. Return only the uppercase code.
+- incoterms: the EXACT delivery term printed on the document — read it literally, do NOT guess. Valid codes: EXW, FCA, FAS, FOB, CFR, CIF, CPT, CIP, DAP, DPU, DDP. It usually appears next to a place/port, e.g. "FCA SHANGHAI", "FOB NINGBO", "CIF ASHDOD", or under a label like "Terms of Delivery", "Price Term", "Trade Term", or Chinese "价格条款" / "贸易术语". Distinguish FCA from FOB carefully — they are different. Return ONLY the uppercase 3-letter code. If no delivery term is printed anywhere, return "" — never default to FOB.
 - origin_port: port of loading. Look for: Port of Loading, Shipment Port, POL, 装运港, 港口, נמל טעינה. Return in English (e.g. "NINGBO").
 - supplier: seller / vendor / manufacturer name from the document header.
+- supplier_address: the seller's full address from the document header — street, city, country (one line). Leave "" if not printed.
 - invoice_date: in YYYY-MM-DD format.
 - payment_terms: T/T, L/C, D/P, etc.
 
@@ -360,7 +361,7 @@ Important rules:
 7. If the document doesn't look like a goods invoice at all (e.g. it's a bank statement or a contract), return empty products array
 
 Return ONLY a JSON object, no markdown fences, no prose:
-{"products":[{"name":"","item_no":"","qty":0,"fob_price":0,"cbm":0,"supplier":"","notes":""}],"shipment":{"incoterms":"FOB","origin_port":"","supplier":"","invoice_date":"","payment_terms":""}}`;
+{"products":[{"name":"","item_no":"","qty":0,"fob_price":0,"cbm":0,"supplier":"","notes":""}],"shipment":{"incoterms":"","origin_port":"","supplier":"","supplier_address":"","invoice_date":"","payment_terms":""}}`;
 
   const result = await invokeAnthropic({
     model: 'claude-opus-4-7',
@@ -425,10 +426,11 @@ Return ONLY a JSON object, no markdown fences, no prose:
     shipment.incoterms   = INCOTERMS.includes(raw) ? raw : '';
     shipment.origin_port = String(shipment.origin_port || '').trim();
     shipment.supplier    = String(shipment.supplier    || '').trim();
+    shipment.supplier_address = String(shipment.supplier_address || '').trim();
     shipment.invoice_date= String(shipment.invoice_date|| '').trim();
     shipment.payment_terms = String(shipment.payment_terms || '').trim();
     // Only keep shipment if it has at least one useful field
-    const hasData = shipment.incoterms || shipment.origin_port || shipment.supplier;
+    const hasData = shipment.incoterms || shipment.origin_port || shipment.supplier || shipment.supplier_address;
     if (!hasData) shipment = null;
   }
 

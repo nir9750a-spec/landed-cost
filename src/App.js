@@ -419,7 +419,19 @@ export default function App() {
     const merged = { ...projectOverrides, ...updates };
     const ok = await saveProjectSettings(merged);
     if (ok) {
-      if (shipment.supplier) await updateProject(activeProjectId, { supplier: shipment.supplier });
+      const projUpdate = {};
+      if (shipment.supplier)         projUpdate.supplier         = shipment.supplier;
+      if (shipment.supplier_address) projUpdate.supplier_address = shipment.supplier_address;
+      if (Object.keys(projUpdate).length) {
+        const { error } = await supabase.from('projects').update(projUpdate).eq('id', activeProjectId);
+        if (error && projUpdate.supplier_address) {
+          // supplier_address column may not exist yet (migration 20260604 not run).
+          // Fall back to persisting the supplier name alone so it isn't lost.
+          delete projUpdate.supplier_address;
+          if (projUpdate.supplier) await supabase.from('projects').update(projUpdate).eq('id', activeProjectId);
+        }
+        setProjects(prev => prev.map(p => p.id === activeProjectId ? { ...p, ...projUpdate } : p));
+      }
       showToast('פרטי המשלוח הוחלו על הפרויקט');
     }
   }
