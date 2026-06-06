@@ -379,7 +379,7 @@ export default function App() {
     if (error) { showToast('שגיאה ביצירת פרויקט: ' + error.message, 'error'); return false; }
     setProjects(prev => [data, ...prev]);
     showToast('פרויקט נוצר בהצלחה');
-    return true;
+    return data; // return the created project so callers can open it
   }
 
   async function updateProject(id, data) {

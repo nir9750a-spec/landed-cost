@@ -53,8 +53,19 @@ export default function ProjectsPage({
   function closeForm()        { setShowForm(false); setEditProj(null); }
 
   async function handleSave(data) {
-    const ok = editProj ? await updateProject(editProj.id, data) : await addProject(data);
-    if (ok) closeForm();
+    if (editProj) {
+      const ok = await updateProject(editProj.id, data);
+      if (ok) closeForm();
+      return;
+    }
+    // New project: open it straight on the Documents screen so the user can
+    // immediately upload invoices / packing lists and AI-extract everything.
+    const created = await addProject(data);
+    if (created) {
+      closeForm();
+      setActiveProjectId(created.id);
+      setPage('documents');
+    }
   }
 
   async function toggleArchive(proj) {
