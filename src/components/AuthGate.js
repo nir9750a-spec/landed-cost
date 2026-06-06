@@ -17,7 +17,11 @@ import LoginPage from './LoginPage';
 export default function AuthGate({ children }) {
   const [session, setSession]   = useState(null);
   const [loading, setLoading]   = useState(true);
-  const [recovery, setRecovery] = useState(false);
+  // Initialise from the URL so a "reset password" link shows the set-password
+  // form immediately, with no flash of the login screen or the app.
+  const [recovery, setRecovery] = useState(
+    () => typeof window !== 'undefined' && window.location.hash.includes('type=recovery')
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -47,7 +51,10 @@ export default function AuthGate({ children }) {
     );
   }
 
-  if (recovery) return <><GlobalSpinStyle /><SetNewPassword onDone={() => setRecovery(false)} /></>;
+  if (recovery) return <><GlobalSpinStyle /><SetNewPassword onDone={() => {
+    try { window.history.replaceState(null, '', window.location.pathname); } catch { /* ignore */ }
+    setRecovery(false);
+  }} /></>;
 
   if (!session) return <><GlobalSpinStyle /><LoginPage /></>;
 
@@ -129,7 +136,9 @@ function SignOutButton({ email }) {
     <button
       onClick={signOut} disabled={busy} title={email ? `מחובר: ${email}` : 'התנתק'}
       style={{
-        position: 'fixed', insetInlineEnd: 12, bottom: 12, zIndex: 9999,
+        // Physical bottom-right so it never overlaps the toast stack, which
+        // sits at the physical bottom-left.
+        position: 'fixed', right: 12, bottom: 12, zIndex: 9999,
         display: 'flex', alignItems: 'center', gap: 6,
         background: 'var(--bg3)', color: 'var(--text2)',
         border: '1px solid var(--border2)', borderRadius: 999,
