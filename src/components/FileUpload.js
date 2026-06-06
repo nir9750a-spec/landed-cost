@@ -70,6 +70,13 @@ export default function FileUpload({ onSave, onClose, showToast, onApplyShipment
     }));
     const ok = await onSave(rows);
 
+    // Auto-apply the extracted shipment info (Incoterm / supplier / address /
+    // origin port) to the project. Previously this required a separate button
+    // click, so an FCA invoice often stayed at the FOB default. Best-effort.
+    if (ok && shipment && (shipment.incoterms || shipment.supplier || shipment.supplier_address || shipment.origin_port) && onApplyShipment) {
+      try { await onApplyShipment(shipment); } catch { /* non-fatal */ }
+    }
+
     // Best-effort: archive the original file under the project as an invoice
     // attachment. Failure here doesn't roll back the product save.
     if (ok && originalFile && activeProjectId) {

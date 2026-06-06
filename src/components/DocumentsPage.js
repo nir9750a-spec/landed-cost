@@ -116,7 +116,7 @@ function FileCard({ file, onDelete, onCategoryChange, onExtract, extracting }) {
   );
 }
 
-export default function DocumentsPage({ activeProject, activeProjectId, showToast }) {
+export default function DocumentsPage({ activeProject, activeProjectId, showToast, applyShipmentInfo }) {
   const [files, setFiles]             = useState([]);
   const [loading, setLoading]         = useState(false);
   const [errorMsg, setErrorMsg]       = useState('');
@@ -271,6 +271,15 @@ export default function DocumentsPage({ activeProject, activeProjectId, showToas
         const { error } = await supabase.from('products').insert(rows);
         if (error) throw new Error(error.message);
         showToast?.(`נוספו ${rows.length} מוצרים`);
+
+        // Apply the document-wide shipment info (Incoterm / supplier / address /
+        // origin port) that was extracted alongside the products. This was
+        // previously dropped here — so an FCA proforma silently stayed at the
+        // FOB default. applyShipmentInfo persists it to the active project.
+        const ship = edited.shipment;
+        if (ship && (ship.incoterms || ship.supplier || ship.supplier_address || ship.origin_port) && applyShipmentInfo) {
+          await applyShipmentInfo(ship);
+        }
       } else if (kind === 'packing') {
         const { items, matches } = edited;
         let updated = 0;

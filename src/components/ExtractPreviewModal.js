@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Check, AlertCircle, Ship, Package, FileText, Receipt } from 'lucide-react';
+import { INCOTERMS_LIST } from '../lib/calculations';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  ExtractPreviewModal — common shell for "AI extracted X from your file,
@@ -130,6 +131,7 @@ function ShipmentPreview({ value, onChange }) {
 
 function ProductsPreview({ value, onChange }) {
   const products = value.products || [];
+  const ship = value.shipment || {};
   function update(i, k, v) {
     const next = [...products];
     next[i] = { ...next[i], [k]: v };
@@ -138,7 +140,52 @@ function ProductsPreview({ value, onChange }) {
   function remove(i) {
     onChange({ ...value, products: products.filter((_, idx) => idx !== i) });
   }
+  function setShip(k, v) {
+    onChange({ ...value, shipment: { ...ship, [k]: v } });
+  }
+  const sLabel = { fontSize: 11, color: 'var(--text3)', marginBottom: 3, display: 'block' };
+  const sCtl   = { width: '100%', fontSize: 12, padding: '6px 8px', background: 'var(--bg3)',
+                   border: '1px solid var(--border2)', borderRadius: 6, color: 'var(--text)', boxSizing: 'border-box' };
   return (
+    <>
+      {/* Shipment / delivery-terms identified document-wide. Editable so the
+          user can confirm or correct the Incoterm (e.g. FCA vs FOB) before it's
+          applied to the project. */}
+      <div style={{
+        marginBottom: 14, padding: 12, borderRadius: 8,
+        background: 'var(--violet-soft)', border: '1px solid var(--border2)',
+      }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Ship size={13} style={{ color: 'var(--violet)' }} /> פרטי משלוח שזוהו מהמסמך
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+          <div>
+            <label style={sLabel}>תנאי מסירה (Incoterm)</label>
+            <select value={ship.incoterms || ''} onChange={e => setShip('incoterms', e.target.value)} style={sCtl}>
+              <option value="">— לא זוהה —</option>
+              {INCOTERMS_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={sLabel}>נמל מוצא</label>
+            <input value={ship.origin_port || ''} onChange={e => setShip('origin_port', e.target.value)} style={sCtl} />
+          </div>
+          <div>
+            <label style={sLabel}>ספק</label>
+            <input value={ship.supplier || ''} onChange={e => setShip('supplier', e.target.value)} style={sCtl} />
+          </div>
+          <div>
+            <label style={sLabel}>כתובת ספק</label>
+            <input value={ship.supplier_address || ''} onChange={e => setShip('supplier_address', e.target.value)} style={sCtl} />
+          </div>
+        </div>
+        {ship.incoterms === 'FCA' && (
+          <div style={{ fontSize: 10, color: 'var(--gold)', marginTop: 8 }}>
+            ⓘ FCA כולל הובלה מקומית בסין בעלות הנחיתה (בניגוד ל-FOB).
+          </div>
+        )}
+      </div>
+
     <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
       <thead>
         <tr style={{ color: 'var(--text3)' }}>
@@ -163,6 +210,7 @@ function ProductsPreview({ value, onChange }) {
         ))}
       </tbody>
     </table>
+    </>
   );
 }
 

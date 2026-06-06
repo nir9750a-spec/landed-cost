@@ -475,7 +475,7 @@ export default function App() {
       {page === 'products'   && <ProductsPage {...shared} activeProject={activeProject} setPage={setPage} />}
       {page === 'compliance' && <CompliancePage {...shared} activeProject={activeProject} setPage={setPage} />}
       {page === 'breakdown'  && <BreakdownPage {...shared} activeProject={activeProject} />}
-      {page === 'documents'  && <DocumentsPage activeProject={activeProject} activeProjectId={activeProjectId} showToast={showToast} />}
+      {page === 'documents'  && <DocumentsPage activeProject={activeProject} activeProjectId={activeProjectId} showToast={showToast} applyShipmentInfo={applyShipmentInfo} />}
       {page === 'projects'   && <ProjectsPage projects={projects} products={products} settings={settings}
                                   addProject={addProject} updateProject={updateProject} duplicateProject={duplicateProject}
                                   deleteProject={deleteProject} calcCtx={calcCtx}
