@@ -15,6 +15,11 @@ import { supabase } from '../lib/supabase';
 const SUPPORT_EMAIL    = 'nir9750a@gmail.com';
 const SUPPORT_WHATSAPP = '972524422320'; // digits only, international format
 
+// ⚙️  Flip a provider to `true` ONLY after you've enabled it in
+// Supabase → Auth → Providers. Until then, clicking the button shows a clean
+// "coming soon" message instead of redirecting to a raw Supabase error page.
+const OAUTH_ENABLED = { google: false, apple: false };
+
 export default function LoginPage() {
   const [mode, setMode]         = useState('signin'); // signin | signup | reset
   const [email, setEmail]       = useState('');
@@ -69,7 +74,14 @@ export default function LoginPage() {
   }
 
   async function oauth(provider) {
-    setError(''); setNotice(''); setOauthBusy(provider);
+    setError(''); setNotice('');
+    // Guard: until the provider is enabled in Supabase, signInWithOAuth would
+    // do a full-page redirect to a raw JSON error. Show a clean message instead.
+    if (!OAUTH_ENABLED[provider]) {
+      setError(`התחברות עם ${provider === 'google' ? 'Google' : 'Apple'} תופעל בקרוב — בינתיים השתמש באימייל`);
+      return;
+    }
+    setOauthBusy(provider);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
@@ -133,11 +145,11 @@ export default function LoginPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 16 }}>
               <button type="button" onClick={() => oauth('google')} disabled={!!oauthBusy} style={oauthBtnStyle}>
                 {oauthBusy === 'google' ? <Loader2 size={16} className="spin" /> : <GoogleIcon />}
-                המשך עם Google
+                המשך עם Google {!OAUTH_ENABLED.google && <span style={soonStyle}>בקרוב</span>}
               </button>
               <button type="button" onClick={() => oauth('apple')} disabled={!!oauthBusy} style={oauthBtnStyle}>
                 {oauthBusy === 'apple' ? <Loader2 size={16} className="spin" /> : <AppleIcon />}
-                המשך עם Apple
+                המשך עם Apple {!OAUTH_ENABLED.apple && <span style={soonStyle}>בקרוב</span>}
               </button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 0 16px', color: 'var(--text3)', fontSize: 12 }}>
@@ -223,6 +235,7 @@ const inputStyle = { width: '100%', padding: '10px 12px', fontSize: 14, backgrou
 const linkBtnStyle = { background: 'none', border: 'none', color: 'var(--violet)', cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: 0 };
 const oauthBtnStyle = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, width: '100%', padding: '10px', fontSize: 14, fontWeight: 600, background: 'var(--bg3)', color: 'var(--text)', border: '1px solid var(--border2)', borderRadius: 8, cursor: 'pointer' };
 const footerLink = { display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--text2)', textDecoration: 'none' };
+const soonStyle = { fontSize: 10, fontWeight: 600, color: 'var(--text3)', background: 'var(--bg4)', padding: '1px 6px', borderRadius: 8, marginInlineStart: 4 };
 function alertStyle(kind) {
   const ok = kind === 'ok';
   return {
