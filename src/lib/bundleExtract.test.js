@@ -56,6 +56,21 @@ test('no duplicate products across two invoices; packing fills weights/sizes', (
   expect(merged.shipment_settings.supplier).toBe('Dezhou Chuangtao');
 });
 
+test('merges Excel row (name+weight, no code) with PDF invoice row (code+price, no weight)', () => {
+  // Real case: the customs Excel packing tab has the weight but no item_no;
+  // the PDF invoice has the item_no + price but no weight. One product, unified.
+  const excel = { file: { name: 'x.xlsx' }, category: 'invoice', kind: 'products',
+    products: [{ name: 'Folding oven', item_no: '', qty: 50, fob_price: 7.1, cbm: 1.17, gross_weight_kg: 149.5 }] };
+  const pdf = { file: { name: 'inv.pdf' }, category: 'invoice', kind: 'products',
+    products: [{ name: 'Folding oven', item_no: 'YF-CHL-14', qty: 50, fob_price: 7.1, cbm: 0, gross_weight_kg: 0 }] };
+  const merged = mergeResults([excel, pdf]);
+  expect(merged.products).toHaveLength(1);
+  const o = merged.products[0];
+  expect(o.item_no).toBe('YF-CHL-14');
+  expect(o.gross_weight_kg).toBe(149.5);
+  expect(o.cbm).toBeCloseTo(1.17);
+});
+
 test('products without item_no dedupe by exact name only', () => {
   const a = { file: { name: 'a.pdf' }, category: 'invoice', kind: 'products',
     products: [{ name: 'Camping lamp', item_no: '', qty: 5, fob_price: 4 }] };

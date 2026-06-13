@@ -176,15 +176,18 @@ function addOrMergeProduct(list, p) {
   const item = (p.item_no || '').trim().toLowerCase();
   const name = (p.name || '').trim().toLowerCase();
 
+  const nameKey = name.replace(/\s+/g, ' ');
   let existing = null;
   if (item) {
     // Prefer matching on item_no — the reliable unique key.
     existing = list.find(x => (x.item_no || '').trim().toLowerCase() === item);
-  } else if (name) {
-    // No item_no on this row — match by exact name, but only against other
-    // rows that also lack an item_no (so we don't merge two distinct SKUs that
-    // happen to share a generic description).
-    existing = list.find(x => !(x.item_no || '').trim() && (x.name || '').trim().toLowerCase() === name);
+  }
+  if (!existing && nameKey) {
+    // Fall back to a NAME match regardless of item_no. The same goods commonly
+    // arrive with an item_no from the PDF invoice but only a name from the
+    // Excel packing tab (which carries the gross weights) — matching by name
+    // unifies the two into one row instead of duplicating it.
+    existing = list.find(x => (x.name || '').trim().toLowerCase().replace(/\s+/g, ' ') === nameKey);
   }
 
   if (!existing) { list.push({ ...p }); return; }
