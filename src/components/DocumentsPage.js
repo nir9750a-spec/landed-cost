@@ -264,6 +264,7 @@ export default function DocumentsPage({ activeProject, activeProjectId, showToas
           qty:       Number(p.qty)       || 0,
           fob_price: Number(p.fob_price) || 0,
           cbm:       Number(p.cbm)       || 0,
+          gross_weight_kg: Number(p.gross_weight_kg) || 0,
           supplier:  String(p.supplier  || '').trim(),
           notes:     String(p.notes     || '').trim(),
           project_id: activeProjectId,

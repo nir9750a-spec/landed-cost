@@ -87,6 +87,7 @@ function sanitise(raw) {
     qty:       Math.max(0, toNumber(raw.qty)),
     fob_price: Math.max(0, toNumber(raw.fob_price)),
     cbm:       Math.max(0, toNumber(raw.cbm)),
+    gross_weight_kg: Math.max(0, toNumber(raw.gross_weight_kg)),
     supplier:  String(raw.supplier  || '').trim(),
     notes:     String(raw.notes     || '').trim(),
   };
@@ -122,14 +123,18 @@ function headerMatches(cellValue, keywords) {
 function detectHeaderRowIdx(rows) {
   for (let i = 0; i < Math.min(rows.length, 40); i++) {
     const r = rows[i] || [];
-    let nameCol = -1, qtyCol = -1, priceCol = -1, amountCol = -1;
+    let nameCol = -1, qtyCol = -1, priceCol = -1, amountCol = -1, weightCol = -1, cbmCol = -1;
     for (let j = 0; j < r.length; j++) {
       if (nameCol === -1   && headerMatches(r[j], HEADER_KEYWORDS.name)) nameCol = j;
       if (qtyCol === -1    && headerMatches(r[j], HEADER_KEYWORDS.qty)) qtyCol = j;
       if (priceCol === -1  && headerMatches(r[j], HEADER_KEYWORDS.fob_price)) priceCol = j;
       if (amountCol === -1 && headerMatches(r[j], HEADER_KEYWORDS.amount)) amountCol = j;
+      if (weightCol === -1 && headerMatches(r[j], HEADER_KEYWORDS.weight)) weightCol = j;
+      if (cbmCol === -1    && headerMatches(r[j], HEADER_KEYWORDS.cbm)) cbmCol = j;
     }
-    if (nameCol >= 0 && qtyCol >= 0 && (priceCol >= 0 || amountCol >= 0)) return i;
+    // Accept a header row that has name + qty + at least one quantitative
+    // column. weight/cbm let us recognise a PACKING-LIST sheet (no price).
+    if (nameCol >= 0 && qtyCol >= 0 && (priceCol >= 0 || amountCol >= 0 || weightCol >= 0 || cbmCol >= 0)) return i;
   }
   return -1;
 }
@@ -193,55 +198,29 @@ function extractFromExcel(file) {
     reader.onload = e => {
       try {
         const workbook = XLSX.read(e.target.result, { type: 'array' });
-        const ws = workbook.Sheets[workbook.SheetNames[0]];
-
-        // First try the legacy "row 1 is headers" path — it's correct for
-        // ~80% of Excel exports and is faster.
-        const data = XLSX.utils.sheet_to_json(ws, { defval: '' });
-        let products = legacyExtract(data);
+        // Read EVERY sheet. Chinese customs workbooks (报关资料) split the data
+        // across tabs: invoice (报发 — price), packing list (报装 — gross weight
+        // + CBM), contract (合同), and the customs form. We extract from each
+        // and merge by product name, so price AND weight land on ONE row
+        // instead of the weights being lost on a sheet we never read.
+        const merged = [];
         let shipment = null;
-
-        // Fallback to scan-detect when legacy parser found nothing useful.
-        // This handles Chinese commercial invoices that have a multi-row
-        // header preamble with bilingual labels.
-        if (products.length === 0) {
-          const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', blankrows: false });
-          const headerIdx = detectHeaderRowIdx(rows);
-          if (headerIdx >= 0) {
-            const cols = mapColumns(rows[headerIdx]);
-            const dataStart = headerIdx + 1;
-            const items = [];
-            for (let i = dataStart; i < rows.length; i++) {
-              const r = rows[i];
-              if (!Array.isArray(r) || r.every(c => c === '' || c == null)) continue;
-              const get = (k) => cols[k] != null ? r[cols[k]] : '';
-              const name = get('name');
-              if (!name || /^total|^合计|^小计/i.test(String(name))) continue;
-              const qty = toNumber(get('qty'));
-              if (!qty) continue;
-              const unitPrice = toNumber(get('fob_price'));
-              const amount = toNumber(get('amount'));
-              const fobUnit = unitPrice > 0 ? unitPrice : (amount > 0 ? amount / qty : 0);
-              const cbm = toNumber(get('cbm'));
-              const wt  = toNumber(get('weight'));
-              items.push({
-                name: String(name).trim(),
-                item_no: String(get('item_no') || '').trim(),
-                qty,
-                fob_price: fobUnit,
-                cbm: cbm > 0 && qty > 0 && cbm > qty * 5 ? cbm / qty : cbm,
-                gross_weight_kg: wt > 0 && qty > 0 && wt > qty * 100 ? wt / qty : wt,
-                supplier: '',
-                notes: '',
-              });
+        for (const sheetName of workbook.SheetNames) {
+          const ws = workbook.Sheets[sheetName];
+          if (isCustomsDeclarationSheet(ws)) continue;  // dense vertical layout — skip
+          const { products: sheetProducts, shipment: sheetShipment } = extractSheetProducts(ws);
+          for (const p of sheetProducts) mergeExcelProduct(merged, p);
+          if (sheetShipment) {
+            if (!shipment) shipment = sheetShipment;
+            else for (const k of ['incoterms', 'origin_port', 'supplier', 'pod_port']) {
+              if (!shipment[k] && sheetShipment[k]) shipment[k] = sheetShipment[k];
             }
-            if (items.length > 0) products = items;
-            shipment = scrapeShipmentMeta(rows, headerIdx);
-            if (!shipment.incoterms && !shipment.origin_port && !shipment.supplier) shipment = null;
           }
         }
-
-        resolve({ products, shipment });
+        if (!merged.length) {
+          throw new Error('לא נמצאו שורות מוצר בקובץ. ודא שהקובץ מכיל כותרות עמודות (שם, כמות, מחיר/משקל).');
+        }
+        resolve({ products: merged.map(sanitise), shipment });
       } catch (err) {
         reject(err instanceof Error ? err : new Error('שגיאה בקריאת קובץ Excel: ' + String(err)));
       }
@@ -249,6 +228,79 @@ function extractFromExcel(file) {
     reader.onerror = () => reject(new Error('שגיאה בפתיחת הקובץ'));
     reader.readAsArrayBuffer(file);
   });
+}
+
+// Skip the dense China-customs export declaration sheet (报关单) — its vertical
+// layout yields noise, and its goods already appear on the invoice/packing tabs.
+function isCustomsDeclarationSheet(ws) {
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  const top = rows.slice(0, 5).flat().map(String).join(' ');
+  return /报关单|海关|customs declaration/i.test(top);
+}
+
+// Extract product rows from ONE worksheet — legacy "row-1 headers" path first,
+// then scan-detect for invoices/packing lists with a bilingual preamble.
+function extractSheetProducts(ws) {
+  const data = XLSX.utils.sheet_to_json(ws, { defval: '' });
+  let products = legacyExtract(data);
+  let shipment = null;
+  if (products.length === 0) {
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', blankrows: false });
+    const headerIdx = detectHeaderRowIdx(rows);
+    if (headerIdx >= 0) {
+      const cols = mapColumns(rows[headerIdx]);
+      const items = [];
+      for (let i = headerIdx + 1; i < rows.length; i++) {
+        const r = rows[i];
+        if (!Array.isArray(r) || r.every(c => c === '' || c == null)) continue;
+        const get = (k) => cols[k] != null ? r[cols[k]] : '';
+        const nm = String(get('name') || '').trim();
+        // Skip totals, numbered terms ("7. TIME OF SHIPMENT…"), pure-symbol
+        // shipping marks ("****"), and full sentences.
+        if (!nm || /^[\W_]+$/.test(nm) || /^\d+\s*[.、]/.test(nm) || nm.length > 60
+            || /total|合计|小计|共计|总计/i.test(nm)) continue;
+        const qty = toNumber(get('qty'));
+        if (!qty || qty > 100000) continue;
+        const unitPrice = toNumber(get('fob_price'));
+        const amount = toNumber(get('amount'));
+        const fobUnit = unitPrice > 0 ? unitPrice : (amount > 0 ? amount / qty : 0);
+        const cbm = toNumber(get('cbm'));
+        const wt  = toNumber(get('weight'));
+        items.push({
+          name: nm,
+          item_no: String(get('item_no') || '').trim(),
+          qty,
+          fob_price: fobUnit,
+          // Convert a line-total figure to per-unit when it's clearly a total.
+          cbm: cbm > 0 && qty > 0 && cbm > qty * 5 ? cbm / qty : cbm,
+          gross_weight_kg: wt > 0 && qty > 0 && wt > qty * 100 ? wt / qty : wt,
+          supplier: '',
+          notes: '',
+        });
+      }
+      if (items.length > 0) products = items;
+      shipment = scrapeShipmentMeta(rows, headerIdx);
+      if (!shipment.incoterms && !shipment.origin_port && !shipment.supplier) shipment = null;
+    }
+  }
+  return { products, shipment };
+}
+
+// Merge a product into the list, keyed by normalised name (these supplier
+// sheets rarely carry an item_no, and the same goods repeat across tabs). Fill
+// blanks only; never sum qty — it's one physical shipment described many ways.
+function normProductName(s) { return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+function mergeExcelProduct(list, p) {
+  const name = normProductName(p.name);
+  const item = String(p.item_no || '').trim().toLowerCase();
+  let existing = null;
+  if (name) existing = list.find(x => normProductName(x.name) === name);
+  if (!existing && item) existing = list.find(x => String(x.item_no || '').trim().toLowerCase() === item);
+  if (!existing) { list.push({ ...p }); return; }
+  for (const f of ['item_no', 'supplier', 'notes']) if (!existing[f] && p[f]) existing[f] = p[f];
+  for (const f of ['qty', 'fob_price', 'cbm', 'gross_weight_kg']) {
+    if ((existing[f] == null || existing[f] === 0) && p[f]) existing[f] = p[f];
+  }
 }
 
 // Legacy "row 1 is headers" extractor — kept as a fast path for simple files.
