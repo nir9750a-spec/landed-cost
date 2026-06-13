@@ -396,13 +396,13 @@ function SetupStage({ projectName, setProjectName, supplier, setSupplier, files,
               border: '1px solid var(--border)', borderRadius: 6, marginBottom: 6,
             }}>
               <FileText size={14} style={{ color: 'var(--text2)', flexShrink: 0 }} />
-              <div style={{ flex: 1, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div title={f.file.name} style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {f.file.name}
               </div>
               <select
                 value={f.category}
                 onChange={e => setFileCategory(idx, e.target.value)}
-                style={{ fontSize: 11, padding: '4px 6px', minWidth: 140 }}
+                style={{ fontSize: 11, padding: '4px 6px', width: 180, flexShrink: 0 }}
               >
                 {FILE_CATEGORIES.map(c => (
                   <option key={c.value} value={c.value}>{c.label}</option>
