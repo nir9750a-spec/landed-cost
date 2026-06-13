@@ -644,8 +644,8 @@ function guessCategory(name) {
   const lc = name.toLowerCase();
   if (/invoice|חשבונית|inv|pi-|pim/.test(lc)) return 'invoice';
   if (/pack|packing|אריזה|装箱/.test(lc)) return 'packing_list';
-  if (/bill|lading|b\/l|bol|שטר/.test(lc)) return 'bill_of_lading';
-  if (/awb|dhl|fedex|ups|air/.test(lc)) return 'air_waybill';
+  if (/bill|lading|b\/l|\bbol\b|hbl|mbl|seaway|שטר/.test(lc)) return 'bill_of_lading';
+  if (/awb|waybill|dhl|fedex|ups|aramex| air/.test(lc)) return 'air_waybill';
   if (/receipt|paypal|wise|swift|תשלום|קבלה/.test(lc)) return 'receipt';
   if (/track|tracking|מעקב|ngbo|whatsapp/.test(lc)) return 'logistics_agent';
   return 'invoice';  // safest default
