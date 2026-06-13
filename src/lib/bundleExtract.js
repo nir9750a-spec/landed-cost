@@ -65,7 +65,7 @@ export async function extractBundle(filesWithCategories, onProgress = () => {}) 
 //   - Incoterm: prefer commercial invoice over tracking screenshot
 //   - origin_port: prefer BL > tracking > invoice
 //   - container_number: BL > tracking > AWB
-function mergeResults(results) {
+export function mergeResults(results) {
   const merged = {
     products: [],
     packing_items: [],
@@ -84,7 +84,12 @@ function mergeResults(results) {
 
   // Pass 1 — collect everything
   for (const r of results) {
-    if (r.products?.length) merged.products.push(...r.products);
+    // Dedup products across documents: the same shipment described by a
+    // proforma AND a commercial invoice (or a multi-page invoice split into
+    // files) must not produce the product twice. Match by item_no, or by name
+    // when neither side has an item_no, and merge missing fields instead of
+    // appending. qty is NOT summed — it's the same physical shipment.
+    if (r.products?.length) for (const p of r.products) addOrMergeProduct(merged.products, p);
     if (r.packing_items?.length) merged.packing_items.push(...r.packing_items);
     if (r.receipt) merged.payment = r.receipt;
 
@@ -163,6 +168,34 @@ function mergeResults(results) {
   }
 
   return merged;
+}
+
+// Add a product to the list, or merge it into an existing one to avoid
+// duplicates when several documents describe the same shipment.
+function addOrMergeProduct(list, p) {
+  const item = (p.item_no || '').trim().toLowerCase();
+  const name = (p.name || '').trim().toLowerCase();
+
+  let existing = null;
+  if (item) {
+    // Prefer matching on item_no — the reliable unique key.
+    existing = list.find(x => (x.item_no || '').trim().toLowerCase() === item);
+  } else if (name) {
+    // No item_no on this row — match by exact name, but only against other
+    // rows that also lack an item_no (so we don't merge two distinct SKUs that
+    // happen to share a generic description).
+    existing = list.find(x => !(x.item_no || '').trim() && (x.name || '').trim().toLowerCase() === name);
+  }
+
+  if (!existing) { list.push({ ...p }); return; }
+
+  // Fill blanks only — never overwrite a value we already captured.
+  for (const f of ['name', 'item_no', 'supplier', 'notes', 'hs_code']) {
+    if (!existing[f] && p[f]) existing[f] = p[f];
+  }
+  for (const f of ['qty', 'fob_price', 'cbm', 'gross_weight_kg', 'box_l', 'box_w', 'box_h']) {
+    if ((existing[f] == null || existing[f] === 0) && p[f]) existing[f] = p[f];
+  }
 }
 
 function findPackingMatch(product, packingItems) {
