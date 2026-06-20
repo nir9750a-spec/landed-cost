@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>סוכן מוצרים עונתיים · גילוי מוצרים חמים ליבוא</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg1:#0a0e1a; --bg2:#111827; --bg3:#1f2937; --bg4:#273349;
+    --text:#f3f4f6; --text2:#9ca3af; --text3:#6b7280;
+    --orange:#f59e0b; --green:#10b981; --blue:#3b82f6; --red:#ef4444;
+    --purple:#8b5cf6; --gold:#fbbf24; --border:#374151;
+    --grad: linear-gradient(135deg,#f59e0b 0%,#ef4444 100%);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Heebo',sans-serif;background:radial-gradient(1200px 600px at 100% -10%,rgba(245,158,11,.10),transparent),var(--bg1);color:var(--text);line-height:1.6;min-height:100vh;}
+  .container{max-width:1080px;margin:0 auto;padding:0 24px;}
+  a{color:inherit;}
+
+  /* HEADER */
+  header{padding:22px 0;border-bottom:1px solid var(--border);}
+  header .container{display:flex;align-items:center;gap:14px;}
+  .logo{font-weight:800;font-size:22px;display:flex;align-items:center;gap:10px;}
+  .logo .badge{background:var(--grad);color:#0a0e1a;padding:3px 11px;border-radius:9px;font-size:15px;}
+  .logo small{font-weight:500;color:var(--text2);font-size:13px;}
+
+  /* HERO */
+  .hero{padding:48px 0 26px;}
+  .hero h1{font-size:38px;line-height:1.15;font-weight:800;margin-bottom:12px;}
+  .hero h1 .accent{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+  .hero p{font-size:17px;color:var(--text2);max-width:660px;}
+
+  /* FORM */
+  .panel{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:28px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;}
+  label{display:block;font-size:13px;font-weight:600;color:var(--text2);margin-bottom:6px;}
+  input,select{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);
+    border-radius:10px;padding:11px 13px;font-family:inherit;font-size:15px;outline:none;}
+  input:focus,select:focus{border-color:var(--orange);}
+  input::placeholder{color:var(--text3);}
+  .row-actions{display:flex;align-items:center;gap:14px;margin-top:18px;flex-wrap:wrap;}
+  .btn{background:var(--grad);color:#0a0e1a;font-weight:700;border:none;border-radius:11px;
+    padding:14px 30px;font-size:16px;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:9px;}
+  .btn:disabled{opacity:.55;cursor:not-allowed;}
+  .hint{color:var(--text3);font-size:13px;}
+
+  /* SPINNER */
+  .spinner{width:18px;height:18px;border:2.5px solid rgba(10,14,26,.35);border-top-color:#0a0e1a;border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .loading-card{display:flex;align-items:center;gap:14px;color:var(--text2);padding:26px;justify-content:center;font-size:15px;}
+  .loading-card .spinner{border-color:rgba(255,255,255,.15);border-top-color:var(--orange);}
+
+  /* SEASON HEADER */
+  .season-head{display:flex;flex-wrap:wrap;align-items:center;gap:14px;background:linear-gradient(135deg,rgba(245,158,11,.12),rgba(239,68,68,.08));
+    border:1px solid var(--border);border-radius:16px;padding:20px 24px;margin-bottom:22px;}
+  .season-head .emoji{font-size:34px;}
+  .season-head .s-title{font-size:13px;color:var(--text2);font-weight:600;}
+  .season-head .s-value{font-size:21px;font-weight:800;}
+  .season-head .order-window{margin-right:auto;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:8px 14px;font-size:13px;color:var(--text2);}
+  .season-head .order-window b{color:var(--gold);}
+
+  /* IDEA CARDS */
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px;}
+  .card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px;transition:border-color .15s,transform .15s;}
+  .card:hover{border-color:var(--orange);transform:translateY(-2px);}
+  .card .top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+  .card h3{font-size:18px;font-weight:800;line-height:1.25;}
+  .card .cat{font-size:12px;color:var(--text3);font-weight:600;margin-top:2px;}
+  .badges{display:flex;flex-wrap:wrap;gap:6px;}
+  .chip{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;}
+  .chip.demand-high{background:rgba(16,185,129,.18);color:#34d399;}
+  .chip.demand-rising{background:rgba(245,158,11,.18);color:var(--gold);}
+  .chip.demand-medium{background:rgba(59,130,246,.16);color:#60a5fa;}
+  .chip.comp-low{background:rgba(16,185,129,.14);color:#34d399;}
+  .chip.comp-medium{background:rgba(245,158,11,.14);color:var(--gold);}
+  .chip.comp-high{background:rgba(239,68,68,.16);color:#f87171;}
+  .card .why{font-size:14px;color:var(--text);}
+  .meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;font-size:13px;border-top:1px solid var(--border);padding-top:12px;}
+  .meta .k{color:var(--text3);font-size:11.5px;font-weight:600;}
+  .meta .v{color:var(--text);font-weight:600;}
+  .line{font-size:13px;color:var(--text2);}
+  .line b{color:var(--text);}
+  .risk{font-size:12.5px;color:#f59e0b;background:rgba(245,158,11,.08);border-radius:8px;padding:7px 10px;}
+  .sources{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px;}
+  .sources a{font-size:12px;color:#60a5fa;text-decoration:none;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:3px 9px;}
+  .sources a:hover{border-color:var(--blue);}
+
+  .notes{margin-top:22px;background:var(--bg2);border:1px dashed var(--border);border-radius:14px;padding:18px 20px;color:var(--text2);font-size:14px;}
+  .error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.4);color:#fca5a5;border-radius:12px;padding:16px 18px;margin-top:6px;}
+  footer{color:var(--text3);font-size:12.5px;text-align:center;padding:34px 0 26px;}
+  .empty{color:var(--text3);text-align:center;padding:40px 0;font-size:15px;}
+</style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <div class="logo">🔥 <span class="badge">עונה</span> סוכן מוצרים עונתיים</div>
+      <small style="margin-right:auto;color:var(--text3)">גילוי מוצרים חמים ליבוא · מבוסס חיפוש אינטרנט חי</small>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>מה <span class="accent">חם</span> לייבא לעונה הקרובה?</h1>
+      <p>הסוכן סורק את האינטרנט אחר המוצרים הנמכרים והמבוקשים ביותר, ומציע מה כדאי להזמין <b>עכשיו</b> כדי שיגיע במלאי בזמן לשיא העונה — בהתחשב בזמני השילוח מסין.</p>
+    </section>
+
+    <section class="panel">
+      <div class="grid">
+        <div>
+          <label for="market">שוק יעד</label>
+          <input id="market" value="ישראל" placeholder="לדוגמה: ישראל" />
+        </div>
+        <div>
+          <label for="category">קטגוריה / נישה (אופציונלי)</label>
+          <input id="category" placeholder="לדוגמה: גאדג'טים, מטבח, גינה" />
+        </div>
+        <div>
+          <label for="audience">קהל יעד (אופציונלי)</label>
+          <input id="audience" placeholder="לדוגמה: ילדים, בעלי כלבים" />
+        </div>
+        <div>
+          <label for="count">כמות רעיונות</label>
+          <select id="count">
+            <option>5</option>
+            <option selected>8</option>
+            <option>10</option>
+            <option>12</option>
+          </select>
+        </div>
+      </div>
+      <div class="row-actions">
+        <button class="btn" id="go">🔎 מצא מוצרים חמים</button>
+        <span class="hint">החיפוש לוקח כ-20–40 שניות (סורק מקורות חיים).</span>
+      </div>
+    </section>
+
+    <section id="results"></section>
+  </main>
+
+  <footer>
+    סוכן מבוסס Claude + web search · התוצאות הן הערכות לכיוון מחקרי בלבד, אמתו מול ספק לפני הזמנה.
+  </footer>
+
+<script>
+  // ── Config ─────────────────────────────────────────────────────────────────
+  const SUPABASE_URL = "https://eginihtpqahpejnkqznn.supabase.co";
+  const ANON_KEY = "sb_publishable_dxvkjrqH1c0SULImna9L2A_qe9AkGTL";
+  const ENDPOINT = SUPABASE_URL + "/functions/v1/seasonal-agent";
+
+  const $ = (id) => document.getElementById(id);
+  const results = $("results");
+  const goBtn = $("go");
+
+  const esc = (s) => String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+  function seasonEmoji(text) {
+    const t = String(text || "").toLowerCase();
+    if (/חורף|winter|דצמבר|ינואר|פברואר/.test(t)) return "❄️";
+    if (/אביב|spring|פסח|מרץ|אפריל/.test(t)) return "🌷";
+    if (/קיץ|summer|יוני|יולי|אוגוסט/.test(t)) return "☀️";
+    if (/סתיו|autumn|fall|חזרה|ספטמבר|אוקטובר/.test(t)) return "🍂";
+    if (/חג|holiday|ראש השנה|סוכות|חנוכה|black friday|בלאק/.test(t)) return "🎁";
+    return "📅";
+  }
+
+  function demandChip(d) {
+    const v = String(d || "").toLowerCase();
+    if (/high|גבוה/.test(v)) return '<span class="chip demand-high">ביקוש גבוה</span>';
+    if (/rising|עול|מטפס/.test(v)) return '<span class="chip demand-rising">ביקוש עולה</span>';
+    return '<span class="chip demand-medium">ביקוש בינוני</span>';
+  }
+  function compChip(c) {
+    const v = String(c || "").toLowerCase();
+    if (/low|נמוך/.test(v)) return '<span class="chip comp-low">תחרות נמוכה</span>';
+    if (/high|גבוה/.test(v)) return '<span class="chip comp-high">תחרות גבוהה</span>';
+    return '<span class="chip comp-medium">תחרות בינונית</span>';
+  }
+
+  function host(url) {
+    try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return "מקור"; }
+  }
+
+  function renderIdea(idea) {
+    const sources = Array.isArray(idea.sources) ? idea.sources.filter(Boolean) : [];
+    const sourcesHtml = sources.length
+      ? '<div class="sources">' + sources.slice(0, 4).map(u =>
+          `<a href="${esc(u)}" target="_blank" rel="noopener">🔗 ${esc(host(u))}</a>`).join("") + "</div>"
+      : "";
+    const risk = idea.risk && String(idea.risk).trim()
+      ? `<div class="risk">⚠️ ${esc(idea.risk)}</div>` : "";
+    return `
+      <div class="card">
+        <div class="top">
+          <div>
+            <h3>${esc(idea.name)}</h3>
+            <div class="cat">${esc(idea.category || "")}</div>
+          </div>
+        </div>
+        <div class="badges">${demandChip(idea.demand)}${compChip(idea.competition)}</div>
+        <div class="why">${esc(idea.why_now || "")}</div>
+        ${idea.trend_evidence ? `<div class="line">📈 <b>אות מגמה:</b> ${esc(idea.trend_evidence)}</div>` : ""}
+        <div class="meta">
+          <div><div class="k">עלות יחידה משוערת</div><div class="v">${esc(idea.est_unit_cost_usd || "—")}</div></div>
+          <div><div class="k">מחיר מכירה משוער</div><div class="v">${esc(idea.est_retail_price || "—")}</div></div>
+          <div><div class="k">קהל יעד</div><div class="v">${esc(idea.target_audience || "—")}</div></div>
+          <div><div class="k">רווחיות</div><div class="v">${esc(idea.margin_note || "—")}</div></div>
+        </div>
+        ${idea.sourcing_tip ? `<div class="line">🛒 <b>איפה לחפש:</b> ${esc(idea.sourcing_tip)}</div>` : ""}
+        ${risk}
+        ${sourcesHtml}
+      </div>`;
+  }
+
+  function renderResult(r) {
+    const ideas = Array.isArray(r.ideas) ? r.ideas : [];
+    const head = `
+      <div class="season-head">
+        <div class="emoji">${seasonEmoji(r.upcoming_season)}</div>
+        <div>
+          <div class="s-title">עונה קרובה · ${esc(r.market || "")} · נכון ל-${esc(r.as_of_date || "")}</div>
+          <div class="s-value">${esc(r.upcoming_season || "")}</div>
+        </div>
+        ${r.order_window ? `<div class="order-window">⏳ חלון הזמנה: <b>${esc(r.order_window)}</b></div>` : ""}
+      </div>`;
+    const cards = ideas.length
+      ? `<div class="cards">${ideas.map(renderIdea).join("")}</div>`
+      : `<div class="empty">לא נמצאו רעיונות. נסה לצמצם/לשנות את הקטגוריה.</div>`;
+    const notes = r.notes && String(r.notes).trim()
+      ? `<div class="notes">💡 ${esc(r.notes)}</div>` : "";
+    results.innerHTML = head + cards + notes;
+  }
+
+  async function run() {
+    const market = $("market").value.trim() || "ישראל";
+    const category = $("category").value.trim();
+    const audience = $("audience").value.trim();
+    const count = parseInt($("count").value, 10) || 8;
+
+    goBtn.disabled = true;
+    goBtn.innerHTML = '<span class="spinner"></span> סורק את האינטרנט…';
+    results.innerHTML = '<div class="panel"><div class="loading-card"><span class="spinner"></span> מחפש מוצרים חמים ב-' + esc(market) + ' לעונה הקרובה…</div></div>';
+
+    try {
+      const res = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + ANON_KEY,
+          "apikey": ANON_KEY,
+        },
+        body: JSON.stringify({
+          market, category, audience, count,
+          date: new Date().toISOString().slice(0, 10),
+          language: "Hebrew",
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) {
+        throw new Error(data.error || ("שגיאת שרת (" + res.status + ")"));
+      }
+      if (!data.result) throw new Error("לא התקבלה תוצאה תקינה.");
+      renderResult(data.result);
+    } catch (err) {
+      results.innerHTML = '<div class="error">❌ ' + esc(err.message || String(err)) + '</div>';
+    } finally {
+      goBtn.disabled = false;
+      goBtn.innerHTML = "🔎 מצא מוצרים חמים";
+    }
+  }
+
+  goBtn.addEventListener("click", run);
+  ["market", "category", "audience"].forEach(id =>
+    $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") run(); }));
+</script>
+</body>
+</html>
