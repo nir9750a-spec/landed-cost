@@ -69,6 +69,7 @@
   .card .top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
   .card h3{font-size:18px;font-weight:800;line-height:1.25;}
   .card .cat{font-size:12px;color:var(--text3);font-weight:600;margin-top:2px;}
+  .origin-badge{flex:none;font-size:12px;font-weight:700;color:var(--text);background:var(--bg3);border:1px solid var(--border);border-radius:999px;padding:4px 10px;white-space:nowrap;}
   .badges{display:flex;flex-wrap:wrap;gap:6px;}
   .chip{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;}
   .chip.demand-high{background:rgba(16,185,129,.18);color:#34d399;}
@@ -115,7 +116,7 @@
   <main class="container">
     <section class="hero">
       <h1>מה <span class="accent">חם</span> לייבא לעונה הקרובה?</h1>
-      <p>הסוכן סורק את האינטרנט אחר המוצרים הנמכרים והמבוקשים ביותר, ומציע מה כדאי להזמין <b>עכשיו</b> כדי שיגיע במלאי בזמן לשיא העונה — בהתחשב בזמני השילוח מסין.</p>
+      <p>הסוכן סורק את האינטרנט אחר המוצרים הנמכרים והמבוקשים ביותר בעולם, ולכל מוצר בוחר את <b>מקור הרכש הטוב ביותר</b> — סין, ארה״ב, אירופה, אוסטרליה או קנדה — עם דרך ישירה ליצרן, בלי מתווכים.</p>
     </section>
 
     <section class="panel">
@@ -195,23 +196,47 @@
     try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return "מקור"; }
   }
 
-  // Factory-direct deep links — 1688 & Made-in-China are factory-direct (bypass
-  // middlemen); Alibaba is included but mixes factories and traders.
+  // Normalize the model's sourcing_country to one of our known buckets.
+  function originKey(idea) {
+    const v = String(idea.sourcing_country || idea.origin_country || "").toLowerCase();
+    if (/usa|united states|america|ארה|ארצות הברית/.test(v)) return "USA";
+    if (/canada|קנדה/.test(v)) return "Canada";
+    if (/australia|אוסטרל/.test(v)) return "Australia";
+    if (/europe|eu\b|germany|italy|france|spain|אירופ|גרמ|איטל|צרפת|ספרד/.test(v)) return "Europe";
+    if (/china|chinese|prc|סין|סיני/.test(v)) return "China";
+    return "Other";
+  }
+
+  const FLAG = { China: "🇨🇳", USA: "🇺🇸", Canada: "🇨🇦", Australia: "🇦🇺", Europe: "🇪🇺", Other: "🌐" };
+  const ORIGIN_LABEL = { China: "סין", USA: "ארה\"ב", Canada: "קנדה", Australia: "אוסטרליה", Europe: "אירופה", Other: "אחר" };
+
+  // Factory-direct deep links, adapted to the chosen origin country so the user
+  // lands on the right factory directory (bypassing middlemen) for that region.
   function factoryLinks(idea) {
-    const en = String(idea.search_term_en || idea.name || "").trim();
+    const en = encodeURIComponent(String(idea.search_term_en || idea.name || "").trim());
     const cn = String(idea.search_term_cn || "").trim();
+    const key = originKey(idea);
     const links = [];
-    if (cn) {
-      links.push(["🏭 1688 (יצרן ישיר)",
+
+    if (key === "China") {
+      if (cn) links.push(["🏭 1688 (יצרן ישיר)",
         "https://s.1688.com/selloffer/offer_search.htm?keywords=" + encodeURIComponent(cn)]);
+      links.push(["🏭 Made-in-China", "https://www.made-in-china.com/productdirectory.do?word=" + en + "&file=&searchType=all"]);
+    } else if (key === "USA" || key === "Canada") {
+      links.push(["🏭 ThomasNet", "https://www.thomasnet.com/suppliers/?keywords=" + en]);
+      links.push(["Maker's Row", "https://makersrow.com/factories?search=" + en]);
+    } else if (key === "Europe") {
+      links.push(["🏭 Europages", "https://www.europages.co.uk/companies/" + en + ".html"]);
+      links.push(["Kompass", "https://www.kompass.com/searchCompanies/?text=" + en]);
+    } else if (key === "Australia") {
+      links.push(["🏭 IndustrySearch", "https://www.industrysearch.com.au/search?q=" + en]);
+      links.push(["Australian Made", "https://www.australianmade.com.au/buy-australian-made/?search=" + en]);
+    } else {
+      links.push(["🏭 Kompass", "https://www.kompass.com/searchCompanies/?text=" + en]);
     }
-    if (en) {
-      links.push(["🏭 Made-in-China",
-        "https://www.made-in-china.com/productdirectory.do?word=" + encodeURIComponent(en) + "&file=&searchType=all"]);
-      links.push(["Alibaba",
-        "https://www.alibaba.com/trade/search?SearchText=" + encodeURIComponent(en)]);
-    }
-    if (!links.length) return "";
+    // Alibaba is global — always offer it as a fallback factory channel.
+    links.push(["Alibaba", "https://www.alibaba.com/trade/search?SearchText=" + en]);
+
     return '<div class="sourcing-links">' + links.map(([label, url]) =>
       `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(label)}</a>`).join("") + "</div>";
   }
@@ -224,6 +249,8 @@
       : "";
     const risk = idea.risk && String(idea.risk).trim()
       ? `<div class="risk">⚠️ ${esc(idea.risk)}</div>` : "";
+    const oKey = originKey(idea);
+    const originBadge = `<span class="origin-badge">${FLAG[oKey]} ${esc(ORIGIN_LABEL[oKey])}</span>`;
     const origin = [idea.origin_country, idea.origin_port].filter(s => s && String(s).trim()).map(esc).join(" · ");
     const transit = [
       idea.transit_sea ? "🚢 " + esc(idea.transit_sea) : "",
@@ -236,6 +263,7 @@
             <h3>${esc(idea.name)}</h3>
             <div class="cat">${esc(idea.category || "")}</div>
           </div>
+          ${originBadge}
         </div>
         <div class="badges">${demandChip(idea.demand)}${compChip(idea.competition)}</div>
         <div class="why">${esc(idea.why_now || "")}</div>
