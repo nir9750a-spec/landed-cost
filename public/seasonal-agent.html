@@ -90,6 +90,35 @@
   .direct b{color:#a7f3d0;}
   .contact{font-size:13px;color:#93c5fd;background:rgba(59,130,246,.10);border:1px solid rgba(59,130,246,.28);border-radius:8px;padding:9px 11px;line-height:1.55;}
   .contact b{color:#bfdbfe;}
+  .verify{font-size:13px;color:#fcd34d;background:rgba(251,191,36,.09);border:1px solid rgba(251,191,36,.28);border-radius:8px;padding:9px 11px;line-height:1.55;}
+  .verify b{color:#fde68a;}
+
+  /* RFQ generator */
+  .rfq-row{display:flex;}
+  .rfq-btn{flex:1;background:var(--bg3);color:#fde68a;border:1px solid rgba(251,191,36,.45);border-radius:10px;
+    padding:10px 14px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;}
+  .rfq-btn:hover{background:rgba(251,191,36,.12);}
+  .rfq-box{display:flex;flex-direction:column;gap:12px;}
+  .rfq-item{display:flex;flex-direction:column;gap:6px;}
+  .rfq-head{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;font-weight:700;color:var(--text2);}
+  .copy-btn{background:var(--grad);color:#0a0e1a;border:none;border-radius:7px;padding:4px 11px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;}
+  .rfq-box textarea{width:100%;background:var(--bg1);border:1px solid var(--border);color:var(--text);border-radius:9px;
+    padding:11px;font-family:inherit;font-size:13px;line-height:1.55;resize:vertical;direction:ltr;text-align:left;}
+  .rfq-tip{font-size:12.5px;color:var(--text2);background:rgba(16,185,129,.07);border-radius:8px;padding:8px 11px;}
+
+  /* Verification guide */
+  .guide{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:6px 22px;margin-bottom:24px;}
+  .guide summary{cursor:pointer;font-size:16px;font-weight:800;padding:14px 0;list-style:none;}
+  .guide summary::-webkit-details-marker{display:none;}
+  .guide summary::before{content:"▸";margin-left:8px;color:var(--orange);}
+  .guide[open] summary::before{content:"▾";}
+  .guide-hint{font-size:12px;font-weight:500;color:var(--text3);}
+  .guide-body{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;padding:8px 0 20px;}
+  .guide-col h4{font-size:14px;color:var(--orange);margin-bottom:8px;}
+  .guide-col.danger h4{color:var(--red);}
+  .guide-col ul{margin:0;padding-inline-start:18px;display:flex;flex-direction:column;gap:6px;}
+  .guide-col li{font-size:13px;color:var(--text2);line-height:1.5;}
+  .guide-col li b{color:var(--text);}
   .sourcing-links{display:flex;flex-wrap:wrap;gap:8px;}
   .sourcing-links a{font-size:12.5px;font-weight:700;color:#0a0e1a;background:linear-gradient(135deg,#fbbf24,#f59e0b);
     text-decoration:none;border-radius:8px;padding:6px 12px;}
@@ -149,6 +178,53 @@
       </div>
     </section>
 
+    <details class="guide">
+      <summary>🔍 איך מזהים יצרן אמיתי מול מתווך — ובודקים מפעל <span class="guide-hint">(לחץ לפתיחה)</span></summary>
+      <div class="guide-body">
+        <div class="guide-col">
+          <h4>1. שאלות סינון ראשונות</h4>
+          <ul>
+            <li>"Are you a manufacturer or a trading company?" — שאל ישירות, בכתב.</li>
+            <li>בקש רישיון עסק (business license) ובדוק שתחום העיסוק כולל <b>ייצור</b>, לא רק "סחר".</li>
+            <li>מתווך מציע מאות מוצרים מקטגוריות לא קשורות; יצרן מתמחה בקו מוצרים אחד.</li>
+          </ul>
+        </div>
+        <div class="guide-col">
+          <h4>2. מסמכים לבקש</h4>
+          <ul>
+            <li>סרטון/סיור חי בקו הייצור (לא רק תמונות יפות מהקטלוג).</li>
+            <li>תעודת ISO 9001, ודו"ח ביקורת חברתית (BSCI / Sedex).</li>
+            <li>דוחות בדיקת מוצר (test reports) לתקן הרלוונטי לשוק שלך.</li>
+          </ul>
+        </div>
+        <div class="guide-col">
+          <h4>3. אימות רשמי לפי מדינה</h4>
+          <ul>
+            <li><b>סין:</b> GSXT (国家企业信用信息公示系统) לבדיקת רישיון; ב-Alibaba "Verified Supplier" + שנות Gold.</li>
+            <li><b>ארה"ב/קנדה:</b> ThomasNet Verified, D-U-N-S, Better Business Bureau.</li>
+            <li><b>אירופה:</b> Kompass, מרשם החברות הלאומי, אימות מע"מ ב-VIES.</li>
+          </ul>
+        </div>
+        <div class="guide-col">
+          <h4>4. בדיקה בלתי-תלויה</h4>
+          <ul>
+            <li>הזמן ביקורת/בדיקת מפעל מצד שלישי לפני תשלום גדול: <b>SGS, QIMA, Bureau Veritas, TÜV</b>.</li>
+            <li>הזמן דגימה בתשלום — בדוק איכות בפועל לפני הזמנה מלאה.</li>
+          </ul>
+        </div>
+        <div class="guide-col danger">
+          <h4>🚩 דגלים אדומים</h4>
+          <ul>
+            <li>מסרבים לתת רישיון עסק או כתובת מדויקת.</li>
+            <li>חשבון בנק על שם אדם פרטי — לא על שם החברה.</li>
+            <li>לוחצים על מקדמה גדולה במזומן/מיידית.</li>
+            <li>אימייל גנרי (gmail/hotmail) במקום דומיין חברה.</li>
+            <li>מחיר נמוך בצורה חשודה מכל השאר.</li>
+          </ul>
+        </div>
+      </div>
+    </details>
+
     <section id="results"></section>
   </main>
 
@@ -165,6 +241,7 @@
   const $ = (id) => document.getElementById(id);
   const results = $("results");
   const goBtn = $("go");
+  let currentIdeas = [];
 
   const esc = (s) => String(s == null ? "" : s)
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -241,7 +318,7 @@
       `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(label)}</a>`).join("") + "</div>";
   }
 
-  function renderIdea(idea) {
+  function renderIdea(idea, i) {
     const sources = Array.isArray(idea.sources) ? idea.sources.filter(Boolean) : [];
     const sourcesHtml = sources.length
       ? '<div class="sources">' + sources.slice(0, 4).map(u =>
@@ -281,15 +358,94 @@
         </div>
 
         ${idea.direct_sourcing ? `<div class="direct">🎯 <b>לעקוף מתווכים:</b> ${esc(idea.direct_sourcing)}</div>` : ""}
+        ${idea.manufacturer_check ? `<div class="verify">🔍 <b>בדיקת יצרן למוצר זה:</b> ${esc(idea.manufacturer_check)}</div>` : ""}
         ${idea.factory_contact ? `<div class="contact">📞 <b>קשר ישיר ליצרן:</b> ${esc(idea.factory_contact)}</div>` : ""}
         ${factoryLinks(idea)}
+        <div class="rfq-row"><button class="rfq-btn" data-idx="${i}">✉️ צור פנייה ליצרן (RFQ)</button></div>
+        <div class="rfq-box" id="rfq-${i}" hidden></div>
         ${risk}
         ${sourcesHtml}
       </div>`;
   }
 
+  // ── RFQ outreach generator — the FIRST question screens manufacturer vs trader.
+  function buildRFQ(idea) {
+    const prod = idea.search_term_en || idea.name || "this product";
+    const moq = idea.moq ? String(idea.moq) : "your minimum order quantity";
+    const certs = idea.compliance ? `(${idea.compliance})` : "(any certifications required for our market)";
+    const en =
+`Subject: Wholesale inquiry – ${prod}
+
+Hello,
+
+We are an importer looking to buy "${idea.name}" in bulk for our market. Before we proceed, could you please confirm:
+
+1. Are you the actual manufacturer of this product, or a trading company? We prefer to work directly with the factory.
+2. Could you share your business license and basic factory details — location, production capacity, and years in business?
+3. Which product certifications do you hold ${certs}?
+4. What is your MOQ and unit price (EXW / FOB) for ${moq}?
+5. What is the production lead time, and can you provide a paid sample?
+
+Please also send your latest catalogue and a few recent photos or a short video of your production line.
+
+Looking forward to your reply.
+
+Best regards,`;
+    let cn = null;
+    if (originKey(idea) === "China") {
+      const cnTerm = idea.search_term_cn || idea.name;
+      cn =
+`您好！
+
+我们是进口商，想批量采购"${cnTerm}"。在进一步沟通前，想先确认几点：
+
+1. 请问贵司是生产厂家还是贸易公司？我们希望与工厂直接合作。
+2. 能否提供营业执照及工厂基本信息（地址、产能、成立年限）？
+3. 该产品有哪些认证？
+4. 起订量(MOQ)和出厂价(EXW/FOB)是多少？
+5. 生产周期多长？能否提供付费样品？
+
+另外，请发送最新产品目录和近期车间照片或视频。
+
+期待您的回复，谢谢！`;
+    }
+    return { en, cn };
+  }
+
+  function rfqBlock(label, text, id) {
+    return `<div class="rfq-item">
+      <div class="rfq-head"><span>${label}</span><button class="copy-btn" data-target="${id}">📋 העתק</button></div>
+      <textarea id="${id}" readonly rows="12">${esc(text)}</textarea></div>`;
+  }
+
+  function toggleRFQ(i) {
+    const idea = currentIdeas[i];
+    const box = document.getElementById("rfq-" + i);
+    if (!idea || !box) return;
+    if (!box.dataset.built) {
+      const { en, cn } = buildRFQ(idea);
+      let html = rfqBlock("📧 הודעת RFQ (אנגלית — לכל מקור)", en, "rfqtxt-en-" + i);
+      if (cn) html += rfqBlock("💬 WeChat / 1688 (סינית)", cn, "rfqtxt-cn-" + i);
+      html += `<div class="rfq-tip">💡 השאלה הראשונה היא <b>מסנן המתווכים</b>: יצרן אמיתי יענה בפירוט עם רישיון ותמונות מפעל; מתווך יתחמק או יענה כללית.</div>`;
+      box.innerHTML = html;
+      box.dataset.built = "1";
+    }
+    box.hidden = !box.hidden;
+  }
+
+  async function copyText(btn) {
+    const ta = document.getElementById(btn.dataset.target);
+    if (!ta) return;
+    try { await navigator.clipboard.writeText(ta.value); }
+    catch { ta.select(); document.execCommand("copy"); }
+    const old = btn.textContent;
+    btn.textContent = "✓ הועתק";
+    setTimeout(() => { btn.textContent = old; }, 1500);
+  }
+
   function renderResult(r) {
     const ideas = Array.isArray(r.ideas) ? r.ideas : [];
+    currentIdeas = ideas;
     const head = `
       <div class="season-head">
         <div class="emoji">${seasonEmoji(r.upcoming_season)}</div>
@@ -300,7 +456,7 @@
         ${r.order_window ? `<div class="order-window">⏳ חלון הזמנה: <b>${esc(r.order_window)}</b></div>` : ""}
       </div>`;
     const cards = ideas.length
-      ? `<div class="cards">${ideas.map(renderIdea).join("")}</div>`
+      ? `<div class="cards">${ideas.map((idea, i) => renderIdea(idea, i)).join("")}</div>`
       : `<div class="empty">לא נמצאו רעיונות. נסה לצמצם/לשנות את הקטגוריה.</div>`;
     const notes = r.notes && String(r.notes).trim()
       ? `<div class="notes">💡 ${esc(r.notes)}</div>` : "";
@@ -348,6 +504,14 @@
   goBtn.addEventListener("click", run);
   ["market", "category", "audience"].forEach(id =>
     $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") run(); }));
+
+  // Delegated handlers for dynamically-rendered RFQ + copy buttons.
+  results.addEventListener("click", (e) => {
+    const rfqBtn = e.target.closest(".rfq-btn");
+    if (rfqBtn) { toggleRFQ(parseInt(rfqBtn.dataset.idx, 10)); return; }
+    const copyBtn = e.target.closest(".copy-btn");
+    if (copyBtn) { copyText(copyBtn); }
+  });
 </script>
 </body>
 </html>
