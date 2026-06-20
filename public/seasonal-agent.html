@@ -93,6 +93,16 @@
   .verify{font-size:13px;color:#fcd34d;background:rgba(251,191,36,.09);border:1px solid rgba(251,191,36,.28);border-radius:8px;padding:9px 11px;line-height:1.55;}
   .verify b{color:#fde68a;}
 
+  /* Named manufacturers */
+  .mfr-box{background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.25);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
+  .mfr-title{font-size:12.5px;font-weight:800;color:#6ee7b7;}
+  .mfr{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px;font-size:13px;border-top:1px dashed rgba(16,185,129,.18);padding-top:7px;}
+  .mfr:first-of-type{border-top:none;padding-top:0;}
+  .mfr-name{font-weight:700;color:var(--text);}
+  .mfr-links{display:flex;flex-wrap:wrap;gap:10px;}
+  .mfr-links a{font-size:12.5px;color:#93c5fd;text-decoration:none;}
+  .mfr-links a:hover{text-decoration:underline;}
+
   /* RFQ generator */
   .rfq-row{display:flex;}
   .rfq-btn{flex:1;background:var(--bg3);color:#fde68a;border:1px solid rgba(251,191,36,.45);border-radius:10px;
@@ -360,12 +370,39 @@
         ${idea.direct_sourcing ? `<div class="direct">🎯 <b>לעקוף מתווכים:</b> ${esc(idea.direct_sourcing)}</div>` : ""}
         ${idea.manufacturer_check ? `<div class="verify">🔍 <b>בדיקת יצרן למוצר זה:</b> ${esc(idea.manufacturer_check)}</div>` : ""}
         ${idea.factory_contact ? `<div class="contact">📞 <b>קשר ישיר ליצרן:</b> ${esc(idea.factory_contact)}</div>` : ""}
+        ${renderManufacturers(idea)}
         ${factoryLinks(idea)}
         <div class="rfq-row"><button class="rfq-btn" data-idx="${i}">✉️ צור פנייה ליצרן (RFQ)</button></div>
         <div class="rfq-box" id="rfq-${i}" hidden></div>
         ${risk}
         ${sourcesHtml}
       </div>`;
+  }
+
+  // Build a mailto: link that opens the user's mail client with the RFQ ready.
+  function mailtoRFQ(idea, email) {
+    const { en } = buildRFQ(idea);
+    const subject = "Wholesale inquiry – " + (idea.search_term_en || idea.name || "");
+    const body = en.replace(/^Subject:[^\n]*\n\n/, ""); // drop the Subject line from the body
+    return "mailto:" + encodeURIComponent(email) +
+      "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+  }
+
+  // Named global manufacturers found via web search — real companies, with a
+  // one-click pre-filled email so the user reaches the factory directly.
+  function renderManufacturers(idea) {
+    const list = Array.isArray(idea.manufacturers)
+      ? idea.manufacturers.filter(m => m && (m.company || m.website)) : [];
+    if (!list.length) return "";
+    const rows = list.slice(0, 4).map(m => {
+      const country = m.country ? ` · ${esc(m.country)}` : "";
+      const url = m.website ? (/^https?:/i.test(m.website) ? m.website : "https://" + m.website) : "";
+      const site = url ? `<a href="${esc(url)}" target="_blank" rel="noopener">🌐 אתר</a>` : "";
+      const email = m.email ? `<a href="${esc(mailtoRFQ(idea, m.email))}" title="פתח מייל RFQ מוכן">📧 ${esc(m.email)}</a>` : "";
+      const phone = m.phone ? `<a href="tel:${esc(String(m.phone).replace(/[^+\d]/g, ""))}">📞 ${esc(m.phone)}</a>` : "";
+      return `<div class="mfr"><span class="mfr-name">🏢 ${esc(m.company || "יצרן")}${country}</span><span class="mfr-links">${site}${email}${phone}</span></div>`;
+    }).join("");
+    return `<div class="mfr-box"><div class="mfr-title">🏭 יצרנים מועמדים — קשר ישיר (גלובלי)</div>${rows}</div>`;
   }
 
   // ── RFQ outreach generator — the FIRST question screens manufacturer vs trader.

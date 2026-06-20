@@ -57,6 +57,7 @@ Method:
        • Australia → IndustrySearch, Australian Made directory.
    - MANUFACTURER-vs-TRADER CHECK for THIS product: the specific question(s) to ask, which document/certificate proves real in-house production for this category (e.g. machinery list, production-line video, ISO 9001, category test reports), and the category-specific red flags that signal a reseller rather than the maker.
    - DIRECT FACTORY CONTACT, ADAPTED TO THE ORIGIN: concrete ways to reach the factory sales rep — China: 1688 旺旺/WeChat (微信)/email/Alibaba RFQ/Canton-Yiwu fairs; USA/EU/AU/CA: company email, phone, LinkedIn, RFQ form, regional trade shows. If web search surfaces a real published contact for this product category, include it; otherwise give the exact channel + search path to obtain it.
+   - NAMED CANDIDATE MANUFACTURERS (GLOBAL, not only China): actively search the open web for 2–4 REAL manufacturer/factory companies that make this product, from any suitable country. Prefer actual makers (not resellers) that publish contact details on their own website. For each, capture: company name, country, official website URL, and any PUBLICLY listed email and phone. NEVER fabricate a contact detail — leave "" if you did not find it on the open web.
 4. Favor products with genuine rising demand and a realistic margin for a small importer. Avoid oversaturated commodities and items with heavy regulatory/shipping friction unless the upside is clear (note the risk).
 
 Output rules:
@@ -93,6 +94,9 @@ JSON schema:
       "direct_sourcing": "string — origin-appropriate playbook to reach the factory directly & bypass middlemen",
       "factory_contact": "string — origin-appropriate direct contact channels, incl. any real contact detail found",
       "manufacturer_check": "string — how to verify a REAL manufacturer (not a trader) for THIS product: what to ask, which license/certificate proves real production, and category-specific red flags",
+      "manufacturers": [
+        { "company": "string — real manufacturer company name", "country": "string", "website": "string — official site URL", "email": "string — public email or ''", "phone": "string — public phone or ''" }
+      ],
       "search_term_en": "string — best English search keywords for the factory directories",
       "search_term_cn": "string — Chinese keyword for 1688.com (only if sourcing_country=China, else '')",
       "est_retail_price": "string — rough retail price in the market's local currency",
