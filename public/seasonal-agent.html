@@ -102,6 +102,11 @@
   .mfr-links{display:flex;flex-wrap:wrap;gap:10px;}
   .mfr-links a{font-size:12.5px;color:#93c5fd;text-decoration:none;}
   .mfr-links a:hover{text-decoration:underline;}
+  .enrich-btn{font-size:12px;font-weight:700;color:#6ee7b7;background:transparent;border:1px solid rgba(16,185,129,.4);
+    border-radius:7px;padding:2px 9px;cursor:pointer;font-family:inherit;}
+  .enrich-btn:hover{background:rgba(16,185,129,.12);}
+  .enrich-out{font-size:12.5px;color:#93c5fd;}
+  .enrich-note{color:var(--text3);font-size:12px;}
 
   /* RFQ generator */
   .rfq-row{display:flex;}
@@ -247,6 +252,7 @@
   const SUPABASE_URL = "https://eginihtpqahpejnkqznn.supabase.co";
   const ANON_KEY = "sb_publishable_dxvkjrqH1c0SULImna9L2A_qe9AkGTL";
   const ENDPOINT = SUPABASE_URL + "/functions/v1/seasonal-agent";
+  const ENRICH_ENDPOINT = SUPABASE_URL + "/functions/v1/contact-enrich";
 
   const $ = (id) => document.getElementById(id);
   const results = $("results");
@@ -370,7 +376,7 @@
         ${idea.direct_sourcing ? `<div class="direct">🎯 <b>לעקוף מתווכים:</b> ${esc(idea.direct_sourcing)}</div>` : ""}
         ${idea.manufacturer_check ? `<div class="verify">🔍 <b>בדיקת יצרן למוצר זה:</b> ${esc(idea.manufacturer_check)}</div>` : ""}
         ${idea.factory_contact ? `<div class="contact">📞 <b>קשר ישיר ליצרן:</b> ${esc(idea.factory_contact)}</div>` : ""}
-        ${renderManufacturers(idea)}
+        ${renderManufacturers(idea, i)}
         ${factoryLinks(idea)}
         <div class="rfq-row"><button class="rfq-btn" data-idx="${i}">✉️ צור פנייה ליצרן (RFQ)</button></div>
         <div class="rfq-box" id="rfq-${i}" hidden></div>
@@ -388,21 +394,76 @@
       "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
   }
 
+  // Derive a bare domain from a website string or an email address.
+  function domainOf(s) {
+    if (!s) return "";
+    try {
+      const u = new URL(/^https?:/i.test(s) ? s : "https://" + s);
+      return u.hostname.replace(/^www\./, "");
+    } catch {
+      const m = String(s).match(/@([^\s]+)/);
+      return m ? m[1] : "";
+    }
+  }
+
   // Named global manufacturers found via web search — real companies, with a
-  // one-click pre-filled email so the user reaches the factory directly.
-  function renderManufacturers(idea) {
+  // one-click pre-filled email so the user reaches the factory directly. When a
+  // manufacturer has a website but no email, an "verify email" button calls the
+  // contact-enrich function (Hunter.io) to find a real mailbox.
+  function renderManufacturers(idea, i) {
     const list = Array.isArray(idea.manufacturers)
       ? idea.manufacturers.filter(m => m && (m.company || m.website)) : [];
     if (!list.length) return "";
-    const rows = list.slice(0, 4).map(m => {
+    const rows = list.slice(0, 4).map((m, j) => {
       const country = m.country ? ` · ${esc(m.country)}` : "";
       const url = m.website ? (/^https?:/i.test(m.website) ? m.website : "https://" + m.website) : "";
       const site = url ? `<a href="${esc(url)}" target="_blank" rel="noopener">🌐 אתר</a>` : "";
       const email = m.email ? `<a href="${esc(mailtoRFQ(idea, m.email))}" title="פתח מייל RFQ מוכן">📧 ${esc(m.email)}</a>` : "";
       const phone = m.phone ? `<a href="tel:${esc(String(m.phone).replace(/[^+\d]/g, ""))}">📞 ${esc(m.phone)}</a>` : "";
-      return `<div class="mfr"><span class="mfr-name">🏢 ${esc(m.company || "יצרן")}${country}</span><span class="mfr-links">${site}${email}${phone}</span></div>`;
+      const canEnrich = !m.email && domainOf(m.website || m.email);
+      const enrich = canEnrich
+        ? `<button class="enrich-btn" data-idx="${i}" data-mfr="${j}">🔎 אמת מייל</button><span class="enrich-out" id="enr-${i}-${j}"></span>`
+        : "";
+      return `<div class="mfr"><span class="mfr-name">🏢 ${esc(m.company || "יצרן")}${country}</span><span class="mfr-links">${site}${email}${phone}${enrich}</span></div>`;
     }).join("");
     return `<div class="mfr-box"><div class="mfr-title">🏭 יצרנים מועמדים — קשר ישיר (גלובלי)</div>${rows}</div>`;
+  }
+
+  // Phase 3 — verified email enrichment via the contact-enrich edge function.
+  async function enrichContact(i, j, btn) {
+    const idea = currentIdeas[i];
+    const m = idea && Array.isArray(idea.manufacturers) ? idea.manufacturers[j] : null;
+    const out = document.getElementById(`enr-${i}-${j}`);
+    if (!m || !out) return;
+    const domain = domainOf(m.website || m.email);
+    if (!domain) { out.textContent = " אין דומיין"; return; }
+    btn.disabled = true;
+    const old = btn.textContent;
+    btn.textContent = "מחפש…";
+    try {
+      const res = await fetch(ENRICH_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + ANON_KEY, "apikey": ANON_KEY },
+        body: JSON.stringify({ domain }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.configured === false) {
+        out.innerHTML = `<span class="enrich-note">העשרת מייל לא מוגדרת (צריך HUNTER_API_KEY)</span>`;
+        return;
+      }
+      if (!res.ok || data.error) throw new Error(data.error || ("שגיאה " + res.status));
+      const emails = Array.isArray(data.emails) ? data.emails : [];
+      if (!emails.length) { out.textContent = " לא נמצאו מיילים בדומיין"; return; }
+      out.innerHTML = " " + emails.slice(0, 3).map(e =>
+        `<a href="${esc(mailtoRFQ(idea, e.value))}" title="פתח מייל RFQ מוכן">📧 ${esc(e.value)}${e.confidence ? ` (${e.confidence}%)` : ""}</a>`
+      ).join(" ");
+      btn.style.display = "none";
+    } catch (err) {
+      out.textContent = " שגיאה: " + (err.message || String(err));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = old;
+    }
   }
 
   // ── RFQ outreach generator — the FIRST question screens manufacturer vs trader.
@@ -547,7 +608,9 @@ Best regards,`;
     const rfqBtn = e.target.closest(".rfq-btn");
     if (rfqBtn) { toggleRFQ(parseInt(rfqBtn.dataset.idx, 10)); return; }
     const copyBtn = e.target.closest(".copy-btn");
-    if (copyBtn) { copyText(copyBtn); }
+    if (copyBtn) { copyText(copyBtn); return; }
+    const enrichBtn = e.target.closest(".enrich-btn");
+    if (enrichBtn) { enrichContact(parseInt(enrichBtn.dataset.idx, 10), parseInt(enrichBtn.dataset.mfr, 10), enrichBtn); }
   });
 </script>
 </body>
