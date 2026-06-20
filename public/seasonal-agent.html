@@ -61,6 +61,7 @@
   .season-head .s-value{font-size:21px;font-weight:800;}
   .season-head .order-window{margin-right:auto;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:8px 14px;font-size:13px;color:var(--text2);}
   .season-head .order-window b{color:var(--gold);}
+  .cache-badge{display:inline-block;margin-right:6px;font-size:11px;font-weight:700;color:#6ee7b7;background:rgba(16,185,129,.12);border-radius:999px;padding:1px 8px;}
 
   /* IDEA CARDS */
   .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px;}
@@ -541,14 +542,15 @@ Best regards,`;
     setTimeout(() => { btn.textContent = old; }, 1500);
   }
 
-  function renderResult(r) {
+  function renderResult(r, cached) {
     const ideas = Array.isArray(r.ideas) ? r.ideas : [];
     currentIdeas = ideas;
+    const cachedBadge = cached ? `<span class="cache-badge" title="תוצאה מהמטמון — מהיר וללא עלות">⚡ מהמטמון</span>` : "";
     const head = `
       <div class="season-head">
         <div class="emoji">${seasonEmoji(r.upcoming_season)}</div>
         <div>
-          <div class="s-title">עונה קרובה · ${esc(r.market || "")} · נכון ל-${esc(r.as_of_date || "")}</div>
+          <div class="s-title">עונה קרובה · ${esc(r.market || "")} · נכון ל-${esc(r.as_of_date || "")} ${cachedBadge}</div>
           <div class="s-value">${esc(r.upcoming_season || "")}</div>
         </div>
         ${r.order_window ? `<div class="order-window">⏳ חלון הזמנה: <b>${esc(r.order_window)}</b></div>` : ""}
@@ -590,7 +592,7 @@ Best regards,`;
         throw new Error(data.error || ("שגיאת שרת (" + res.status + ")"));
       }
       if (!data.result) throw new Error("לא התקבלה תוצאה תקינה.");
-      renderResult(data.result);
+      renderResult(data.result, data.cached);
     } catch (err) {
       results.innerHTML = '<div class="error">❌ ' + esc(err.message || String(err)) + '</div>';
     } finally {

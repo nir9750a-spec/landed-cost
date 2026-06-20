@@ -16,6 +16,11 @@ const MODEL = "claude-sonnet-4-6";
 const MAX_TOKENS = 8192;
 const WEB_SEARCH_MAX_USES = 8;
 
+// ── Scaling knobs (tune for your Anthropic tier) ─────────────────────────────
+const CACHE_TTL_SECONDS = 36 * 3600;   // serve identical queries from cache for 36h
+const RATE_LIMIT_MAX = 8;              // expensive searches per IP per window
+const RATE_LIMIT_WINDOW = 600;         // window = 10 minutes
+
 function corsHeaders() {
   return {
     "Access-Control-Allow-Origin": "*",
@@ -31,6 +36,76 @@ function jsonResponse(status: number, body: unknown) {
     status,
     headers: { ...corsHeaders(), "Content-Type": "application/json" },
   });
+}
+
+// ── Supabase REST helpers (caching + rate limiting) ──────────────────────────
+// Edge functions get SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY for free; the
+// service role bypasses RLS. All helpers FAIL OPEN — if the DB is unreachable
+// we still serve the user rather than 500.
+
+const SB_URL = Deno.env.get("SUPABASE_URL") || "";
+const SB_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const sbHeaders = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type": "application/json" };
+
+function clientIp(req: Request): string {
+  const xff = req.headers.get("x-forwarded-for") || "";
+  return (xff.split(",")[0] || req.headers.get("x-real-ip") || "unknown").trim();
+}
+
+function norm(s: string): string {
+  return String(s || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function buildCacheKey(o: { market: string; category: string; audience: string; count: number; date: string }): string {
+  return [norm(o.market), norm(o.category), norm(o.audience), o.count, o.date].join("|");
+}
+
+async function cacheGet(key: string): Promise<any | null> {
+  if (!SB_URL || !SB_KEY) return null;
+  try {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/seasonal_cache?cache_key=eq.${encodeURIComponent(key)}&select=result,created_at`,
+      { headers: sbHeaders },
+    );
+    if (!r.ok) return null;
+    const rows = await r.json();
+    if (!Array.isArray(rows) || !rows.length) return null;
+    const ageSec = (Date.now() - new Date(rows[0].created_at).getTime()) / 1000;
+    if (ageSec > CACHE_TTL_SECONDS) return null;
+    return rows[0].result;
+  } catch {
+    return null;
+  }
+}
+
+async function cacheSet(key: string, o: any, result: any): Promise<void> {
+  if (!SB_URL || !SB_KEY) return;
+  try {
+    await fetch(`${SB_URL}/rest/v1/seasonal_cache`, {
+      method: "POST",
+      headers: { ...sbHeaders, Prefer: "resolution=merge-duplicates" },
+      body: JSON.stringify({
+        cache_key: key, market: o.market, category: o.category,
+        audience: o.audience, count: o.count, result, created_at: new Date().toISOString(),
+      }),
+    });
+  } catch { /* ignore */ }
+}
+
+// Atomic fixed-window limiter via the check_rate_limit() SQL function.
+async function rateAllowed(bucket: string): Promise<boolean> {
+  if (!SB_URL || !SB_KEY) return true; // fail open
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/rpc/check_rate_limit`, {
+      method: "POST",
+      headers: sbHeaders,
+      body: JSON.stringify({ p_bucket: bucket, p_limit: RATE_LIMIT_MAX, p_window: RATE_LIMIT_WINDOW }),
+    });
+    if (!r.ok) return true;
+    return (await r.json()) === true;
+  } catch {
+    return true;
+  }
 }
 
 // ── Prompt builders ──────────────────────────────────────────────────────────
@@ -192,6 +267,24 @@ Deno.serve(async (req) => {
     audience: String(payload.audience || "").slice(0, 200),
   };
 
+  // 1) Cache first — collapses the flood of identical queries on launch day.
+  //    A cache hit returns in ~ms and costs nothing.
+  const cacheKey = buildCacheKey(opts);
+  const cached = await cacheGet(cacheKey);
+  if (cached) {
+    return jsonResponse(200, { result: cached, cached: true, usage: null });
+  }
+
+  // 2) Rate-limit the EXPENSIVE path (cache misses) per IP, so abuse/bursts
+  //    can't run up the Anthropic bill. Cache hits above are never limited.
+  const ip = clientIp(req);
+  if (!(await rateAllowed(`seasonal:${ip}`))) {
+    return new Response(
+      JSON.stringify({ error: "יותר מדי חיפושים בזמן קצר. נסה שוב בעוד כמה דקות." }),
+      { status: 429, headers: { ...corsHeaders(), "Content-Type": "application/json", "Retry-After": "120" } },
+    );
+  }
+
   const body = {
     model: MODEL,
     max_tokens: MAX_TOKENS,
@@ -259,8 +352,13 @@ Deno.serve(async (req) => {
     });
   }
 
+  // 3) Store in cache so the next identical query is free. Don't block the
+  //    response on the write.
+  cacheSet(cacheKey, opts, parsed).catch(() => {});
+
   return jsonResponse(200, {
     result: parsed,
+    cached: false,
     usage: data.usage || null,
   });
 });
