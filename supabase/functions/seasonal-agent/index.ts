@@ -13,8 +13,8 @@
 // Secret (already set for anthropic-proxy): ANTHROPIC_API_KEY=sk-ant-...
 
 const MODEL = "claude-sonnet-4-6";
-const MAX_TOKENS = 4096;
-const WEB_SEARCH_MAX_USES = 6;
+const MAX_TOKENS = 8192;
+const WEB_SEARCH_MAX_USES = 8;
 
 function corsHeaders() {
   return {
@@ -36,17 +36,26 @@ function jsonResponse(status: number, body: unknown) {
 // ── Prompt builders ──────────────────────────────────────────────────────────
 
 function buildSystemPrompt(): string {
-  return `You are a senior sourcing & merchandising analyst for an importer who buys goods (mostly from China) and resells them in a target market. Your job is to find the HOTTEST, best-selling, trending products worth importing for the UPCOMING season.
+  return `You are a senior sourcing & merchandising analyst for an importer who buys goods (mostly from China) and resells them in a target market. Your job has two parts:
+(A) Find the HOTTEST, best-selling, trending products worth importing for the UPCOMING season.
+(B) For each product, build a practical SOURCING DOSSIER whose guiding goal is to BYPASS MIDDLEMEN and reach the actual MANUFACTURER / factory directly — not trading companies or agents.
 
 Method:
 1. Use the web_search tool to gather CURRENT evidence — recent best-seller lists, marketplace trends (Amazon, AliExpress, TikTok Shop, Temu, eBay), Google Trends-style signals, retail/seasonal trend articles. Search in both English and, where useful, the market's local language. Prefer sources from the last 6 months.
-2. Reason about the IMPORT LEAD TIME: ocean freight from China to most markets takes ~30–60 days door-to-door, plus production. So recommend products the importer should ORDER NOW to land in stock before the upcoming season's sales peak. Name that season explicitly relative to the given date.
-3. Favor products with genuine rising demand and a realistic margin for a small importer — avoid oversaturated commodities and items with heavy regulatory/shipping friction (batteries, liquids, fragile glass) unless the upside is clear (note the risk if so).
+2. Reason about IMPORT LEAD TIME: production + ocean freight from China to most markets takes ~30–60 days. Recommend products to ORDER NOW so they land before the upcoming season's sales peak. Name that season explicitly relative to the given date.
+3. For each product, research and reason about:
+   - Where it is actually manufactured (country + the main production hub/region, e.g. "סין — שנזן/יִוּוּ"), and the typical port of loading.
+   - Shipping/transit time to the target market, by sea AND by air.
+   - Regulatory standards / approvals REQUIRED to legally import & sell it in the target market (e.g. for Israel: תקן ישראלי + מכון התקנים, יבוא רשמי; EU: CE/RoHS; electronics, toys, cosmetics, food-contact each have specific regimes). Be concrete about which apply to THIS product.
+   - Realistic per-unit PURCHASE cost buying DIRECT FROM THE FACTORY (not the retail/dropship price), plus typical MOQ.
+   - DIRECT-SOURCING PLAYBOOK to bypass middlemen: how to tell a real factory from a trading company, which factory-direct channels to use (1688.com and Made-in-China.com are factory-direct; Alibaba mixes factories and traders — filter for "Manufacturer" / verified / years in business; ask for a factory audit / business license / video tour), and whether direct contact (RFQ, sample order) is needed before committing.
+4. Favor products with genuine rising demand and a realistic margin for a small importer. Avoid oversaturated commodities and items with heavy regulatory/shipping friction unless the upside is clear (note the risk).
 
 Output rules:
 - After researching, respond with ONLY a single JSON object — no markdown fences, no prose before or after.
 - All human-readable text VALUES must be written in the requested output language. JSON keys stay in English exactly as specified.
-- Base claims on what you actually found; do not invent specific statistics. If evidence is thin for a field, give a reasoned estimate and keep it short.
+- EXCEPTION: "search_term_cn" must be the Chinese (Simplified) search keyword used to find this product factory-direct on 1688.com.
+- Base claims on what you actually found; do not invent specific statistics. If evidence is thin for a field, give a short reasoned estimate.
 - Put 1–3 real source URLs you used into each idea's "sources" array.
 
 JSON schema:
@@ -64,10 +73,18 @@ JSON schema:
       "trend_evidence": "string — what the web search showed (platform, signal)",
       "competition": "low | medium | high",
       "target_audience": "string",
-      "est_unit_cost_usd": "string — rough FOB/landed unit cost range to import",
+      "origin_country": "string — where it is actually made (country + production hub)",
+      "origin_port": "string — typical port of loading",
+      "transit_sea": "string — sea transit time to the target market (e.g. 'כ-32 יום לאשדוד')",
+      "transit_air": "string — air transit time (e.g. 'כ-5–8 ימים')",
+      "compliance": "string — specific standards/approvals required to import & sell in the target market",
+      "unit_cost_usd": "string — realistic per-unit cost DIRECT FROM FACTORY (USD range)",
+      "moq": "string — typical minimum order quantity",
+      "direct_sourcing": "string — concrete playbook to reach the factory directly & bypass middlemen",
+      "search_term_en": "string — best English search keywords for Alibaba/Made-in-China",
+      "search_term_cn": "string — Chinese (Simplified) search keyword for 1688.com",
       "est_retail_price": "string — rough retail price in the market's local currency",
       "margin_note": "string — short profitability comment",
-      "sourcing_tip": "string — search terms / platform to source it on",
       "risk": "string — main risk (saturation, shipping, compliance) or '' if low",
       "sources": ["url", "..."]
     }

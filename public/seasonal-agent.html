@@ -83,6 +83,14 @@
   .meta .v{color:var(--text);font-weight:600;}
   .line{font-size:13px;color:var(--text2);}
   .line b{color:var(--text);}
+  .compliance{font-size:13px;color:#c4b5fd;background:rgba(139,92,246,.10);border:1px solid rgba(139,92,246,.25);border-radius:8px;padding:8px 11px;}
+  .compliance b{color:#ddd6fe;}
+  .direct{font-size:13px;color:#6ee7b7;background:rgba(16,185,129,.10);border:1px solid rgba(16,185,129,.28);border-radius:8px;padding:9px 11px;line-height:1.55;}
+  .direct b{color:#a7f3d0;}
+  .sourcing-links{display:flex;flex-wrap:wrap;gap:8px;}
+  .sourcing-links a{font-size:12.5px;font-weight:700;color:#0a0e1a;background:linear-gradient(135deg,#fbbf24,#f59e0b);
+    text-decoration:none;border-radius:8px;padding:6px 12px;}
+  .sourcing-links a:hover{filter:brightness(1.08);}
   .risk{font-size:12.5px;color:#f59e0b;background:rgba(245,158,11,.08);border-radius:8px;padding:7px 10px;}
   .sources{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px;}
   .sources a{font-size:12px;color:#60a5fa;text-decoration:none;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:3px 9px;}
@@ -185,6 +193,27 @@
     try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return "מקור"; }
   }
 
+  // Factory-direct deep links — 1688 & Made-in-China are factory-direct (bypass
+  // middlemen); Alibaba is included but mixes factories and traders.
+  function factoryLinks(idea) {
+    const en = String(idea.search_term_en || idea.name || "").trim();
+    const cn = String(idea.search_term_cn || "").trim();
+    const links = [];
+    if (cn) {
+      links.push(["🏭 1688 (יצרן ישיר)",
+        "https://s.1688.com/selloffer/offer_search.htm?keywords=" + encodeURIComponent(cn)]);
+    }
+    if (en) {
+      links.push(["🏭 Made-in-China",
+        "https://www.made-in-china.com/productdirectory.do?word=" + encodeURIComponent(en) + "&file=&searchType=all"]);
+      links.push(["Alibaba",
+        "https://www.alibaba.com/trade/search?SearchText=" + encodeURIComponent(en)]);
+    }
+    if (!links.length) return "";
+    return '<div class="sourcing-links">' + links.map(([label, url]) =>
+      `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(label)}</a>`).join("") + "</div>";
+  }
+
   function renderIdea(idea) {
     const sources = Array.isArray(idea.sources) ? idea.sources.filter(Boolean) : [];
     const sourcesHtml = sources.length
@@ -193,6 +222,11 @@
       : "";
     const risk = idea.risk && String(idea.risk).trim()
       ? `<div class="risk">⚠️ ${esc(idea.risk)}</div>` : "";
+    const origin = [idea.origin_country, idea.origin_port].filter(s => s && String(s).trim()).map(esc).join(" · ");
+    const transit = [
+      idea.transit_sea ? "🚢 " + esc(idea.transit_sea) : "",
+      idea.transit_air ? "✈️ " + esc(idea.transit_air) : "",
+    ].filter(Boolean).join(" &nbsp;|&nbsp; ");
     return `
       <div class="card">
         <div class="top">
@@ -204,13 +238,20 @@
         <div class="badges">${demandChip(idea.demand)}${compChip(idea.competition)}</div>
         <div class="why">${esc(idea.why_now || "")}</div>
         ${idea.trend_evidence ? `<div class="line">📈 <b>אות מגמה:</b> ${esc(idea.trend_evidence)}</div>` : ""}
+
+        ${origin ? `<div class="line">📍 <b>מקור:</b> ${origin}</div>` : ""}
+        ${transit ? `<div class="line">⏱️ <b>זמן שילוח:</b> ${transit}</div>` : ""}
+        ${idea.compliance ? `<div class="compliance">📋 <b>תקינה ואישורים:</b> ${esc(idea.compliance)}</div>` : ""}
+
         <div class="meta">
-          <div><div class="k">עלות יחידה משוערת</div><div class="v">${esc(idea.est_unit_cost_usd || "—")}</div></div>
+          <div><div class="k">מחיר קנייה ליחידה (יצרן)</div><div class="v">${esc(idea.unit_cost_usd || "—")}</div></div>
+          <div><div class="k">מינימום הזמנה (MOQ)</div><div class="v">${esc(idea.moq || "—")}</div></div>
           <div><div class="k">מחיר מכירה משוער</div><div class="v">${esc(idea.est_retail_price || "—")}</div></div>
-          <div><div class="k">קהל יעד</div><div class="v">${esc(idea.target_audience || "—")}</div></div>
           <div><div class="k">רווחיות</div><div class="v">${esc(idea.margin_note || "—")}</div></div>
         </div>
-        ${idea.sourcing_tip ? `<div class="line">🛒 <b>איפה לחפש:</b> ${esc(idea.sourcing_tip)}</div>` : ""}
+
+        ${idea.direct_sourcing ? `<div class="direct">🎯 <b>לעקוף מתווכים:</b> ${esc(idea.direct_sourcing)}</div>` : ""}
+        ${factoryLinks(idea)}
         ${risk}
         ${sourcesHtml}
       </div>`;
