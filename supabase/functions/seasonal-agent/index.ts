@@ -14,7 +14,10 @@
 
 const MODEL = "claude-sonnet-4-6";
 const MAX_TOKENS = 8192;
-const WEB_SEARCH_MAX_USES = 8;
+// Keep the live web-search loop short enough to finish within the Edge Function
+// timeout (otherwise the gateway returns 504). 4 searches is enough to ground
+// global trends; raise once results are cached or moved to an async job.
+const WEB_SEARCH_MAX_USES = 4;
 
 // ── Scaling knobs (tune for your Anthropic tier) ─────────────────────────────
 const CACHE_TTL_SECONDS = 36 * 3600;   // serve identical queries from cache for 36h
