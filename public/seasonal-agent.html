@@ -600,7 +600,18 @@ Best regards,`;
       if (!data.result) throw new Error("לא התקבלה תוצאה תקינה.");
       renderResult(data.result, data.cached);
     } catch (err) {
-      results.innerHTML = '<div class="error">❌ ' + esc(err.message || String(err)) + '</div>';
+      const isNetwork = err instanceof TypeError || /failed to fetch|networkerror|load failed/i.test(err.message || "");
+      if (isNetwork) {
+        // Almost always: the Edge Function isn't deployed yet (the static page
+        // is live, but /functions/v1/seasonal-agent returns 404 without CORS).
+        results.innerHTML =
+          '<div class="error">⚠️ לא ניתן להגיע לשרת החיפוש. סביר שה-Edge Function עדיין לא פרוס.' +
+          '<div style="margin-top:8px;font-weight:400;color:var(--text2)">להרצה אמיתית: <code>bash scripts/deploy-agent.sh</code>. ' +
+          'בינתיים אפשר לראות את האפליקציה במצב דמו:</div>' +
+          '<button class="btn-ghost demo-inline" style="margin-top:10px">🎬 הרצת דמו (ללא שרת)</button></div>';
+      } else {
+        results.innerHTML = '<div class="error">❌ ' + esc(err.message || String(err)) + '</div>';
+      }
     } finally {
       goBtn.disabled = false;
       goBtn.innerHTML = "🔎 מצא מוצרים חמים";
@@ -677,7 +688,8 @@ Best regards,`;
     const copyBtn = e.target.closest(".copy-btn");
     if (copyBtn) { copyText(copyBtn); return; }
     const enrichBtn = e.target.closest(".enrich-btn");
-    if (enrichBtn) { enrichContact(parseInt(enrichBtn.dataset.idx, 10), parseInt(enrichBtn.dataset.mfr, 10), enrichBtn); }
+    if (enrichBtn) { enrichContact(parseInt(enrichBtn.dataset.idx, 10), parseInt(enrichBtn.dataset.mfr, 10), enrichBtn); return; }
+    if (e.target.closest(".demo-inline")) { runDemo(); }
   });
 </script>
 </body>
