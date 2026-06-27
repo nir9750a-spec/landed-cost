@@ -1,0 +1,55 @@
+name: Deploy Supabase Functions
+
+# Deploys the seasonal-agent backend WITHOUT a local CLI — runs on GitHub's
+# runners (which have network access to Supabase). Trigger it manually from the
+# Actions tab, or it auto-runs when the function/migration code changes on main.
+#
+# Required repo secret (Settings → Secrets and variables → Actions):
+#   SUPABASE_ACCESS_TOKEN  — create at https://supabase.com/dashboard/account/tokens
+# Optional repo secret (enables the cache + rate-limit migrations):
+#   SUPABASE_DB_URL        — Dashboard → Project → Database → Connection string (URI)
+#
+# Note: the function runtime secrets (ANTHROPIC_API_KEY, optional HUNTER_API_KEY)
+# live in Supabase itself, not GitHub. ANTHROPIC_API_KEY is already set.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/**"
+      - "supabase/migrations/**"
+      - "supabase/config.toml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJECT_REF: eginihtpqahpejnkqznn
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy edge functions
+        run: |
+          supabase functions deploy seasonal-agent --project-ref "$PROJECT_REF"
+          supabase functions deploy contact-enrich --project-ref "$PROJECT_REF"
+
+      - name: Push DB migrations (cache + rate-limit tables)
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "SUPABASE_DB_URL not set — skipping migrations. Functions still work (fail-open, no caching)."
+            exit 0
+          fi
+          supabase db push --db-url "$DB_URL"
+
+      - name: Summary
+        run: |
+          echo "✅ Functions deployed to project $PROJECT_REF" >> "$GITHUB_STEP_SUMMARY"
+          echo "Live page: https://nir-sigma-liard.vercel.app/seasonal-agent.html" >> "$GITHUB_STEP_SUMMARY"
