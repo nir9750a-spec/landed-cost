@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>סוכן מוצרים עונתיים · גילוי מוצרים חמים ליבוא</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg1:#0a0e1a; --bg2:#111827; --bg3:#1f2937; --bg4:#273349;
+    --text:#f3f4f6; --text2:#9ca3af; --text3:#6b7280;
+    --orange:#f59e0b; --green:#10b981; --blue:#3b82f6; --red:#ef4444;
+    --purple:#8b5cf6; --gold:#fbbf24; --border:#374151;
+    --grad: linear-gradient(135deg,#f59e0b 0%,#ef4444 100%);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Heebo',sans-serif;background:radial-gradient(1200px 600px at 100% -10%,rgba(245,158,11,.10),transparent),var(--bg1);color:var(--text);line-height:1.6;min-height:100vh;}
+  .container{max-width:1080px;margin:0 auto;padding:0 24px;}
+  a{color:inherit;}
+
+  /* HEADER */
+  header{padding:22px 0;border-bottom:1px solid var(--border);}
+  header .container{display:flex;align-items:center;gap:14px;}
+  .logo{font-weight:800;font-size:22px;display:flex;align-items:center;gap:10px;}
+  .logo .badge{background:var(--grad);color:#0a0e1a;padding:3px 11px;border-radius:9px;font-size:15px;}
+  .logo small{font-weight:500;color:var(--text2);font-size:13px;}
+
+  /* HERO */
+  .hero{padding:48px 0 26px;}
+  .hero h1{font-size:38px;line-height:1.15;font-weight:800;margin-bottom:12px;}
+  .hero h1 .accent{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+  .hero p{font-size:17px;color:var(--text2);max-width:660px;}
+
+  /* FORM */
+  .panel{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:28px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;}
+  label{display:block;font-size:13px;font-weight:600;color:var(--text2);margin-bottom:6px;}
+  input,select{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);
+    border-radius:10px;padding:11px 13px;font-family:inherit;font-size:15px;outline:none;}
+  input:focus,select:focus{border-color:var(--orange);}
+  input::placeholder{color:var(--text3);}
+  .row-actions{display:flex;align-items:center;gap:14px;margin-top:18px;flex-wrap:wrap;}
+  .btn{background:var(--grad);color:#0a0e1a;font-weight:700;border:none;border-radius:11px;
+    padding:14px 30px;font-size:16px;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:9px;}
+  .btn:disabled{opacity:.55;cursor:not-allowed;}
+  .btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border);border-radius:11px;
+    padding:14px 20px;font-size:15px;font-family:inherit;font-weight:600;cursor:pointer;}
+  .btn-ghost:hover{border-color:var(--orange);color:var(--text);}
+  .hint{color:var(--text3);font-size:13px;}
+  .demo-banner{background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.35);color:var(--gold);
+    border-radius:12px;padding:10px 16px;margin-bottom:14px;font-size:13.5px;font-weight:600;}
+
+  /* SPINNER */
+  .spinner{width:18px;height:18px;border:2.5px solid rgba(10,14,26,.35);border-top-color:#0a0e1a;border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .loading-card{display:flex;align-items:center;gap:14px;color:var(--text2);padding:26px;justify-content:center;font-size:15px;}
+  .loading-card .spinner{border-color:rgba(255,255,255,.15);border-top-color:var(--orange);}
+
+  /* SEASON HEADER */
+  .season-head{display:flex;flex-wrap:wrap;align-items:center;gap:14px;background:linear-gradient(135deg,rgba(245,158,11,.12),rgba(239,68,68,.08));
+    border:1px solid var(--border);border-radius:16px;padding:20px 24px;margin-bottom:22px;}
+  .season-head .emoji{font-size:34px;}
+  .season-head .s-title{font-size:13px;color:var(--text2);font-weight:600;}
+  .season-head .s-value{font-size:21px;font-weight:800;}
+  .season-head .order-window{margin-right:auto;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:8px 14px;font-size:13px;color:var(--text2);}
+  .season-head .order-window b{color:var(--gold);}
+  .cache-badge{display:inline-block;margin-right:6px;font-size:11px;font-weight:700;color:#6ee7b7;background:rgba(16,185,129,.12);border-radius:999px;padding:1px 8px;}
+
+  /* IDEA CARDS */
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px;}
+  .card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px;transition:border-color .15s,transform .15s;}
+  .card:hover{border-color:var(--orange);transform:translateY(-2px);}
+  .card .top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+  .card h3{font-size:18px;font-weight:800;line-height:1.25;}
+  .card .cat{font-size:12px;color:var(--text3);font-weight:600;margin-top:2px;}
+  .origin-badge{flex:none;font-size:12px;font-weight:700;color:var(--text);background:var(--bg3);border:1px solid var(--border);border-radius:999px;padding:4px 10px;white-space:nowrap;}
+  .badges{display:flex;flex-wrap:wrap;gap:6px;}
+  .chip{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;}
+  .chip.demand-high{background:rgba(16,185,129,.18);color:#34d399;}
+  .chip.demand-rising{background:rgba(245,158,11,.18);color:var(--gold);}
+  .chip.demand-medium{background:rgba(59,130,246,.16);color:#60a5fa;}
+  .chip.comp-low{background:rgba(16,185,129,.14);color:#34d399;}
+  .chip.comp-medium{background:rgba(245,158,11,.14);color:var(--gold);}
+  .chip.comp-high{background:rgba(239,68,68,.16);color:#f87171;}
+  .card .why{font-size:14px;color:var(--text);}
+  .meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;font-size:13px;border-top:1px solid var(--border);padding-top:12px;}
+  .meta .k{color:var(--text3);font-size:11.5px;font-weight:600;}
+  .meta .v{color:var(--text);font-weight:600;}
+  .line{font-size:13px;color:var(--text2);}
+  .line b{color:var(--text);}
+  .compliance{font-size:13px;color:#c4b5fd;background:rgba(139,92,246,.10);border:1px solid rgba(139,92,246,.25);border-radius:8px;padding:8px 11px;}
+  .compliance b{color:#ddd6fe;}
+  .direct{font-size:13px;color:#6ee7b7;background:rgba(16,185,129,.10);border:1px solid rgba(16,185,129,.28);border-radius:8px;padding:9px 11px;line-height:1.55;}
+  .direct b{color:#a7f3d0;}
+  .contact{font-size:13px;color:#93c5fd;background:rgba(59,130,246,.10);border:1px solid rgba(59,130,246,.28);border-radius:8px;padding:9px 11px;line-height:1.55;}
+  .contact b{color:#bfdbfe;}
+  .verify{font-size:13px;color:#fcd34d;background:rgba(251,191,36,.09);border:1px solid rgba(251,191,36,.28);border-radius:8px;padding:9px 11px;line-height:1.55;}
+  .verify b{color:#fde68a;}
+
+  /* Named manufacturers */
+  .mfr-box{background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.25);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
+  .mfr-title{font-size:12.5px;font-weight:800;color:#6ee7b7;}
+  .mfr{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px;font-size:13px;border-top:1px dashed rgba(16,185,129,.18);padding-top:7px;}
+  .mfr:first-of-type{border-top:none;padding-top:0;}
+  .mfr-name{font-weight:700;color:var(--text);}
+  .mfr-links{display:flex;flex-wrap:wrap;gap:10px;}
+  .mfr-links a{font-size:12.5px;color:#93c5fd;text-decoration:none;}
+  .mfr-links a:hover{text-decoration:underline;}
+  .enrich-btn{font-size:12px;font-weight:700;color:#6ee7b7;background:transparent;border:1px solid rgba(16,185,129,.4);
+    border-radius:7px;padding:2px 9px;cursor:pointer;font-family:inherit;}
+  .enrich-btn:hover{background:rgba(16,185,129,.12);}
+  .enrich-out{font-size:12.5px;color:#93c5fd;}
+  .enrich-note{color:var(--text3);font-size:12px;}
+
+  /* RFQ generator */
+  .rfq-row{display:flex;}
+  .rfq-btn{flex:1;background:var(--bg3);color:#fde68a;border:1px solid rgba(251,191,36,.45);border-radius:10px;
+    padding:10px 14px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;}
+  .rfq-btn:hover{background:rgba(251,191,36,.12);}
+  .rfq-box{display:flex;flex-direction:column;gap:12px;}
+  .rfq-item{display:flex;flex-direction:column;gap:6px;}
+  .rfq-head{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;font-weight:700;color:var(--text2);}
+  .copy-btn{background:var(--grad);color:#0a0e1a;border:none;border-radius:7px;padding:4px 11px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;}
+  .rfq-box textarea{width:100%;background:var(--bg1);border:1px solid var(--border);color:var(--text);border-radius:9px;
+    padding:11px;font-family:inherit;font-size:13px;line-height:1.55;resize:vertical;direction:ltr;text-align:left;}
+  .rfq-tip{font-size:12.5px;color:var(--text2);background:rgba(16,185,129,.07);border-radius:8px;padding:8px 11px;}
+
+  /* Verification guide */
+  .guide{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:6px 22px;margin-bottom:24px;}
+  .guide summary{cursor:pointer;font-size:16px;font-weight:800;padding:14px 0;list-style:none;}
+  .guide summary::-webkit-details-marker{display:none;}
+  .guide summary::before{content:"▸";margin-left:8px;color:var(--orange);}
+  .guide[open] summary::before{content:"▾";}
+  .guide-hint{font-size:12px;font-weight:500;color:var(--text3);}
+  .guide-body{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;padding:8px 0 20px;}
+  .guide-col h4{font-size:14px;color:var(--orange);margin-bottom:8px;}
+  .guide-col.danger h4{color:var(--red);}
+  .guide-col ul{margin:0;padding-inline-start:18px;display:flex;flex-direction:column;gap:6px;}
+  .guide-col li{font-size:13px;color:var(--text2);line-height:1.5;}
+  .guide-col li b{color:var(--text);}
+  .sourcing-links{display:flex;flex-wrap:wrap;gap:8px;}
+  .sourcing-links a{font-size:12.5px;font-weight:700;color:#0a0e1a;background:linear-gradient(135deg,#fbbf24,#f59e0b);
+    text-decoration:none;border-radius:8px;padding:6px 12px;}
+  .sourcing-links a:hover{filter:brightness(1.08);}
+  .risk{font-size:12.5px;color:#f59e0b;background:rgba(245,158,11,.08);border-radius:8px;padding:7px 10px;}
+  .sources{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px;}
+  .sources a{font-size:12px;color:#60a5fa;text-decoration:none;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:3px 9px;}
+  .sources a:hover{border-color:var(--blue);}
+
+  .notes{margin-top:22px;background:var(--bg2);border:1px dashed var(--border);border-radius:14px;padding:18px 20px;color:var(--text2);font-size:14px;}
+  .error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.4);color:#fca5a5;border-radius:12px;padding:16px 18px;margin-top:6px;}
+  footer{color:var(--text3);font-size:12.5px;text-align:center;padding:34px 0 26px;}
+  .empty{color:var(--text3);text-align:center;padding:40px 0;font-size:15px;}
+</style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <div class="logo">🔥 <span class="badge">עונה</span> סוכן מוצרים עונתיים</div>
+      <small style="margin-right:auto;color:var(--text3)">גילוי מוצרים חמים ליבוא · מבוסס חיפוש אינטרנט חי</small>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>מה <span class="accent">חם</span> לייבא לעונה הקרובה?</h1>
+      <p>הסוכן סורק את האינטרנט אחר המוצרים הנמכרים והמבוקשים ביותר בעולם, ולכל מוצר בוחר את <b>מקור הרכש הטוב ביותר</b> — סין, ארה״ב, אירופה, אוסטרליה או קנדה — עם דרך ישירה ליצרן, בלי מתווכים.</p>
+    </section>
+
+    <section class="panel">
+      <div class="grid">
+        <div>
+          <label for="market">שוק יעד</label>
+          <input id="market" value="ישראל" placeholder="לדוגמה: ישראל" />
+        </div>
+        <div>
+          <label for="category">קטגוריה / נישה (אופציונלי)</label>
+          <input id="category" placeholder="לדוגמה: גאדג'טים, מטבח, גינה" />
+        </div>
+        <div>
+          <label for="audience">קהל יעד (אופציונלי)</label>
+          <input id="audience" placeholder="לדוגמה: ילדים, בעלי כלבים" />
+        </div>
+        <div>
+          <label for="count">כמות רעיונות</label>
+          <select id="count">
+            <option>5</option>
+            <option selected>8</option>
+            <option>10</option>
+            <option>12</option>
+          </select>
+        </div>
+      </div>
+      <div class="row-actions">
+        <button class="btn" id="go">🔎 מצא מוצרים חמים</button>
+        <button class="btn-ghost" id="demo">🎬 הרצת דמו (ללא שרת)</button>
+        <span class="hint">החיפוש לוקח כ-20–40 שניות (סורק מקורות חיים). דמו = נתוני דוגמה מיידיים.</span>
+      </div>
+    </section>
+
+    <details class="guide">
+      <summary>🔍 איך מזהים יצרן אמיתי מול מתווך — ובודקים מפעל <span class="guide-hint">(לחץ לפתיחה)</span></summary>
+      <div class="guide-body">
+        <div class="guide-col">
+          <h4>1. שאלות סינון ראשונות</h4>
+          <ul>
+            <li>"Are you a manufacturer or a trading company?" — שאל ישירות, בכתב.</li>
+            <li>בקש רישיון עסק (business license) ובדוק שתחום העיסוק כולל <b>ייצור</b>, לא רק "סחר".</li>
+            <li>מתווך מציע מאות מוצרים מקטגוריות לא קשורות; יצרן מתמחה בקו מוצרים אחד.</li>
+          </ul>
+        </div>
+        <div class="guide-col">
+          <h4>2. מסמכים לבקש</h4>
+          <ul>
+            <li>סרטון/סיור חי בקו הייצור (לא רק תמונות יפות מהקטלוג).</li>
+            <li>תעודת ISO 9001, ודו"ח ביקורת חברתית (BSCI / Sedex).</li>
+            <li>דוחות בדיקת מוצר (test reports) לתקן הרלוונטי לשוק שלך.</li>
+          </ul>
+        </div>
+        <div class="guide-col">
+          <h4>3. אימות רשמי לפי מדינה</h4>
+          <ul>
+            <li><b>סין:</b> GSXT (国家企业信用信息公示系统) לבדיקת רישיון; ב-Alibaba "Verified Supplier" + שנות Gold.</li>
+            <li><b>ארה"ב/קנדה:</b> ThomasNet Verified, D-U-N-S, Better Business Bureau.</li>
+            <li><b>אירופה:</b> Kompass, מרשם החברות הלאומי, אימות מע"מ ב-VIES.</li>
+          </ul>
+        </div>
+        <div class="guide-col">
+          <h4>4. בדיקה בלתי-תלויה</h4>
+          <ul>
+            <li>הזמן ביקורת/בדיקת מפעל מצד שלישי לפני תשלום גדול: <b>SGS, QIMA, Bureau Veritas, TÜV</b>.</li>
+            <li>הזמן דגימה בתשלום — בדוק איכות בפועל לפני הזמנה מלאה.</li>
+          </ul>
+        </div>
+        <div class="guide-col danger">
+          <h4>🚩 דגלים אדומים</h4>
+          <ul>
+            <li>מסרבים לתת רישיון עסק או כתובת מדויקת.</li>
+            <li>חשבון בנק על שם אדם פרטי — לא על שם החברה.</li>
+            <li>לוחצים על מקדמה גדולה במזומן/מיידית.</li>
+            <li>אימייל גנרי (gmail/hotmail) במקום דומיין חברה.</li>
+            <li>מחיר נמוך בצורה חשודה מכל השאר.</li>
+          </ul>
+        </div>
+      </div>
+    </details>
+
+    <section id="results"></section>
+  </main>
+
+  <footer>
+    סוכן מבוסס Claude + web search · התוצאות הן הערכות לכיוון מחקרי בלבד, אמתו מול ספק לפני הזמנה.
+  </footer>
+
+<script>
+  // ── Config ─────────────────────────────────────────────────────────────────
+  const SUPABASE_URL = "https://eginihtpqahpejnkqznn.supabase.co";
+  const ANON_KEY = "sb_publishable_dxvkjrqH1c0SULImna9L2A_qe9AkGTL";
+  const ENDPOINT = SUPABASE_URL + "/functions/v1/seasonal-agent";
+  const ENRICH_ENDPOINT = SUPABASE_URL + "/functions/v1/contact-enrich";
+
+  const $ = (id) => document.getElementById(id);
+  const results = $("results");
+  const goBtn = $("go");
+  let currentIdeas = [];
+
+  const esc = (s) => String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+  function seasonEmoji(text) {
+    const t = String(text || "").toLowerCase();
+    if (/חורף|winter|דצמבר|ינואר|פברואר/.test(t)) return "❄️";
+    if (/אביב|spring|פסח|מרץ|אפריל/.test(t)) return "🌷";
+    if (/קיץ|summer|יוני|יולי|אוגוסט/.test(t)) return "☀️";
+    if (/סתיו|autumn|fall|חזרה|ספטמבר|אוקטובר/.test(t)) return "🍂";
+    if (/חג|holiday|ראש השנה|סוכות|חנוכה|black friday|בלאק/.test(t)) return "🎁";
+    return "📅";
+  }
+
+  function demandChip(d) {
+    const v = String(d || "").toLowerCase();
+    if (/high|גבוה/.test(v)) return '<span class="chip demand-high">ביקוש גבוה</span>';
+    if (/rising|עול|מטפס/.test(v)) return '<span class="chip demand-rising">ביקוש עולה</span>';
+    return '<span class="chip demand-medium">ביקוש בינוני</span>';
+  }
+  function compChip(c) {
+    const v = String(c || "").toLowerCase();
+    if (/low|נמוך/.test(v)) return '<span class="chip comp-low">תחרות נמוכה</span>';
+    if (/high|גבוה/.test(v)) return '<span class="chip comp-high">תחרות גבוהה</span>';
+    return '<span class="chip comp-medium">תחרות בינונית</span>';
+  }
+
+  function host(url) {
+    try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return "מקור"; }
+  }
+
+  // Normalize the model's sourcing_country to one of our known buckets.
+  function originKey(idea) {
+    const v = String(idea.sourcing_country || idea.origin_country || "").toLowerCase();
+    if (/usa|united states|america|ארה|ארצות הברית/.test(v)) return "USA";
+    if (/canada|קנדה/.test(v)) return "Canada";
+    if (/australia|אוסטרל/.test(v)) return "Australia";
+    if (/europe|eu\b|germany|italy|france|spain|אירופ|גרמ|איטל|צרפת|ספרד/.test(v)) return "Europe";
+    if (/china|chinese|prc|סין|סיני/.test(v)) return "China";
+    return "Other";
+  }
+
+  const FLAG = { China: "🇨🇳", USA: "🇺🇸", Canada: "🇨🇦", Australia: "🇦🇺", Europe: "🇪🇺", Other: "🌐" };
+  const ORIGIN_LABEL = { China: "סין", USA: "ארה\"ב", Canada: "קנדה", Australia: "אוסטרליה", Europe: "אירופה", Other: "אחר" };
+
+  // Factory-direct deep links, adapted to the chosen origin country so the user
+  // lands on the right factory directory (bypassing middlemen) for that region.
+  function factoryLinks(idea) {
+    const en = encodeURIComponent(String(idea.search_term_en || idea.name || "").trim());
+    const cn = String(idea.search_term_cn || "").trim();
+    const key = originKey(idea);
+    const links = [];
+
+    if (key === "China") {
+      if (cn) links.push(["🏭 1688 (יצרן ישיר)",
+        "https://s.1688.com/selloffer/offer_search.htm?keywords=" + encodeURIComponent(cn)]);
+      links.push(["🏭 Made-in-China", "https://www.made-in-china.com/productdirectory.do?word=" + en + "&file=&searchType=all"]);
+    } else if (key === "USA" || key === "Canada") {
+      links.push(["🏭 ThomasNet", "https://www.thomasnet.com/suppliers/?keywords=" + en]);
+      links.push(["Maker's Row", "https://makersrow.com/factories?search=" + en]);
+    } else if (key === "Europe") {
+      links.push(["🏭 Europages", "https://www.europages.co.uk/companies/" + en + ".html"]);
+      links.push(["Kompass", "https://www.kompass.com/searchCompanies/?text=" + en]);
+    } else if (key === "Australia") {
+      links.push(["🏭 IndustrySearch", "https://www.industrysearch.com.au/search?q=" + en]);
+      links.push(["Australian Made", "https://www.australianmade.com.au/buy-australian-made/?search=" + en]);
+    } else {
+      links.push(["🏭 Kompass", "https://www.kompass.com/searchCompanies/?text=" + en]);
+    }
+    // Alibaba is global — always offer it as a fallback factory channel.
+    links.push(["Alibaba", "https://www.alibaba.com/trade/search?SearchText=" + en]);
+
+    return '<div class="sourcing-links">' + links.map(([label, url]) =>
+      `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(label)}</a>`).join("") + "</div>";
+  }
+
+  function renderIdea(idea, i) {
+    const sources = Array.isArray(idea.sources) ? idea.sources.filter(Boolean) : [];
+    const sourcesHtml = sources.length
+      ? '<div class="sources">' + sources.slice(0, 4).map(u =>
+          `<a href="${esc(u)}" target="_blank" rel="noopener">🔗 ${esc(host(u))}</a>`).join("") + "</div>"
+      : "";
+    const risk = idea.risk && String(idea.risk).trim()
+      ? `<div class="risk">⚠️ ${esc(idea.risk)}</div>` : "";
+    const oKey = originKey(idea);
+    const originBadge = `<span class="origin-badge">${FLAG[oKey]} ${esc(ORIGIN_LABEL[oKey])}</span>`;
+    const origin = [idea.origin_country, idea.origin_port].filter(s => s && String(s).trim()).map(esc).join(" · ");
+    const transit = [
+      idea.transit_sea ? "🚢 " + esc(idea.transit_sea) : "",
+      idea.transit_air ? "✈️ " + esc(idea.transit_air) : "",
+    ].filter(Boolean).join(" &nbsp;|&nbsp; ");
+    return `
+      <div class="card">
+        <div class="top">
+          <div>
+            <h3>${esc(idea.name)}</h3>
+            <div class="cat">${esc(idea.category || "")}</div>
+          </div>
+          ${originBadge}
+        </div>
+        <div class="badges">${demandChip(idea.demand)}${compChip(idea.competition)}</div>
+        <div class="why">${esc(idea.why_now || "")}</div>
+        ${idea.trend_evidence ? `<div class="line">📈 <b>אות מגמה:</b> ${esc(idea.trend_evidence)}</div>` : ""}
+
+        ${origin ? `<div class="line">📍 <b>מקור:</b> ${origin}</div>` : ""}
+        ${transit ? `<div class="line">⏱️ <b>זמן שילוח:</b> ${transit}</div>` : ""}
+        ${idea.compliance ? `<div class="compliance">📋 <b>תקינה ואישורים:</b> ${esc(idea.compliance)}</div>` : ""}
+
+        <div class="meta">
+          <div><div class="k">מחיר קנייה ליחידה (יצרן)</div><div class="v">${esc(idea.unit_cost_usd || "—")}</div></div>
+          <div><div class="k">מינימום הזמנה (MOQ)</div><div class="v">${esc(idea.moq || "—")}</div></div>
+          <div><div class="k">מחיר מכירה משוער</div><div class="v">${esc(idea.est_retail_price || "—")}</div></div>
+          <div><div class="k">רווחיות</div><div class="v">${esc(idea.margin_note || "—")}</div></div>
+        </div>
+
+        ${idea.direct_sourcing ? `<div class="direct">🎯 <b>לעקוף מתווכים:</b> ${esc(idea.direct_sourcing)}</div>` : ""}
+        ${idea.manufacturer_check ? `<div class="verify">🔍 <b>בדיקת יצרן למוצר זה:</b> ${esc(idea.manufacturer_check)}</div>` : ""}
+        ${idea.factory_contact ? `<div class="contact">📞 <b>קשר ישיר ליצרן:</b> ${esc(idea.factory_contact)}</div>` : ""}
+        ${renderManufacturers(idea, i)}
+        ${factoryLinks(idea)}
+        <div class="rfq-row"><button class="rfq-btn" data-idx="${i}">✉️ צור פנייה ליצרן (RFQ)</button></div>
+        <div class="rfq-box" id="rfq-${i}" hidden></div>
+        ${risk}
+        ${sourcesHtml}
+      </div>`;
+  }
+
+  // Build a mailto: link that opens the user's mail client with the RFQ ready.
+  function mailtoRFQ(idea, email) {
+    const { en } = buildRFQ(idea);
+    const subject = "Wholesale inquiry – " + (idea.search_term_en || idea.name || "");
+    const body = en.replace(/^Subject:[^\n]*\n\n/, ""); // drop the Subject line from the body
+    return "mailto:" + encodeURIComponent(email) +
+      "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+  }
+
+  // Derive a bare domain from a website string or an email address.
+  function domainOf(s) {
+    if (!s) return "";
+    try {
+      const u = new URL(/^https?:/i.test(s) ? s : "https://" + s);
+      return u.hostname.replace(/^www\./, "");
+    } catch {
+      const m = String(s).match(/@([^\s]+)/);
+      return m ? m[1] : "";
+    }
+  }
+
+  // Named global manufacturers found via web search — real companies, with a
+  // one-click pre-filled email so the user reaches the factory directly. When a
+  // manufacturer has a website but no email, an "verify email" button calls the
+  // contact-enrich function (Hunter.io) to find a real mailbox.
+  function renderManufacturers(idea, i) {
+    const list = Array.isArray(idea.manufacturers)
+      ? idea.manufacturers.filter(m => m && (m.company || m.website)) : [];
+    if (!list.length) return "";
+    const rows = list.slice(0, 4).map((m, j) => {
+      const country = m.country ? ` · ${esc(m.country)}` : "";
+      const url = m.website ? (/^https?:/i.test(m.website) ? m.website : "https://" + m.website) : "";
+      const site = url ? `<a href="${esc(url)}" target="_blank" rel="noopener">🌐 אתר</a>` : "";
+      const email = m.email ? `<a href="${esc(mailtoRFQ(idea, m.email))}" title="פתח מייל RFQ מוכן">📧 ${esc(m.email)}</a>` : "";
+      const phone = m.phone ? `<a href="tel:${esc(String(m.phone).replace(/[^+\d]/g, ""))}">📞 ${esc(m.phone)}</a>` : "";
+      const canEnrich = !m.email && domainOf(m.website || m.email);
+      const enrich = canEnrich
+        ? `<button class="enrich-btn" data-idx="${i}" data-mfr="${j}">🔎 אמת מייל</button><span class="enrich-out" id="enr-${i}-${j}"></span>`
+        : "";
+      return `<div class="mfr"><span class="mfr-name">🏢 ${esc(m.company || "יצרן")}${country}</span><span class="mfr-links">${site}${email}${phone}${enrich}</span></div>`;
+    }).join("");
+    return `<div class="mfr-box"><div class="mfr-title">🏭 יצרנים מועמדים — קשר ישיר (גלובלי)</div>${rows}</div>`;
+  }
+
+  // Phase 3 — verified email enrichment via the contact-enrich edge function.
+  async function enrichContact(i, j, btn) {
+    const idea = currentIdeas[i];
+    const m = idea && Array.isArray(idea.manufacturers) ? idea.manufacturers[j] : null;
+    const out = document.getElementById(`enr-${i}-${j}`);
+    if (!m || !out) return;
+    const domain = domainOf(m.website || m.email);
+    if (!domain) { out.textContent = " אין דומיין"; return; }
+    btn.disabled = true;
+    const old = btn.textContent;
+    btn.textContent = "מחפש…";
+    try {
+      const res = await fetch(ENRICH_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + ANON_KEY, "apikey": ANON_KEY },
+        body: JSON.stringify({ domain }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.configured === false) {
+        out.innerHTML = `<span class="enrich-note">העשרת מייל לא מוגדרת (צריך HUNTER_API_KEY)</span>`;
+        return;
+      }
+      if (!res.ok || data.error) throw new Error(data.error || ("שגיאה " + res.status));
+      const emails = Array.isArray(data.emails) ? data.emails : [];
+      if (!emails.length) { out.textContent = " לא נמצאו מיילים בדומיין"; return; }
+      out.innerHTML = " " + emails.slice(0, 3).map(e =>
+        `<a href="${esc(mailtoRFQ(idea, e.value))}" title="פתח מייל RFQ מוכן">📧 ${esc(e.value)}${e.confidence ? ` (${e.confidence}%)` : ""}</a>`
+      ).join(" ");
+      btn.style.display = "none";
+    } catch (err) {
+      out.textContent = " שגיאה: " + (err.message || String(err));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = old;
+    }
+  }
+
+  // ── RFQ outreach generator — the FIRST question screens manufacturer vs trader.
+  function buildRFQ(idea) {
+    const prod = idea.search_term_en || idea.name || "this product";
+    const moq = idea.moq ? String(idea.moq) : "your minimum order quantity";
+    const certs = idea.compliance ? `(${idea.compliance})` : "(any certifications required for our market)";
+    const en =
+`Subject: Wholesale inquiry – ${prod}
+
+Hello,
+
+We are an importer looking to buy "${idea.name}" in bulk for our market. Before we proceed, could you please confirm:
+
+1. Are you the actual manufacturer of this product, or a trading company? We prefer to work directly with the factory.
+2. Could you share your business license and basic factory details — location, production capacity, and years in business?
+3. Which product certifications do you hold ${certs}?
+4. What is your MOQ and unit price (EXW / FOB) for ${moq}?
+5. What is the production lead time, and can you provide a paid sample?
+
+Please also send your latest catalogue and a few recent photos or a short video of your production line.
+
+Looking forward to your reply.
+
+Best regards,`;
+    let cn = null;
+    if (originKey(idea) === "China") {
+      const cnTerm = idea.search_term_cn || idea.name;
+      cn =
+`您好！
+
+我们是进口商，想批量采购"${cnTerm}"。在进一步沟通前，想先确认几点：
+
+1. 请问贵司是生产厂家还是贸易公司？我们希望与工厂直接合作。
+2. 能否提供营业执照及工厂基本信息（地址、产能、成立年限）？
+3. 该产品有哪些认证？
+4. 起订量(MOQ)和出厂价(EXW/FOB)是多少？
+5. 生产周期多长？能否提供付费样品？
+
+另外，请发送最新产品目录和近期车间照片或视频。
+
+期待您的回复，谢谢！`;
+    }
+    return { en, cn };
+  }
+
+  function rfqBlock(label, text, id) {
+    return `<div class="rfq-item">
+      <div class="rfq-head"><span>${label}</span><button class="copy-btn" data-target="${id}">📋 העתק</button></div>
+      <textarea id="${id}" readonly rows="12">${esc(text)}</textarea></div>`;
+  }
+
+  function toggleRFQ(i) {
+    const idea = currentIdeas[i];
+    const box = document.getElementById("rfq-" + i);
+    if (!idea || !box) return;
+    if (!box.dataset.built) {
+      const { en, cn } = buildRFQ(idea);
+      let html = rfqBlock("📧 הודעת RFQ (אנגלית — לכל מקור)", en, "rfqtxt-en-" + i);
+      if (cn) html += rfqBlock("💬 WeChat / 1688 (סינית)", cn, "rfqtxt-cn-" + i);
+      html += `<div class="rfq-tip">💡 השאלה הראשונה היא <b>מסנן המתווכים</b>: יצרן אמיתי יענה בפירוט עם רישיון ותמונות מפעל; מתווך יתחמק או יענה כללית.</div>`;
+      box.innerHTML = html;
+      box.dataset.built = "1";
+    }
+    box.hidden = !box.hidden;
+  }
+
+  async function copyText(btn) {
+    const ta = document.getElementById(btn.dataset.target);
+    if (!ta) return;
+    try { await navigator.clipboard.writeText(ta.value); }
+    catch { ta.select(); document.execCommand("copy"); }
+    const old = btn.textContent;
+    btn.textContent = "✓ הועתק";
+    setTimeout(() => { btn.textContent = old; }, 1500);
+  }
+
+  function renderResult(r, cached) {
+    const ideas = Array.isArray(r.ideas) ? r.ideas : [];
+    currentIdeas = ideas;
+    const cachedBadge = cached ? `<span class="cache-badge" title="תוצאה מהמטמון — מהיר וללא עלות">⚡ מהמטמון</span>` : "";
+    const head = `
+      <div class="season-head">
+        <div class="emoji">${seasonEmoji(r.upcoming_season)}</div>
+        <div>
+          <div class="s-title">עונה קרובה · ${esc(r.market || "")} · נכון ל-${esc(r.as_of_date || "")} ${cachedBadge}</div>
+          <div class="s-value">${esc(r.upcoming_season || "")}</div>
+        </div>
+        ${r.order_window ? `<div class="order-window">⏳ חלון הזמנה: <b>${esc(r.order_window)}</b></div>` : ""}
+      </div>`;
+    const cards = ideas.length
+      ? `<div class="cards">${ideas.map((idea, i) => renderIdea(idea, i)).join("")}</div>`
+      : `<div class="empty">לא נמצאו רעיונות. נסה לצמצם/לשנות את הקטגוריה.</div>`;
+    const notes = r.notes && String(r.notes).trim()
+      ? `<div class="notes">💡 ${esc(r.notes)}</div>` : "";
+    results.innerHTML = head + cards + notes;
+  }
+
+  async function run() {
+    const market = $("market").value.trim() || "ישראל";
+    const category = $("category").value.trim();
+    const audience = $("audience").value.trim();
+    const count = parseInt($("count").value, 10) || 8;
+
+    goBtn.disabled = true;
+    goBtn.innerHTML = '<span class="spinner"></span> סורק את האינטרנט…';
+    results.innerHTML = '<div class="panel"><div class="loading-card"><span class="spinner"></span> מחפש מוצרים חמים ב-' + esc(market) + ' לעונה הקרובה…</div></div>';
+
+    try {
+      const res = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + ANON_KEY,
+          "apikey": ANON_KEY,
+        },
+        body: JSON.stringify({
+          market, category, audience, count,
+          date: new Date().toISOString().slice(0, 10),
+          language: "Hebrew",
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) {
+        throw new Error(data.error || ("שגיאת שרת (" + res.status + ")"));
+      }
+      if (!data.result) throw new Error("לא התקבלה תוצאה תקינה.");
+      renderResult(data.result, data.cached);
+    } catch (err) {
+      results.innerHTML = '<div class="error">❌ ' + esc(err.message || String(err)) + '</div>';
+    } finally {
+      goBtn.disabled = false;
+      goBtn.innerHTML = "🔎 מצא מוצרים חמים";
+    }
+  }
+
+  // ── Demo mode — runs the full UX with no backend (sample data). Also reached
+  //    via ?demo=1, and used as a friendly fallback before the function is deployed.
+  const DEMO_RESULT = {
+    as_of_date: "2026-06-20", market: "ישראל",
+    upcoming_season: "סוף קיץ / חזרה לבית הספר (אוגוסט–ספטמבר)",
+    order_window: "להזמין עד אמצע יולי כדי לנחות באוגוסט",
+    ideas: [
+      {
+        name: "בקבוק שתייה תרמי לילדים", category: "כלי בית / חזרה לביה\"ס",
+        why_now: "ביקוש עולה לפני פתיחת שנה\"ל; טרנד עולמי של בקבוקים מעוצבים.",
+        demand: "high", competition: "medium", target_audience: "הורים לילדי גן ובי\"ס",
+        trend_evidence: "עלייה בחיפושי 'kids water bottle' ב-TikTok Shop ו-Amazon US ביוני",
+        sourcing_country: "China", origin_country: "סין — יִוּוּ (ג'ה-ג'יאנג); חלופה: ארה\"ב לפרימיום", origin_port: "Ningbo",
+        transit_sea: "כ-32 יום לאשדוד", transit_air: "כ-6–8 ימים",
+        compliance: "ת\"י 5113 (מגע מזון) + בדיקת מכון התקנים; יבוא רשמי",
+        unit_cost_usd: "$1.8–$3.2 ליחידה (מפעל)", moq: "500–1,000 יח'",
+        direct_sourcing: "חפש ב-1688 ב'保温杯 儿童'; סנן יצרנים עם רישיון ייצור ו-5+ שנים; בקש סרטון קו ייצור.",
+        manufacturer_check: "בקש סרטון תבניות הזרקה — יצרן אמיתי מחזיק תבניות משלו. דגל אדום: מציע גם בגדים וגם אלקטרוניקה.",
+        factory_contact: "צ'אט 旺旺 ב-1688; בקש WeChat של נציג; אימייל sales@<factory>.com; יריד Yiwu.",
+        manufacturers: [
+          { company: "Zhejiang Haers Vacuum", country: "China", website: "haers.com", email: "export@haers.com", phone: "+86 579 8888 0000" },
+          { company: "Sea Speed Houseware", country: "China", website: "seaspeed.cn", email: "", phone: "+86 137 0000 0000" },
+        ],
+        search_term_en: "kids insulated water bottle", search_term_cn: "保温杯 儿童",
+        est_retail_price: "₪49–₪79", margin_note: "שוליים ~55% בקמעונאות", risk: "רוויה בינונית — בידול דרך עיצוב/מיתוג",
+        sources: ["https://www.statista.com/", "https://trends.google.com/"],
+      },
+      {
+        name: "רהיט עץ מתקפל לחצר", category: "גינה / בית",
+        why_now: "עונת קיץ-סתיו; מגמת 'outdoor living' חזקה.",
+        demand: "rising", competition: "low", target_audience: "בעלי בתים",
+        trend_evidence: "מגמת 'folding patio furniture' ב-Pinterest ו-Etsy US",
+        sourcing_country: "USA", origin_country: "ארה\"ב — צפון קרוליינה (תעשיית רהיטים); חלופה: פורטוגל", origin_port: "Charleston",
+        transit_sea: "כ-18–24 יום", transit_air: "לא כלכלי",
+        compliance: "ת\"י בטיחות רהיטים; אישור עץ FSC לייצוא",
+        unit_cost_usd: "$28–$45 ליחידה", moq: "50–100 יח'",
+        direct_sourcing: "ThomasNet — 'folding patio furniture manufacturer'; פנה ישירות לאתר היצרן ובקש RFQ.",
+        manufacturer_check: "בקש כתובת מפעל פיזי + D-U-N-S; ודא NAICS 337 (ייצור רהיטים). דגל אדום: 'מפעל' עם כתובת מגורים.",
+        factory_contact: "מייל מסחרי + טופס RFQ באתר; LinkedIn של מנהל מכירות; יריד High Point Market.",
+        manufacturers: [
+          { company: "Carolina Outdoor Mfg.", country: "USA", website: "carolinaoutdoor.com", email: "", phone: "+1 828 555 0123" },
+          { company: "NordFurn", country: "Portugal", website: "https://nordfurn.pt", email: "info@nordfurn.pt", phone: "" },
+        ],
+        search_term_en: "folding patio furniture manufacturer", search_term_cn: "",
+        est_retail_price: "₪399–₪699", margin_note: "שוליים ~40%, MOQ נמוך", risk: "עלות יחידה גבוהה",
+        sources: ["https://www.thomasnet.com/"],
+      },
+    ],
+    notes: "מצב דמו — נתוני דוגמה. בהרצה אמיתית הנתונים מגיעים מחיפוש אינטרנט חי. אמת מול הספק לפני הזמנה.",
+  };
+
+  function runDemo() {
+    renderResult(DEMO_RESULT, false);           // reuse the real renderer
+    results.insertAdjacentHTML("afterbegin",     // then add a clear demo banner on top
+      `<div class="demo-banner">🎬 מצב דמו — נתוני דוגמה (ללא שרת). להרצה אמיתית פרוס את ה-Edge Function ולחץ "מצא מוצרים חמים".</div>`);
+  }
+
+  goBtn.addEventListener("click", run);
+  $("demo").addEventListener("click", runDemo);
+  ["market", "category", "audience"].forEach(id =>
+    $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") run(); }));
+  if (/[?&]demo=1\b/.test(location.search)) runDemo();
+
+  // Delegated handlers for dynamically-rendered RFQ + copy buttons.
+  results.addEventListener("click", (e) => {
+    const rfqBtn = e.target.closest(".rfq-btn");
+    if (rfqBtn) { toggleRFQ(parseInt(rfqBtn.dataset.idx, 10)); return; }
+    const copyBtn = e.target.closest(".copy-btn");
+    if (copyBtn) { copyText(copyBtn); return; }
+    const enrichBtn = e.target.closest(".enrich-btn");
+    if (enrichBtn) { enrichContact(parseInt(enrichBtn.dataset.idx, 10), parseInt(enrichBtn.dataset.mfr, 10), enrichBtn); }
+  });
+</script>
+</body>
+</html>

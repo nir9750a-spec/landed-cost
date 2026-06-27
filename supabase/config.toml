@@ -9,3 +9,9 @@ verify_jwt = false
 
 [functions.freight-rates-fetch]
 verify_jwt = false
+
+[functions.seasonal-agent]
+verify_jwt = false
+
+[functions.contact-enrich]
+verify_jwt = false
