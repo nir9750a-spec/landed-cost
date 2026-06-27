@@ -45,7 +45,12 @@
   .btn{background:var(--grad);color:#0a0e1a;font-weight:700;border:none;border-radius:11px;
     padding:14px 30px;font-size:16px;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:9px;}
   .btn:disabled{opacity:.55;cursor:not-allowed;}
+  .btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border);border-radius:11px;
+    padding:14px 20px;font-size:15px;font-family:inherit;font-weight:600;cursor:pointer;}
+  .btn-ghost:hover{border-color:var(--orange);color:var(--text);}
   .hint{color:var(--text3);font-size:13px;}
+  .demo-banner{background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.35);color:var(--gold);
+    border-radius:12px;padding:10px 16px;margin-bottom:14px;font-size:13.5px;font-weight:600;}
 
   /* SPINNER */
   .spinner{width:18px;height:18px;border:2.5px solid rgba(10,14,26,.35);border-top-color:#0a0e1a;border-radius:50%;animation:spin .7s linear infinite;}
@@ -190,7 +195,8 @@
       </div>
       <div class="row-actions">
         <button class="btn" id="go">🔎 מצא מוצרים חמים</button>
-        <span class="hint">החיפוש לוקח כ-20–40 שניות (סורק מקורות חיים).</span>
+        <button class="btn-ghost" id="demo">🎬 הרצת דמו (ללא שרת)</button>
+        <span class="hint">החיפוש לוקח כ-20–40 שניות (סורק מקורות חיים). דמו = נתוני דוגמה מיידיים.</span>
       </div>
     </section>
 
@@ -601,9 +607,68 @@ Best regards,`;
     }
   }
 
+  // ── Demo mode — runs the full UX with no backend (sample data). Also reached
+  //    via ?demo=1, and used as a friendly fallback before the function is deployed.
+  const DEMO_RESULT = {
+    as_of_date: "2026-06-20", market: "ישראל",
+    upcoming_season: "סוף קיץ / חזרה לבית הספר (אוגוסט–ספטמבר)",
+    order_window: "להזמין עד אמצע יולי כדי לנחות באוגוסט",
+    ideas: [
+      {
+        name: "בקבוק שתייה תרמי לילדים", category: "כלי בית / חזרה לביה\"ס",
+        why_now: "ביקוש עולה לפני פתיחת שנה\"ל; טרנד עולמי של בקבוקים מעוצבים.",
+        demand: "high", competition: "medium", target_audience: "הורים לילדי גן ובי\"ס",
+        trend_evidence: "עלייה בחיפושי 'kids water bottle' ב-TikTok Shop ו-Amazon US ביוני",
+        sourcing_country: "China", origin_country: "סין — יִוּוּ (ג'ה-ג'יאנג); חלופה: ארה\"ב לפרימיום", origin_port: "Ningbo",
+        transit_sea: "כ-32 יום לאשדוד", transit_air: "כ-6–8 ימים",
+        compliance: "ת\"י 5113 (מגע מזון) + בדיקת מכון התקנים; יבוא רשמי",
+        unit_cost_usd: "$1.8–$3.2 ליחידה (מפעל)", moq: "500–1,000 יח'",
+        direct_sourcing: "חפש ב-1688 ב'保温杯 儿童'; סנן יצרנים עם רישיון ייצור ו-5+ שנים; בקש סרטון קו ייצור.",
+        manufacturer_check: "בקש סרטון תבניות הזרקה — יצרן אמיתי מחזיק תבניות משלו. דגל אדום: מציע גם בגדים וגם אלקטרוניקה.",
+        factory_contact: "צ'אט 旺旺 ב-1688; בקש WeChat של נציג; אימייל sales@<factory>.com; יריד Yiwu.",
+        manufacturers: [
+          { company: "Zhejiang Haers Vacuum", country: "China", website: "haers.com", email: "export@haers.com", phone: "+86 579 8888 0000" },
+          { company: "Sea Speed Houseware", country: "China", website: "seaspeed.cn", email: "", phone: "+86 137 0000 0000" },
+        ],
+        search_term_en: "kids insulated water bottle", search_term_cn: "保温杯 儿童",
+        est_retail_price: "₪49–₪79", margin_note: "שוליים ~55% בקמעונאות", risk: "רוויה בינונית — בידול דרך עיצוב/מיתוג",
+        sources: ["https://www.statista.com/", "https://trends.google.com/"],
+      },
+      {
+        name: "רהיט עץ מתקפל לחצר", category: "גינה / בית",
+        why_now: "עונת קיץ-סתיו; מגמת 'outdoor living' חזקה.",
+        demand: "rising", competition: "low", target_audience: "בעלי בתים",
+        trend_evidence: "מגמת 'folding patio furniture' ב-Pinterest ו-Etsy US",
+        sourcing_country: "USA", origin_country: "ארה\"ב — צפון קרוליינה (תעשיית רהיטים); חלופה: פורטוגל", origin_port: "Charleston",
+        transit_sea: "כ-18–24 יום", transit_air: "לא כלכלי",
+        compliance: "ת\"י בטיחות רהיטים; אישור עץ FSC לייצוא",
+        unit_cost_usd: "$28–$45 ליחידה", moq: "50–100 יח'",
+        direct_sourcing: "ThomasNet — 'folding patio furniture manufacturer'; פנה ישירות לאתר היצרן ובקש RFQ.",
+        manufacturer_check: "בקש כתובת מפעל פיזי + D-U-N-S; ודא NAICS 337 (ייצור רהיטים). דגל אדום: 'מפעל' עם כתובת מגורים.",
+        factory_contact: "מייל מסחרי + טופס RFQ באתר; LinkedIn של מנהל מכירות; יריד High Point Market.",
+        manufacturers: [
+          { company: "Carolina Outdoor Mfg.", country: "USA", website: "carolinaoutdoor.com", email: "", phone: "+1 828 555 0123" },
+          { company: "NordFurn", country: "Portugal", website: "https://nordfurn.pt", email: "info@nordfurn.pt", phone: "" },
+        ],
+        search_term_en: "folding patio furniture manufacturer", search_term_cn: "",
+        est_retail_price: "₪399–₪699", margin_note: "שוליים ~40%, MOQ נמוך", risk: "עלות יחידה גבוהה",
+        sources: ["https://www.thomasnet.com/"],
+      },
+    ],
+    notes: "מצב דמו — נתוני דוגמה. בהרצה אמיתית הנתונים מגיעים מחיפוש אינטרנט חי. אמת מול הספק לפני הזמנה.",
+  };
+
+  function runDemo() {
+    renderResult(DEMO_RESULT, false);           // reuse the real renderer
+    results.insertAdjacentHTML("afterbegin",     // then add a clear demo banner on top
+      `<div class="demo-banner">🎬 מצב דמו — נתוני דוגמה (ללא שרת). להרצה אמיתית פרוס את ה-Edge Function ולחץ "מצא מוצרים חמים".</div>`);
+  }
+
   goBtn.addEventListener("click", run);
+  $("demo").addEventListener("click", runDemo);
   ["market", "category", "audience"].forEach(id =>
     $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") run(); }));
+  if (/[?&]demo=1\b/.test(location.search)) runDemo();
 
   // Delegated handlers for dynamically-rendered RFQ + copy buttons.
   results.addEventListener("click", (e) => {
