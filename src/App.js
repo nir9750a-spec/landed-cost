@@ -8,6 +8,7 @@ import { loadContainerTypes, loadContainerPricing } from './lib/containerSelecti
 import { syncContainerPricingFromMarket } from './lib/pricingSync';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
+import AdvisorPage from './components/AdvisorPage';
 import ProductsPage from './components/ProductsPage';
 import ProjectsPage from './components/ProjectsPage';
 import SettingsPage from './components/SettingsPage';
@@ -472,6 +473,7 @@ export default function App() {
       onApplyMarketRate={applyMarketRate} settings={settings}>
       {page === 'dashboard'  && <Dashboard {...shared} allProducts={uniqueProducts} projects={projects}
                                   activeProjectId={activeProjectId} setActiveProjectId={setActiveProjectId} setPage={setPage} />}
+      {page === 'advisor'    && <AdvisorPage {...shared} activeProject={activeProject} />}
       {page === 'products'   && <ProductsPage {...shared} activeProject={activeProject} setPage={setPage} />}
       {page === 'compliance' && <CompliancePage {...shared} activeProject={activeProject} setPage={setPage} />}
       {page === 'breakdown'  && <BreakdownPage {...shared} activeProject={activeProject} />}
