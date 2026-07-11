@@ -9,6 +9,7 @@ import { syncContainerPricingFromMarket } from './lib/pricingSync';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import AdvisorPage from './components/AdvisorPage';
+import FinancePage from './components/FinancePage';
 import ProductsPage from './components/ProductsPage';
 import ProjectsPage from './components/ProjectsPage';
 import SettingsPage from './components/SettingsPage';
@@ -477,6 +478,7 @@ export default function App() {
       {page === 'products'   && <ProductsPage {...shared} activeProject={activeProject} setPage={setPage} />}
       {page === 'compliance' && <CompliancePage {...shared} activeProject={activeProject} setPage={setPage} />}
       {page === 'breakdown'  && <BreakdownPage {...shared} activeProject={activeProject} />}
+      {page === 'finance'    && <FinancePage {...shared} activeProject={activeProject} />}
       {page === 'documents'  && <DocumentsPage activeProject={activeProject} activeProjectId={activeProjectId} showToast={showToast} applyShipmentInfo={applyShipmentInfo} />}
       {page === 'projects'   && <ProjectsPage projects={projects} products={products} settings={settings}
                                   addProject={addProject} updateProject={updateProject} duplicateProject={duplicateProject}

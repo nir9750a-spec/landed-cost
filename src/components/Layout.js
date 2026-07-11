@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { LayoutDashboard, Package, FolderOpen, Settings, Table2, Printer,
-         ChevronDown, ChevronUp, Check, X, ShieldCheck, FileText, Sparkles } from 'lucide-react';
+         ChevronDown, ChevronUp, Check, X, ShieldCheck, FileText, Sparkles, Wallet } from 'lucide-react';
 
 const NAV = [
   { id: 'dashboard',  label: 'לוח בקרה',   Icon: LayoutDashboard },
@@ -8,6 +8,7 @@ const NAV = [
   { id: 'products',   label: 'מוצרים',     Icon: Package },
   { id: 'compliance', label: 'תקינה ומכס', Icon: ShieldCheck },
   { id: 'breakdown',  label: 'פירוט מלא',  Icon: Table2 },
+  { id: 'finance',    label: 'כספים',      Icon: Wallet },
   { id: 'documents',  label: 'מסמכים',     Icon: FileText },
   { id: 'projects',   label: 'פרויקטים',   Icon: FolderOpen },
   { id: 'settings',   label: 'הגדרות',     Icon: Settings },
