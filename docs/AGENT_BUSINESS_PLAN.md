@@ -200,23 +200,25 @@ Importly  ──POST הפקת הכנסה──►  Finbot Create-Income API  ─
 API"**. המפתח יישמר כ-**Supabase secret** (`FINBOT_API_KEY`) ולא ייחשף בצד לקוח,
 בדיוק כמו `ANTHROPIC_API_KEY`.
 
-### מימוש מוצע
+### מימוש 🟢 (סקפולד נבנה — inert עד הגדרה)
 - **Edge Function `finbot-issue-income`** — פרוקסי בצד שרת (כמו `anthropic-proxy`):
-  מקבל `sales_invoice` מהאפליקציה, ממפה לפורמט של פינבוט, מוסיף את `FINBOT_API_KEY`,
-  ושולח ל-endpoint של פינבוט. מחזיר `external_id` + קישור PDF/אישור, שנשמרים
-  ב-`sales_invoices`.
-- **`src/lib/finbot.js`** — עוטף את קריאת ה-Edge Function (כמו `anthropicProxy.js`).
-- **ייצוא הוצאות**: הרחבת `AccountantExport` לפורמט שפינבoט מושכת (גיבוי לנתיב API).
+  מחזיק את `FINBOT_API_KEY` כ-secret, מזריק אותו לבקשה (header/body לפי
+  `FINBOT_KEY_MODE`), ושולח ל-`FINBOT_API_URL`. **בטוח:** כל עוד `FINBOT_API_URL`
+  לא מוגדר — מחזיר 501 ולא פונה לשום כתובת. מחזיר את תשובת פינבוט as-is.
+- **`src/lib/finbot.js`** — בונה את ה-payload (`buildFinbotPayload`) ומפרש
+  `{status:1, data}`; המפתח לעולם לא נוגע בקוד הלקוח.
+- **README** (`supabase/functions/finbot-issue-income/README.md`) — 3 הפקודות
+  להפעלה + מה לאמת מול דף התיעוד.
 
-### מה צריך ממך כדי לבנות את החיבור החי
-דף ה-API של פינבוט חסום לגישה אוטומטית (403), לכן צריך ממך אחד מהשניים:
-1. **תוכן דף ה-API** של פינבוט (`api-docs-create-income`) — בעיקר: כתובת ה-endpoint,
-   שיטת האימות (שם ה-header של המפתח), ומבנה ה-payload (שדות לקוח, סוג מסמך, שורות,
-   סכומים, מע"מ) + דוגמת בקשה. אפשר להעתיק/להדביק כאן.
-2. או **מפתח API לבדיקה** (ייווצר בפינבוט; יישמר כ-secret) — ואבנה מול הסביבה.
+### מה צריך ממך כדי להפעיל את החיבור החי
+דף ה-API חסום לגישה אוטומטית, ואת המפתח אין לשים בקוד. צריך ממך:
+1. **3 סודות** (דרך `supabase secrets set`, לא בצ'אט):
+   `FINBOT_API_KEY`, `FINBOT_API_URL` (ה-endpoint המדויק), `FINBOT_KEY_MODE`.
+2. **דוגמת בקשה אחת** מדף התיעוד (JSON) — לאימות שמות השדות וקודי סוגי המסמכים
+   ב-`buildFinbotPayload()` / `FINBOT_DOC_TYPES`.
 
-⚠️ עד שיהיה ה-endpoint/payload המדויק — לא אמציא כתובת או שדות של API פיננסי
-(סיכון להפקת מסמכים שגויים). הסקפולד ייכתב עם בלוק CONFIG מסומן שממתין לפרטים.
+🔒 **אבטחה:** מפתח שנחשף (צ'אט/צילום מסך) — לייצר מחדש בפינבוט (🗑️ → יצירה) ולעדכן
+את ה-secret. הקוד לא מכיל את המפתח בשום מקום.
 
 ---
 
