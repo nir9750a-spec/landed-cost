@@ -1,0 +1,18 @@
+{
+  "_comment": "Daily rotation state. The daily agent reads next_index, uses that product, then increments (wraps around).",
+  "next_index": 0,
+  "order": [
+    { "product_id": "YF-LYC-03A", "photo": "cart-4elements-real.jpg", "price": 279, "clean": true },
+    { "product_id": "YF-YZ-13",  "photo": "chair-yz13-wood.jpg",     "price": 220, "clean": false },
+    { "product_id": "YF-FS-02",  "photo": "fan-fs02.jpg",            "price": 69,  "clean": false },
+    { "product_id": "YF-LYD-08", "photo": "led-lyd08.jpg",           "price": 49,  "clean": false },
+    { "product_id": "YF-ZP-14A", "photo": "tent-zp14a.jpg",          "price": 299, "clean": false },
+    { "product_id": "YF-CHL-11", "photo": "grill-chl11.jpg",         "price": 135, "clean": false },
+    { "product_id": "YF-XJC-06A","photo": "bed-airy-06A.jpg",        "price": 250, "clean": true },
+    { "product_id": "YF-YZ-06B", "photo": "recliner-06B-white.jpg",  "price": 99,  "clean": false },
+    { "product_id": "YF-YZ-04",  "photo": "recliner-beach-2.jpg",    "price": 199, "clean": false },
+    { "product_id": "YF-QDC-05B","photo": "mattress-double-hispeed-clean.jpg", "price": 329, "clean": true },
+    { "product_id": "YF-ZZ-31B", "photo": "folding-table-4stools.jpg","price": 150, "clean": false },
+    { "product_id": "YF-CJ-11SET","photo": "spice-kit-hispeed-lifestyle.jpg", "price": 49, "clean": false }
+  ]
+}
