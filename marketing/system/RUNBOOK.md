@@ -32,3 +32,11 @@ For the 07:00 hero slot, ALSO generate a premium Higgsfield image (nano_banana_p
 
 ## DAILY LEARNING (once per day, morning run)
 Read IG insights via Make `instagram-business:GetUserInsights2` / `GetMediaInsights` (conn 9617477). Note which of the last posts got the most reach/engagement. Log to `marketing/system/performance-log.md` and bias `rotation-state.json` toward winning products/angles.
+
+## 🔔 חוק התראה (חובה בכל ריצה!)
+בכל ריצה, בסופה, **תמיד** שלח `PushNotification` (status: proactive) — בלי יוצאים מן הכלל:
+- מודעה מוכנה לאישור → "🔔 4Elements HH:MM: פרסומת [מוצר ₪X] מוכנה — כתוב פרסם".
+- אין מודעה / נפסלה / צריך החלטה → "🔔 4Elements HH:MM: צריך החלטה — [סיבה]".
+- שגיאה → "🔔 4Elements: שגיאה בריצת HH:MM — [תמצית]".
+- אחרי פרסום → "✅ 4Elements: [מוצר] פורסם ל-IG+פייסבוק".
+משתמש לא צריך לזכור להיכנס — הצלצול הוא הממשק.
