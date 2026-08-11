@@ -4,10 +4,25 @@ This is executed by a fresh scheduled session 3×/day. Follow it exactly.
 
 ## Fixed IDs (verified working)
 - Make team: `1499942`  · org: `7334275`
-- Publisher scenario: **6869166** ("4Elements — Publisher (Queue → IG + FB)")
-- Post-queue Data Store: **159437** (fields: `image_url`, `caption`, `product_id`)
+- **Photo** Publisher scenario: **6869166** (Queue image_url → IG CreatePostPhoto + FB CreatePostWithPhotos)
+- **Reel** Publisher scenario: **6903724** (Queue video_url → IG CreateAReelPost + FB uploadAReel) ✅ מוכח 2026-08-11
+- Post-queue Data Store: **159437** (fields: `image_url`, `video_url`, `caption`, `product_id`)
 - Meta connection: **9617477** · IG account: **17841477773982301** (@4elements.il) · FB page: **1355675404284855**
 - Repo branch: `claude/daily-conversation-connection-n8ezyf`
+
+## ⚠️ אילוץ תרחיש פעיל יחיד (המסלול מרשה 1 בלבד!)
+רק **תרחיש אחד** יכול להיות פעיל בו-זמנית. לכן לפני הרצה:
+- לרילס: `scenarios_deactivate(6869166)` → `scenarios_activate(6903724)` → הרץ 6903724.
+- לתמונה: `scenarios_deactivate(6903724)` → `scenarios_activate(6869166)` → הרץ 6869166.
+ברירת מחדל עכשיו: **רילס פעיל (6903724)** — פיבוט לוידאו להעלאת צפיות.
+
+## 🎬 MODE R — פרסום רילס (וידאו, מנוע הצפיות)
+1. בנה 2 שכבות 1080×1920: `render-*-reel-bg.html` (תמונה מלאה) + `render-*-reel-fg.html` (טקסט/לוגו/מחיר שקוף).
+2. רנדר Chromium → `reel-bg.png` + `reel-fg.png` → `./make-reel.sh reel-bg.png reel-fg.png out.mp4` (Ken Burns + fade, 8ש', 0 קרדיט).
+3. הוסף אודיו שקט (חובה ל-IG/FB): `ffmpeg -i out.mp4 -f lavfi -i anullsrc=r=48000:cl=stereo -c:v copy -c:a aac -b:a 128k -shortest -movflags +faststart out-audio.mp4`.
+4. **קרא frame לאימות** → commit+push → קישור raw של ה-mp4 עם SHA.
+5. אישור מהמשתמש → `data-store-records_create(159437, {video_url, caption, product_id})` → swap-activate 6903724 → `scenarios_run(6903724, responsive)`.
+   ⏱️ **רילס מעלה לאט:** ריצה responsive עלולה להחזיר 502/timeout — **אל תריץ שוב!** בדוק `executions_get-detail` עד `SUCCESS`, ו/או שהרשומה נמחקה מהתור. רק אם אין execution בכלל — הרץ מחדש.
 
 ## ⚠️ HARD RULES (learned the hard way)
 1. **Image MUST be a public JPEG hosted on GitHub raw** (`https://raw.githubusercontent.com/nir9750a-spec/landed-cost/<COMMIT_SHA>/<path>.jpg`). Meta CANNOT fetch weserv, cloudfront, or Google Drive links — those silently fail. Always commit the final JPEG to the repo and use its raw URL with the commit SHA.

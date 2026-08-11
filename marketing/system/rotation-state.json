@@ -1,6 +1,6 @@
 {
   "_comment": "Daily rotation state. The daily agent reads next_index, uses that product, then increments (wraps around).",
-  "next_index": 3,
+  "next_index": 4,
   "order": [
     {
       "product_id": "YF-LYC-03A",
