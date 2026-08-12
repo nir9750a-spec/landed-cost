@@ -16,6 +16,12 @@ This is executed by a fresh scheduled session 3×/day. Follow it exactly.
 - לתמונה: `scenarios_deactivate(6903724)` → `scenarios_activate(6869166)` → הרץ 6869166.
 ברירת מחדל עכשיו: **רילס פעיל (6903724)** — פיבוט לוידאו להעלאת צפיות.
 
+## 🎵 MODE T — פרסום לטיקטוק עם מוזיקה טרנדית (Higgsfield)
+TikTok connector (Higgsfield): **a8e869f3-5860-4267-9389-b1fdc60bdcbc** (@4elements, active).
+זרימה: (1) `media_import_url` את ה-mp4 דרך **jsDelivr** — `https://cdn.jsdelivr.net/gh/nir9750a-spec/landed-cost@<SHA>/<path>.mp4` (GitHub raw מחזיר octet-stream ש-Higgsfield/TikTok דוחים!). זה מחזיר גם URL של Higgsfield (cloudfront) שמתאים ל-video_url. (2) `tiktok_music_trending(connector, country_code:IL)` → הצג למשתמש, קבל בחירה. (3) `tiktok_prepare_publish(video_url=Higgsfield-hosted URL, mode:DIRECT_POST, media_type:VIDEO, title)`. (4) `tiktok_publish` עם publish_session_id + `music_sound_id` + `video_original_sound_volume:0` (להשתיק פס-קול מקומי) + `music_sound_volume:100` + כל ה-required_confirmations=true + privacy PUBLIC_TO_EVERYONE + commercial_content_disclosure{enabled:true,your_brand:true}. (5) `tiktok_publish_status` עד PUBLISH_COMPLETE.
+✅ מוכח 2026-08-12: מנגל YF-CHL-11 עם FREAKED OUT (song_clip_id 7644353784302340112).
+כלי מדידה: `virality_predictor` (חינם) — ראה LEARNINGS למסקנות ההוק.
+
 ## 🎬 MODE R — פרסום רילס (וידאו, מנוע הצפיות)
 1. בנה 2 שכבות 1080×1920: `render-*-reel-bg.html` (תמונה מלאה) + `render-*-reel-fg.html` (טקסט/לוגו/מחיר שקוף).
 2. רנדר Chromium → `reel-bg.png` + `reel-fg.png` → `./make-reel.sh reel-bg.png reel-fg.png out.mp4` (Ken Burns + fade, 8ש', 0 קרדיט).
