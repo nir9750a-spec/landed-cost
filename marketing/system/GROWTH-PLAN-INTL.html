@@ -1,0 +1,304 @@
+<!doctype html>
+<title>4Elements · תוכנית צמיחה בינלאומית</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{
+  --sand:#F5F0E6; --paper:#FCFAF4; --ink:#222720; --muted:#6E6A5E; --line:#E4DCCB;
+  --accent:#DE7A2C; --accent-soft:#F3E7D6; --pine:#2E6B5C; --sky:#39627A;
+  --good:#3C7A54; --shadow:0 1px 2px rgba(40,35,20,.05),0 8px 24px rgba(40,35,20,.06);
+  --bg:var(--sand); --surface:var(--paper); --fg:var(--ink);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --sand:#12160E; --paper:#1B2016; --ink:#ECE7DA; --muted:#9A9585; --line:#2B3222;
+  --accent:#F0954A; --accent-soft:#2A2317; --pine:#7BB9A6; --sky:#8FB6CC; --good:#7FC08F;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+  --bg:var(--sand); --surface:var(--paper); --fg:var(--ink);
+}}
+:root[data-theme="dark"]{
+  --sand:#12160E; --paper:#1B2016; --ink:#ECE7DA; --muted:#9A9585; --line:#2B3222;
+  --accent:#F0954A; --accent-soft:#2A2317; --pine:#7BB9A6; --sky:#8FB6CC; --good:#7FC08F;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+  --bg:var(--sand); --surface:var(--paper); --fg:var(--ink);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);direction:rtl;
+  font-family:"Assistant","Heebo",system-ui,"Segoe UI","Arial Hebrew","Noto Sans Hebrew",sans-serif;
+  line-height:1.65;font-size:17px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:760px;margin:0 auto;padding:0 20px}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(30px,7vw,46px);line-height:1.08;margin:.3em 0 .2em;font-weight:800;letter-spacing:-.01em;text-wrap:balance}
+h2{font-size:clamp(22px,5vw,29px);line-height:1.15;margin:0 0 .1em;font-weight:800;letter-spacing:-.01em;text-wrap:balance}
+h3{font-size:18px;margin:0 0 .2em;font-weight:700}
+p{margin:.5em 0}
+a{color:var(--sky)}
+.lede{font-size:clamp(18px,3.4vw,21px);color:var(--fg);opacity:.92}
+header.hero{padding:64px 0 30px;background:
+  radial-gradient(120% 80% at 85% 0%, color-mix(in srgb,var(--accent) 16%, transparent) 0%, transparent 55%),
+  linear-gradient(0deg,transparent, color-mix(in srgb,var(--pine) 8%, transparent))}
+.kicker-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.logo{display:inline-flex;align-items:center;gap:8px;font-weight:800;letter-spacing:.02em}
+.logo .dot{width:22px;height:22px;border-radius:6px;background:var(--accent);display:inline-block;position:relative}
+.logo .dot::after{content:"";position:absolute;inset:5px;border:2px solid var(--paper);border-radius:2px}
+.meta{color:var(--muted);font-size:13px}
+section{padding:30px 0;border-top:1px solid var(--line)}
+.tag{display:inline-block;font-size:12px;font-weight:700;color:var(--pine);letter-spacing:.06em}
+.grid{display:grid;gap:14px}
+@media(min-width:560px){.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr 1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 18px;box-shadow:var(--shadow)}
+.card h3{display:flex;align-items:baseline;gap:8px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow)}
+.stat .n{font-size:34px;font-weight:800;color:var(--accent);line-height:1;font-variant-numeric:tabular-nums}
+.stat .l{font-size:14px;color:var(--muted);margin-top:6px}
+ul.clean{list-style:none;padding:0;margin:.4em 0}
+ul.clean li{padding:6px 0 6px 0;padding-inline-start:24px;position:relative}
+ul.clean li::before{content:"";position:absolute;inset-inline-start:2px;top:14px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.rule li::before{background:var(--pine)}
+table{width:100%;border-collapse:collapse;font-size:15px}
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+th,td{text-align:right;padding:11px 14px;border-bottom:1px solid var(--line)}
+th{background:color-mix(in srgb,var(--pine) 8%,transparent);font-weight:700;font-size:13px;letter-spacing:.03em}
+tr:last-child td{border-bottom:none}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.video{color:var(--accent);font-weight:700}.image{color:var(--sky);font-weight:700}
+.road{display:grid;gap:12px}
+.phase{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start}
+.phase .num{width:52px;height:52px;border-radius:12px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:800;font-size:13px;line-height:1.05;text-align:center}
+.callout{background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 12%,transparent),transparent);
+  border:1px solid var(--line);border-radius:18px;padding:20px}
+.src{font-size:13px;color:var(--muted)}
+.src a{color:var(--muted)}
+footer{padding:36px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line)}
+.big-num{font-variant-numeric:tabular-nums}
+.toc{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.toc a{font-size:13px;text-decoration:none;color:var(--fg);background:var(--surface);border:1px solid var(--line);
+  padding:6px 12px;border-radius:999px}
+strong{font-weight:800}
+</style>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="kicker-row">
+      <span class="logo"><span class="dot"></span>4Elements</span>
+      <span class="meta">· תוכנית צמיחה בינלאומית · אוגוסט 2026</span>
+    </div>
+    <div class="eyebrow" style="margin-top:22px">אחרי מחקר של מיטב המותגים בעולם</div>
+    <h1>איך הופכים מותג קמפינג ישראלי קטן<br>למכונת מכירות — נכון, ובגדול</h1>
+    <p class="lede">התוכנית בנויה על מה שבאמת עובד ב-2026: <strong>וידאו קצר עם הוק חזק</strong>, <strong>תוכן אמיתי של לקוחות</strong> (UGC), ומשפך המרה חד — קודם לשלוט בישראל, ואז להתרחב לחו״ל דרך מרקטפלייסים. מדד-העל אחד: <strong>הכנסה ליום</strong>.</p>
+    <div class="toc">
+      <a href="#thesis">התזה</a><a href="#facts">הנתונים</a><a href="#engine">המנוע</a>
+      <a href="#content">תוכן</a><a href="#free">חשיפה חינם</a><a href="#ugc">UGC</a>
+      <a href="#paid">ממומן</a><a href="#cro">המרה</a><a href="#intl">בינלאומי</a>
+      <a href="#road">90 יום</a><a href="#tomorrow">מחר בבוקר</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<section id="thesis">
+  <span class="tag">התזה</span>
+  <h2>המשוואה המנצחת</h2>
+  <p>מותג שטח מנצח ב-2026 לא במחיר הכי זול ולא בפרסום הכי רועש — אלא ב<strong>סיפור אמיתי + וידאו שעוצר גלילה + קהילה</strong>. YETI בנתה מיליארד דולר בדיוק ככה: אותנטיות, וידאו קצר, ומיקרו-משפיענים לאורך זמן. אנחנו לוקחים את אותו מנוע ומריצים אותו בקנה מידה קטן וחכם.</p>
+  <div class="callout">
+    <strong>ארבעת עמודי התווך שלנו:</strong>
+    <ul class="clean rule">
+      <li><strong>וידאו-פירסט</strong> — כל פוסט אורגני = סרטון. תמונה סטטית כמעט לא מקבלת הגעה.</li>
+      <li><strong>הוק ב-2 שניות</strong> — 3 השניות הראשונות מכריעות 80% מהצפייה.</li>
+      <li><strong>תוכן לקוחות אמיתי (UGC)</strong> — מנצח פרסומות מבריקות ב-55% ROI.</li>
+      <li><strong>משפך המרה חד</strong> — ביקורות, משלוח, צ׳קאאוט, וואטסאפ.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="facts">
+  <span class="tag">הנתונים שמכתיבים הכל</span>
+  <h2>מה מיטב המותגים והמחקרים מראים</h2>
+  <div class="grid g3" style="margin-top:14px">
+    <div class="stat"><div class="n">80%</div><div class="l">משיעור סיום הצפייה נקבע ב-3 השניות הראשונות</div></div>
+    <div class="stat"><div class="n">+270%</div><div class="l">עלייה בהמרה כשמציגים ביקורות אמיתיות בעמוד המוצר</div></div>
+    <div class="stat"><div class="n">+55%</div><div class="l">ROI גבוה יותר ל-UGC לעומת פרסומת ממותגת</div></div>
+    <div class="stat"><div class="n">$3–10</div><div class="l">CPM בטיקטוק — הכי זול להגיע ללקוחות חדשים</div></div>
+    <div class="stat"><div class="n">+24%</div><div class="l">המרה גבוהה יותר כשמציגים מחיר במטבע המקומי</div></div>
+    <div class="stat"><div class="n">2–3×</div><div class="l">שמירות (Saves) שוות לאלגוריתם יותר מלייקים</div></div>
+  </div>
+  <p class="src" style="margin-top:14px">תובנה מפתיעה: <strong>80% מקוני מוצרי-שטח משתמשים בהם גם בבית</strong> (לא רק בטבע). לעגלה שלנו זה זהב — "לא רק לחוף: לקניות, לאירועים, להובלות".</p>
+</section>
+
+<section id="engine">
+  <span class="tag">המנוע · 01</span>
+  <h2>וידאו-פירסט + נוסחת ההוק</h2>
+  <p>ה"החלטה" של הצופה נופלת בפחות מ-1.5 שניות. יוצרים חזקים מחזיקים 70%+ צפייה בפתיחה; הוק חלש (מתחת ל-40%) הורג את ההפצה עוד לפני שהתוכן התחיל. לכן כל סרטון נבנה סביב ההוק.</p>
+  <div class="grid g2">
+    <div class="card"><h3>3 נוסחאות ההוק המנצחות 2026</h3>
+      <ul class="clean">
+        <li><strong>טענה נגד-אינטואיטיבית</strong> — "אל תקנו אוהל לפני שראיתם את זה".</li>
+        <li><strong>אזהרת טעות</strong> — "הטעות שכולם עושים בקמפינג הראשון".</li>
+        <li><strong>רשימה-טיזר</strong> — "3 סיבות שהעגלה הזאת לא יוצאת לי מהרכב".</li>
+      </ul>
+    </div>
+    <div class="card"><h3>שיטת "גוף אחד, 3 הוקים"</h3>
+      <p>מצלמים סרטון-בסיס אחד, מייצרים 3 פתיחות שונות, ומריצים A/B בטיקטוק. מזהים את ה"יוניקורן" — ההוק שמתפוצץ — ומכפילים אותו.</p>
+    </div>
+  </div>
+  <div class="callout" style="margin-top:14px">
+    <strong>כלל הזהב של האיכות:</strong> המוצר <strong>תמיד שלם בפריים — אפס חיתוך</strong>. זום עדין (מקס 1.05), מוצר עם שוליים, אימות 3 פריימים (פתיחה/אמצע/סוף) לפני כל פרסום.
+  </div>
+</section>
+
+<section id="content">
+  <span class="tag">המנוע · 02</span>
+  <h2>מתי תמונה, מתי סרטון — ותקציב קרדיטים</h2>
+  <p>הכלל: <span class="video">אורגני = סרטון תמיד</span>. <span class="image">תמונה</span> = לתקציב ממומן, לתגי-קנייה, ולאסתטיקת הפרופיל (1–2 בשבוע).</p>
+  <div class="tblwrap" style="margin-top:12px">
+    <table>
+      <tr><th>מטרה</th><th>פורמט</th><th>כלי</th><th>קרדיט</th></tr>
+      <tr><td>חשיפה אורגנית</td><td class="video">סרטון</td><td>kling / קומפוזיט</td><td>10 / חינם</td></tr>
+      <tr><td>הדגמת פיצ׳ר</td><td class="video">סרטון</td><td>kling image→video</td><td>10</td></tr>
+      <tr><td>מוצר דגל / wow</td><td class="video">קולנועי</td><td>marketing studio</td><td>60</td></tr>
+      <tr><td>המרה (מחיר/CTA)</td><td class="image">תמונה</td><td>Canva</td><td>0</td></tr>
+      <tr><td>קטלוג / גריד</td><td class="image">תמונה</td><td>Canva / nano</td><td>0–2</td></tr>
+    </table>
+  </div>
+  <p style="margin-top:12px">תקציב Higgsfield Ultra: <strong>3,000 קרדיט/חודש</strong>. תוכנית מלאה (40 רילסים + 4 קולנועי + 30 תמונות) = <strong>~700 קרדיט</strong>. יתרה ~2,300 לניסויים. <strong>קרדיטים אינם המגבלה</strong> — התדירות והאיכות הן.</p>
+</section>
+
+<section id="free">
+  <span class="tag">צמיחה · 03</span>
+  <h2>חשיפה ענקית — בלי שקל</h2>
+  <p>בטיקטוק <strong>מספר העוקבים לא קובע</strong>; אותות מעורבות וסאונד טרנדי קובעים. חשבון עם 300 עוקבים יכול לנצח 30K אם התוכן חזק ומוקדם על הטרנד. זה המגרש הכי הוגן שלנו.</p>
+  <div class="grid g2">
+    <div class="card"><h3>המנוע האורגני</h3><ul class="clean">
+      <li>טיקטוק-פירסט + <strong>מוזיקה טרנדית</strong> (המנוף מס׳ 1).</li>
+      <li>תדירות ועקביות — לרכוב על טרנד מוקדם.</li>
+      <li>לרדוף אחרי <strong>שמירות ושיתופים</strong>, לא לייקים.</li>
+    </ul></div>
+    <div class="card"><h3>האשטגים (3–5 בלבד)</h3><ul class="clean">
+      <li>1–2 טרנדיים רחבים.</li>
+      <li>1–2 נישה: <span class="pill">#קמפינג</span> <span class="pill">#חוף</span> <span class="pill">#על_האש</span></li>
+      <li>1 מותג: <span class="pill">#4elements</span></li>
+    </ul></div>
+  </div>
+</section>
+
+<section id="ugc">
+  <span class="tag">צמיחה · 04</span>
+  <h2>הנשק הסודי: תוכן לקוחות (UGC) ו-Product Seeding</h2>
+  <p>הטקטיקה הכי משתלמת ב-2026 למותג מוצר פיזי: <strong>לשלוח מוצר חינם למיקרו-יוצרים</strong> בלי התחייבות לפוסט. מוצר ב-₪150 → תוכן שמנצח פרסומת של ₪5,000. שליחה ל-100 מיקרו-יוצרים עולה שבריר ממשפיען-על אחד — עם הגעה, נפח תוכן והמרה גדולים בהרבה.</p>
+  <div class="grid g3">
+    <div class="card"><h3>למי לשלוח</h3><p>מיקרו-יוצרים ישראלים בנישה: משפחות מטיילות, קמפינג, על-האש, חיי-ואן, ים.</p></div>
+    <div class="card"><h3>העסקה</h3><p>עגלה/אוהל/כיסא במתנה תמורת סרטון אמיתי. בלי שכר — <strong>מוצר במקום כסף</strong>.</p></div>
+    <div class="card"><h3>מה מרוויחים</h3><p>ממחזרים את ה-UGC כפרסומות ממומנות → עלות רכישה נמוכה ב-20–30%.</p></div>
+  </div>
+  <p class="src" style="margin-top:12px">חשוב: <strong>ביקורות ותוכן אמיתי בלבד — לעולם לא מזויף.</strong> זה גם נכון וגם מה שבונה אמון לטווח ארוך.</p>
+</section>
+
+<section id="paid">
+  <span class="tag">צמיחה · 05</span>
+  <h2>תקציב ממומן — המכפיל האמיתי</h2>
+  <p>אורגני מול מתחרה ממומן זה לא קרב הוגן. עם ₪30–50/יום ממוקד — משנים את המשחק. איפה כל שקל עובד הכי חזק:</p>
+  <div class="tblwrap" style="margin-top:12px"><table>
+    <tr><th>ערוץ</th><th>למה</th><th>ROAS טיפוסי</th></tr>
+    <tr><td>טיקטוק</td><td>הכי זול ללקוחות חדשים · UGC</td><td>1.7–2.8×</td></tr>
+    <tr><td>מטא (IG/FB)</td><td>גילוי ורימרקטינג</td><td>2.2–2.9×</td></tr>
+    <tr><td>גוגל שופינג/חיפוש</td><td>כוונת-קנייה גבוהה ("עגלת חוף")</td><td>3.4–4.5×</td></tr>
+  </table></div>
+  <ul class="clean" style="margin-top:12px">
+    <li>להתחיל <strong>קטן וממוקד</strong>: קריאייטיב UGC + מודעת המרה (Canva) עם מחיר וכפתור.</li>
+    <li><strong>גוגל שופינג</strong> על מוצרי כוונה גבוהה — שם ה-ROAS הכי גבוה.</li>
+    <li>למדוד <strong>ROAS משולב, CAC ואחוז לקוחות חדשים</strong> — לא כל דשבורד לחוד.</li>
+  </ul>
+</section>
+
+<section id="cro">
+  <span class="tag">המרה · 06</span>
+  <h2>שהאתר יסגור את העסקה</h2>
+  <p>להביא תנועה זה חצי; להמיר זה החצי השני. הכי משפיע:</p>
+  <div class="grid g2">
+    <div class="card"><h3>הוכחה חברתית</h3><ul class="clean">
+      <li>ביקורות אמיתיות = <strong>+270%</strong> המרה. 11–30 ביקורות ממירות 68% יותר מאפס.</li>
+      <li>לאסוף ביקורות מכל לקוח (מייל/וואטסאפ אחרי קנייה).</li>
+    </ul></div>
+    <div class="card"><h3>צ׳קאאוט ומובייל</h3><ul class="clean">
+      <li>צ׳קאאוט חלק = <strong>+35%</strong>. מובייל one-click = +20–30%.</li>
+      <li>מחיר, משלוח חינם מעל ₪350, וכפתור ברורים.</li>
+    </ul></div>
+    <div class="card"><h3>שחזור עגלה נטושה</h3><ul class="clean">
+      <li>מייל + <strong>וואטסאפ</strong> (ענק בישראל) עם הצעה קצובה.</li>
+      <li>להטמיע ביקורת/כוכבים בהודעת השחזור.</li>
+    </ul></div>
+    <div class="card"><h3>דחיפות אמיתית</h3><ul class="clean">
+      <li>התראות רכישה בזמן אמת מגבירות המרה — <strong>רק אם אמיתיות</strong>.</li>
+      <li>מלאי מוגבל אמיתי, לא פיקטיבי.</li>
+    </ul></div>
+  </div>
+</section>
+
+<section id="intl">
+  <span class="tag">בינלאומי · 07</span>
+  <h2>הדרך לחו״ל — נכון, לא מהר מדי</h2>
+  <p>הסדר הנכון: <strong>קודם לשלוט בישראל</strong> (להוכיח קריאייטיב ומשפך), ואז להתרחב. הבחירה של השוק הראשון היא לפי <strong>אות ביקוש</strong> (נפח חיפוש, נוכחות מתחרים) ופשטות רגולציה ולוגיסטיקה — לא לפי גודל השוק.</p>
+  <div class="grid g2">
+    <div class="card"><h3>ערוצים</h3><ul class="clean">
+      <li><strong>מרקטפלייס</strong> (Amazon/Etsy) לקונים ראשונים → <strong>אתר-מותג</strong> לנאמנות.</li>
+      <li>לוקליזציה: שפה, ו<strong>מטבע מקומי (+24% המרה)</strong>, צ׳קאאוט מותאם.</li>
+    </ul></div>
+    <div class="card"><h3>האילוץ האמיתי</h3><ul class="clean">
+      <li>מוצרים גדולים (עגלות/אוהלים) = משלוח בינ״ל יקר.</li>
+      <li>להתחיל ב<strong>שוק קרוב/פשוט</strong> או ב-SKU קלים; לשקול 3PL/מלאי מקומי.</li>
+    </ul></div>
+  </div>
+  <p class="src" style="margin-top:10px">מודל היברידי: מרקטפלייס לחשיפה ראשונית, אתר-מותג לבניית קהילה, מייל/וואטסאפ לנאמנות.</p>
+</section>
+
+<section id="road">
+  <span class="tag">ביצוע</span>
+  <h2>מפת דרכים — 90 יום</h2>
+  <div class="road">
+    <div class="phase"><div class="num">0–14<br>יום</div><div>
+      <h3>יסודות + מנוע וידאו</h3>
+      <p>לוודא שהפרסום עולה נכון בכל הערוצים (טאב רילסים!). להריץ 2–3 רילסים/יום עם הוק-אקשן ומוזיקה טרנדית בטיקטוק. אימות איכות (אפס חיתוך) לפני כל פרסום. בדיקת ויראליות לכל רילס.</p>
+    </div></div>
+    <div class="phase"><div class="num">14–45<br>יום</div><div>
+      <h3>UGC + ממומן קטן</h3>
+      <p>לשלוח מוצר ל-10–20 מיקרו-יוצרים ישראלים. לאסוף ביקורות אמיתיות באתר. להתחיל ₪30–50/יום על מודעת ההמרה הכי טובה + גוגל שופינג. "גוף אחד, 3 הוקים" A/B.</p>
+    </div></div>
+    <div class="phase"><div class="num">45–90<br>יום</div><div>
+      <h3>להכפיל מנצחים + לבחון חו״ל</h3>
+      <p>לזהות 2 מנצחים ברורים (מ-ויראליות+מכירות) ולהכפיל. לייצב 3+ מכירות/יום. לבדוק שוק בינ״ל ראשון לפי אות ביקוש + ליסטינג נסיוני במרקטפלייס.</p>
+    </div></div>
+  </div>
+</section>
+
+<section id="metrics">
+  <span class="tag">מדידה</span>
+  <h2>המספרים שקובעים</h2>
+  <div class="grid g3">
+    <div class="stat"><div class="n">3+</div><div class="l">מכירות ביום — מדד-העל</div></div>
+    <div class="stat"><div class="n">70%+</div><div class="l">החזקה בפתיחת הרילס (הוק)</div></div>
+    <div class="stat"><div class="n">Saves</div><div class="l">שמירות/שיתופים — האות הכי חזק</div></div>
+  </div>
+  <p style="margin-top:12px">מסתכלים על: הכנסה/יום · ROAS משולב · CAC · אחוז לקוחות חדשים · הגעה+שמירות. פחות על לייקים.</p>
+</section>
+
+<section id="tomorrow">
+  <span class="tag">להתחיל</span>
+  <h2>5 הפעולות שנעשה כבר מחר בבוקר</h2>
+  <ol style="padding-inline-start:20px;line-height:1.9">
+    <li><strong>רילס יומי לטיקטוק</strong> עם מוזיקה טרנדית + הוק-אקשן (מוצר שלם, בלי חיתוך).</li>
+    <li><strong>רשימת 15 מיקרו-יוצרים</strong> ישראלים לשליחת מוצר (seeding).</li>
+    <li><strong>לבקש ביקורת</strong> מכל לקוח אחרון (וואטסאפ/מייל) — להטמיע באתר.</li>
+    <li><strong>מודעת המרה ב-Canva</strong> (עגלה/אוהל) מוכנה לבוסט ₪30/יום.</li>
+    <li><strong>בדיקת ויראליות</strong> לכל רילס לפני פרסום — הוק חלש → מתקנים.</li>
+  </ol>
+  <div class="callout" style="margin-top:16px">
+    <strong>שורה תחתונה:</strong> לא קסם — מערכת. וידאו אמיתי כל יום, תוכן לקוחות, ותקציב ממוקד. עושים את זה בעקביות → החשיפה והמכירות מגיעות. הכל כבר בנוי ומחובר; מכאן זה ריצה יומית ולמידה.
+  </div>
+</section>
+
+<footer class="wrap">
+  <p><strong>מקורות מחקר:</strong> Opensend / Digiday (YETI DTC) · Faceless.so, HypeNest, CloudixDigital (נוסחאות הוק, כלל 3 השניות) · Coinis, Extuitive, TikAdTools (מודעות ממומנות 2026) · Passport, DigitalApplied (מסחר חוצה-גבולות) · GRIN, StackInfluence (Product Seeding) · Yotpo, Shopify, Kickflip (אופטימיזציית המרה).</p>
+  <p>4Elements · תוכנית צמיחה בינלאומית · הוכנה 12–13 באוגוסט 2026.</p>
+</footer>
+
+</main>
