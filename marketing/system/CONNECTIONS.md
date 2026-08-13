@@ -83,7 +83,7 @@
 | (יצירה) Higgsfield | MCP | ✅ | credits ~3000 |
 | (גרפיקה) Canva | MCP | ✅ | brand kit kAG1m59wd2o |
 
-**לא מחובר / לאין להוסיף בעתיד:** YouTube Shorts, Pinterest, Google Business — עדיין לא. TikTok אינו דרך Make אלא רק דרך Higgsfield.
+**לא מחובר / כדאי לשקול בעתיד:** YouTube Shorts, Pinterest, Google Business — עדיין לא מחוברים. שים לב: TikTok אינו דרך Make אלא רק דרך Higgsfield.
 
 ---
 
