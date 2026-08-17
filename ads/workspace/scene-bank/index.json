@@ -1,0 +1,101 @@
+{
+  "scenes": {
+    "YF-YZ-03": [
+      {
+        "file": "forest__1.png",
+        "scene": "forest",
+        "avatar_id": "nir-original",
+        "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GfsjjjORLwMK160OnBIVevQLMI/hf_20260816_191456_68eddb32-e531-48f7-a85b-9fe6a0001cfc.png",
+        "added": "2026-08-16",
+        "used_at": "2026-08-16T00:00:00",
+        "job_id": "5ba5f4da-3a96-4313-b888-04cbbd7242e1"
+      },
+      {
+        "file": "desert__1.png",
+        "scene": "desert",
+        "avatar_id": "nir-original",
+        "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GfsjjjORLwMK160OnBIVevQLMI/hf_20260816_192712_dd7f2171-f90c-477b-89c3-73cb72ea8e79.png",
+        "added": "2026-08-16",
+        "used_at": "2026-08-16T00:00:00",
+        "job_id": "7e2cabc5-17b0-4bc5-ab52-13342c3cee6b"
+      }
+    ],
+    "YF-YZ-04": [
+      {
+        "file": "forest__1.png",
+        "scene": "forest",
+        "avatar_id": "nir-original",
+        "url": null,
+        "added": "2026-08-16",
+        "used_at": "2026-08-16T00:00:00",
+        "job_id": "91ad87d0-5a99-4074-9689-dbd861572b3d"
+      }
+    ],
+    "YF-YZ-13": [
+      {
+        "file": "forest__1.png",
+        "scene": "forest",
+        "avatar_id": "nir-original",
+        "url": null,
+        "added": "2026-08-16",
+        "used_at": "2026-08-16T00:00:00",
+        "job_id": "872df690-2fea-4b52-9f84-83bc8755363d"
+      }
+    ],
+    "YF-YZ-06B": [
+      {
+        "file": "beach__1.png",
+        "scene": "beach",
+        "avatar_id": "nir-original",
+        "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GfsjjjORLwMK160OnBIVevQLMI/hf_20260816_200105_eda015cc-441b-445c-9c09-485c07133717.png",
+        "added": "2026-08-16",
+        "used_at": null,
+        "job_id": null
+      }
+    ],
+    "YF-YZ-50A": [
+      {
+        "file": "ridge__1.png",
+        "scene": "ridge",
+        "avatar_id": "nir-original",
+        "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GfsjjjORLwMK160OnBIVevQLMI/hf_20260816_200104_2d835924-5c28-427a-95bb-ba6accaca503.png",
+        "added": "2026-08-16",
+        "used_at": null,
+        "job_id": null
+      }
+    ],
+    "YF-ZZ-31B": [
+      {
+        "file": "picnic__1.png",
+        "scene": "picnic",
+        "avatar_id": "nir-original",
+        "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GfsjjjORLwMK160OnBIVevQLMI/hf_20260816_200104_108c7c45-130e-48d2-aef6-6380d5094d3e.png",
+        "added": "2026-08-16",
+        "used_at": null,
+        "job_id": null
+      }
+    ],
+    "YF-ZZ-11D": [
+      {
+        "file": "camp__1.png",
+        "scene": "camp",
+        "avatar_id": "nir-original",
+        "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GfsjjjORLwMK160OnBIVevQLMI/hf_20260816_200259_bd06814c-754b-4a2d-aea9-338fc90746ee.png",
+        "added": "2026-08-16",
+        "used_at": null,
+        "job_id": null
+      }
+    ],
+    "YF-XJC-06A": [
+      {
+        "file": "desert-night__1.png",
+        "scene": "desert-night",
+        "avatar_id": "nir-original",
+        "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GfsjjjORLwMK160OnBIVevQLMI/hf_20260816_200259_a1c5a57e-a755-41ce-b256-e5ba5cf42b42.png",
+        "added": "2026-08-16",
+        "used_at": null,
+        "job_id": null
+      }
+    ]
+  }
+}

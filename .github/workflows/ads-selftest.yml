@@ -1,0 +1,60 @@
+# "מה עובד ומה לא" — automatically, on every change and every morning.
+#
+# This is the development safety net for a system you cannot watch. It runs the same
+# ads/selftest.py you run locally: read-only checks against Supabase, Telegram, the product
+# profiles, the renderer and the scene bank. It never posts anything.
+#
+# Push a change to ads/ → this tells you within a minute whether the engine still boots.
+name: ads-selftest
+
+on:
+  push:
+    paths: ['ads/**', '.github/workflows/ads-*.yml']
+  pull_request:
+    paths: ['ads/**']
+  schedule:
+    - cron: '30 5 * * *'      # 08:30 Israel — 30 min before the daily run, so a break is
+                              # caught (and announced on Telegram) before it costs a day
+  workflow_dispatch:
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install deps
+        run: pip install --quiet pillow
+
+      - name: Compile every module
+        run: python -m compileall -q ads
+
+      - name: Dry run the whole daily cycle (renders, posts nothing)
+        working-directory: ads
+        run: python headless_daily.py --dry-run
+
+      # Only the scheduled morning check pings Telegram — a push shouldn't buzz the phone.
+      - name: Health check
+        working-directory: ads
+        run: python selftest.py ${{ github.event_name == 'schedule' && '--notify' || '' }}
+
+      - name: Machine-readable report
+        if: ${{ always() }}
+        working-directory: ads
+        run: python selftest.py --json > selftest.json || true
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: selftest-${{ github.run_number }}
+          path: ads/selftest.json
+          if-no-files-found: ignore

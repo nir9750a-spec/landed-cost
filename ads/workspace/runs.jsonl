@@ -1,0 +1,10 @@
+{"ts": "2026-08-16T23:04:28", "run": "20260816-230428", "name": "daily-ad (dry-run)", "step": "__start__", "status": "ok", "detail": ""}
+{"ts": "2026-08-16T23:04:29", "run": "20260816-230428", "name": "daily-ad (dry-run)", "step": "pick", "status": "ok", "detail": "YF-YZ-06B"}
+{"ts": "2026-08-16T23:04:29", "run": "20260816-230428", "name": "daily-ad (dry-run)", "step": "scene", "status": "ok", "detail": "beach__1.png"}
+{"ts": "2026-08-16T23:04:29", "run": "20260816-230428", "name": "daily-ad (dry-run)", "step": "render", "status": "ok", "detail": "feed_4x5 · שוקעים פנימה. הראש מתנקה."}
+{"ts": "2026-08-16T23:04:29", "run": "20260816-230428", "name": "daily-ad (dry-run)", "step": "enqueue", "status": "skipped", "detail": "dry-run"}
+{"ts": "2026-08-16T23:06:04", "run": "20260816-230604", "name": "daily-ad (dry-run)", "step": "__start__", "status": "ok", "detail": ""}
+{"ts": "2026-08-16T23:06:05", "run": "20260816-230604", "name": "daily-ad (dry-run)", "step": "pick", "status": "ok", "detail": "YF-YZ-06B"}
+{"ts": "2026-08-16T23:06:05", "run": "20260816-230604", "name": "daily-ad (dry-run)", "step": "scene", "status": "ok", "detail": "beach__1.png"}
+{"ts": "2026-08-16T23:06:05", "run": "20260816-230604", "name": "daily-ad (dry-run)", "step": "render", "status": "ok", "detail": "feed_4x5 · שוקעים פנימה. הראש מתנקה."}
+{"ts": "2026-08-16T23:06:05", "run": "20260816-230604", "name": "daily-ad (dry-run)", "step": "enqueue", "status": "skipped", "detail": "dry-run"}

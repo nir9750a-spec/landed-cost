@@ -1,0 +1,187 @@
+# -*- coding: utf-8 -*-
+"""בדיקת בריאות — "מה עובד ומה לא", בפקודה אחת.
+
+This is the answer to "how do I develop/debug something I can't see". Run it locally before
+touching anything, and let CI run it on every push + every morning before the daily job. It
+touches ONLY read-only endpoints and a throwaway render — it never posts, never enqueues,
+never publishes.
+
+  python selftest.py            human table, exit 1 if anything critical is broken
+  python selftest.py --json     machine output (used by CI)
+  python selftest.py --notify   also push the result to Telegram
+
+Each check is (name, critical, fn) where fn returns (ok, detail).
+"""
+import os
+import sys
+import json
+import tempfile
+
+try:
+    from _env import load as _load_env; _load_env()
+except Exception:
+    pass
+
+
+def _check_env():
+    need = ['SUPABASE_SERVICE_KEY', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID']
+    missing = [k for k in need if not os.environ.get(k)]
+    if missing:
+        return False, 'missing: ' + ', '.join(missing)
+    key = os.environ['SUPABASE_SERVICE_KEY']
+    if not key.startswith('eyJ'):
+        return False, 'SUPABASE_SERVICE_KEY must be the legacy service_role key (starts eyJ)'
+    return True, f'{len(need)} secret(s) present'
+
+
+def _check_supabase():
+    import ad_queue
+    jobs = ad_queue.list_jobs(limit=5)
+    by = {}
+    for j in jobs:
+        by[j['status']] = by.get(j['status'], 0) + 1
+    return True, f'{len(jobs)} recent job(s) · ' + ', '.join(f'{k}={v}' for k, v in by.items())
+
+
+def _check_supabase_write():
+    """Prove the key can actually write — RLS 42501 is the classic silent killer here.
+    Writes to a job that does not exist: a valid key returns an empty result, a blocked key raises."""
+    import ad_queue
+    ad_queue.update_job('00000000-0000-0000-0000-000000000000', error=None)
+    return True, 'service_role can write (no RLS block)'
+
+
+def _check_telegram():
+    import telegram_gate as T
+    me = T._post_json('getMe', {})
+    if not me.get('ok'):
+        return False, str(me)
+    chat = T._post_json('getChat', {'chat_id': T.resolve_chat_id()})
+    if not chat.get('ok'):
+        return False, 'bot is alive but TELEGRAM_CHAT_ID is wrong: ' + str(chat)
+    return True, '@' + me['result'].get('username', '?') + ' → chat ok'
+
+
+def _check_profiles():
+    import make_ad_master as M
+    p = M._profiles()
+    n = len(p.get('products') or [])
+    if not n:
+        return False, 'product-profiles.json has no products'
+    return True, f'{n} product(s)'
+
+
+def _check_heroes():
+    import make_ad_master as M
+    root = os.path.join(os.path.dirname(__file__), '..', 'catalog', 'heroes')
+    if not os.path.isdir(root):
+        # catalog/ isn't in the repo, so CI has no heroes — that's fine, headless runs draw
+        # from the scene bank and never touch the source photos.
+        return True, 'catalog/heroes not present (bank-only run)'
+    missing = [p['id'] for p in M._profiles()['products']
+               if not os.path.exists(os.path.join(root, p['id'] + '.jpg'))]
+    if missing:
+        return False, f'{len(missing)} product(s) without a hero photo: ' + ', '.join(missing[:5])
+    return True, 'every product has a hero photo'
+
+
+def _check_render():
+    """Full render smoke test on a throwaway scene — catches font/Pillow/RTL breakage."""
+    from PIL import Image
+    import make_ad_master as M
+    import supervisor
+    sku = supervisor.pick_today(1)[0]['id']
+    with tempfile.TemporaryDirectory() as tmp:
+        scene = os.path.join(tmp, 'scene.png')
+        Image.new('RGB', (928, 1152), (90, 100, 80)).save(scene)
+        M.render_from_sku(sku, scene, tmp)
+        out = os.path.join(tmp, f'{sku}_feed_4x5.jpg')
+        if not os.path.exists(out):
+            return False, 'render produced no feed file'
+        w, h = Image.open(out).size
+    return True, f'rendered {sku} at {w}x{h}'
+
+
+def _check_bank():
+    import scene_bank
+    st = scene_bank.stats()
+    total = sum(v['available'] for v in st.values())
+    if total == 0:
+        return False, 'scene bank EMPTY — headless runs have nothing to post'
+    low = scene_bank.low_stock()
+    detail = f'{total} scene(s) · ~{scene_bank.days_of_runway()} day(s) runway'
+    if low:
+        return True, detail + ' · ⚠️ low: ' + ', '.join(low)
+    return True, detail
+
+
+def _check_avatars():
+    import avatars
+    r, p = avatars.ready(), avatars.pending_upload()
+    if not r:
+        return False, 'no uploaded avatar — scene generation has no face reference'
+    return True, f'{len(r)} ready' + (f' · {len(p)} awaiting upload' if p else '')
+
+
+def _check_last_run():
+    import runlog
+    st = runlog.last_run_status()
+    if st is None:
+        return True, 'no headless run logged yet'
+    return st == 'ok', f'last run: {st}'
+
+
+CHECKS = [
+    ('env / secrets',      True,  _check_env),
+    ('supabase read',      True,  _check_supabase),
+    ('supabase write',     True,  _check_supabase_write),
+    ('telegram bot',       True,  _check_telegram),
+    ('product profiles',   True,  _check_profiles),
+    ('hero photos',        False, _check_heroes),
+    ('render pipeline',    True,  _check_render),
+    ('scene bank',         True,  _check_bank),
+    ('avatars',            False, _check_avatars),
+    ('last headless run',  False, _check_last_run),
+]
+
+
+def run():
+    results = []
+    for name, critical, fn in CHECKS:
+        try:
+            ok, detail = fn()
+        except Exception as e:
+            ok, detail = False, f'{type(e).__name__}: {e}'
+        results.append({'check': name, 'ok': bool(ok), 'critical': critical,
+                        'detail': str(detail)})
+    return results
+
+
+def main():
+    results = run()
+    broken = [r for r in results if not r['ok'] and r['critical']]
+    warn = [r for r in results if not r['ok'] and not r['critical']]
+
+    if '--json' in sys.argv:
+        print(json.dumps({'ok': not broken, 'results': results}, ensure_ascii=False, indent=2))
+    else:
+        width = max(len(r['check']) for r in results)
+        for r in results:
+            icon = '✅' if r['ok'] else ('❌' if r['critical'] else '⚠️ ')
+            print(f"{icon} {r['check']:<{width}}  {r['detail']}")
+        print()
+        print('BROKEN:' if broken else ('OK (with warnings)' if warn else 'ALL GREEN'),
+              ', '.join(r['check'] for r in broken) if broken else '')
+
+    if '--notify' in sys.argv:
+        import runlog
+        head = '❌ בדיקת בריאות נכשלה' if broken else ('⚠️ בריאות: אזהרות' if warn else '✅ הכול תקין')
+        body = '\n'.join(('✅' if r['ok'] else ('❌' if r['critical'] else '⚠️'))
+                         + f" {r['check']} — {r['detail']}" for r in results)
+        runlog.notify(head + '\n' + body)
+
+    return 1 if broken else 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

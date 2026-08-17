@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.pyc
+
+# workspace/ is scratch: generated scenes, rendered ads, video frames. The heavy assets live
+# on the Higgsfield CDN and are re-downloaded on demand, so only the STATE files are tracked —
+# CI needs them to know which scenes are spent and what the last run did.
+workspace/*
+!workspace/runs.jsonl
+!workspace/scene-bank/
+workspace/scene-bank/*
+!workspace/scene-bank/index.json

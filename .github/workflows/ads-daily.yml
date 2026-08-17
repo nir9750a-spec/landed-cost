@@ -1,0 +1,83 @@
+# The daily ad, generated in the cloud — nothing runs on Nir's machine.
+#
+# 09:00 Israel: pick the product, take a pre-generated scene from the bank, render, queue,
+# and push the approval card to Telegram. Nir taps ✅ on his phone; the telegram-webhook
+# Edge Function records it instantly. No laptop in the loop.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   SUPABASE_SERVICE_KEY   service_role legacy key (starts eyJ)
+#   TELEGRAM_BOT_TOKEN
+#   TELEGRAM_CHAT_ID
+name: ads-daily
+
+on:
+  schedule:
+    - cron: '0 6 * * *'      # 06:00 UTC = 09:00 Israel (IDT). Winter shifts it to 08:00 — fine.
+  workflow_dispatch:          # "Run workflow" button — this is your manual trigger from the phone
+    inputs:
+      slot:
+        description: 'Daily slot (07:00 feed · 12:00 reel · 18:00 feed)'
+        default: '07:00'
+      sku:
+        description: 'Force a SKU (blank = rotation)'
+        default: ''
+      dry_run:
+        description: 'Render only, post nothing'
+        type: boolean
+        default: false
+
+concurrency:
+  group: ads-daily            # never two daily runs at once
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install deps
+        run: pip install --quiet pillow
+
+      - name: Health check (fails fast before touching anything)
+        working-directory: ads
+        run: python selftest.py
+
+      - name: Daily ad
+        working-directory: ads
+        run: |
+          python headless_daily.py \
+            --slot "${{ inputs.slot || '07:00' }}" \
+            ${{ inputs.sku && format('--sku {0}', inputs.sku) || '' }} \
+            ${{ inputs.dry_run == true && '--dry-run' || '' }}
+
+      # The bank index + run log are state: commit them back so the next run knows what was
+      # already spent. Assets themselves stay on the CDN, so this stays a tiny diff.
+      - name: Persist state
+        if: ${{ always() && inputs.dry_run != true }}
+        run: |
+          git config user.name  "4elements-bot"
+          git config user.email "bot@4elements.local"
+          git add ads/workspace/scene-bank/index.json ads/workspace/runs.jsonl ads/rotation-state.json
+          git diff --staged --quiet || git commit -m "chore(ads): daily run state [skip ci]"
+          git push
+
+      - name: Upload rendered ads
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ads-${{ github.run_number }}
+          path: |
+            ads/workspace/final-ads/
+            ads/workspace/dry-run/
+          if-no-files-found: ignore
+          retention-days: 14
