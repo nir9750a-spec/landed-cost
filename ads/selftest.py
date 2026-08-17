@@ -115,6 +115,20 @@ def _check_bank():
     return True, detail
 
 
+def _check_cards():
+    """Every SKU with a banked scene should also have a clean product card — without one the
+    ad ships with the product half-hidden behind Nir."""
+    import cutouts
+    import scene_bank
+    banked = {e['sku'] for e in scene_bank.available()}
+    if not banked:
+        return True, 'no banked scenes to check'
+    gaps = sorted(banked - set(cutouts.have()))
+    if gaps:
+        return False, f'{len(gaps)} banked SKU(s) with no product card: ' + ', '.join(gaps)
+    return True, f'{len(banked)} banked SKU(s) all have a product card'
+
+
 def _check_avatars():
     import avatars
     r, p = avatars.ready(), avatars.pending_upload()
@@ -140,6 +154,7 @@ CHECKS = [
     ('hero photos',        False, _check_heroes),
     ('render pipeline',    True,  _check_render),
     ('scene bank',         True,  _check_bank),
+    ('product cards',      False, _check_cards),
     ('avatars',            False, _check_avatars),
     ('last headless run',  False, _check_last_run),
 ]

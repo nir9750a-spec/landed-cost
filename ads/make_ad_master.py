@@ -22,10 +22,14 @@ REEL_SAFE_TOP = 165
 REEL_SAFE_BOTTOM = 800
 
 
-def feed(scene_path, out_path, hook, sub, price, cta='לרכישה באתר', old_price=None, focus='center'):
-    """4:5 feed ad — delegates to the approved make_ad.build (headline top, price bottom)."""
+def feed(scene_path, out_path, hook, sub, price, cta='לרכישה באתר', old_price=None, focus='center',
+         product_card=None):
+    """4:5 feed ad — delegates to the approved make_ad.build (headline top, price bottom).
+    `product_card` adds the clean product photo bottom-left so the item is visible even when
+    the scene has Nir sitting in / leaning on it."""
     build(scene_path, out_path, 1080, 1350, hook=hook, sub=sub, price=price,
-          cta=cta, old_price=old_price, focus=focus, headline_pos='top')
+          cta=cta, old_price=old_price, focus=focus, headline_pos='top',
+          product_card=product_card)
 
 
 def reel(scene_path, out_path, hook, sub, price, cta='לרכישה באתר', old_price=None):
@@ -154,7 +158,12 @@ def render_from_sku(sku, scene_path, out_dir):
     hook = product['hook']
     sub = _sub_from(product)
     price = f"₪{product['price']}"
-    feed(scene_path, f'{out_dir}/{sku}_feed_4x5.jpg', hook, sub, price)
+    try:
+        import cutouts
+        card = cutouts.path_for(sku)          # None until the SKU has a product card
+    except Exception:
+        card = None
+    feed(scene_path, f'{out_dir}/{sku}_feed_4x5.jpg', hook, sub, price, product_card=card)
     reel(scene_path, f'{out_dir}/{sku}_reel_9x16.jpg', hook, sub, price)
     caption = build_caption(product, brand)
     with open(f'{out_dir}/{sku}_caption.txt', 'w', encoding='utf-8') as f:

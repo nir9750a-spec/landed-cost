@@ -10,3 +10,6 @@ workspace/*
 !workspace/scene-bank/
 workspace/scene-bank/*
 !workspace/scene-bank/index.json
+!workspace/cutouts/
+workspace/cutouts/*
+!workspace/cutouts/index.json

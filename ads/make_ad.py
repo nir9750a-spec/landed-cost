@@ -56,7 +56,36 @@ def _wrap(draw, text, font, maxw):
 def _rounded(draw, box, r, fill):
     draw.rounded_rectangle(box, radius=r, fill=fill)
 
-def build(base_path, out_path, W, H, hook, sub, price, cta='לינק בביו', focus='bottom', old_price=None, headline_pos='bottom'):
+def _product_card(img, card_path, W, H, bottom_y):
+    """Small clean product photo, bottom-left, on a white rounded card.
+
+    In a lifestyle scene the person is *using* the product and hides most of it. This card
+    shows the actual item in one glance without giving up the lifestyle shot. Anchored to the
+    left margin and grown upward from `bottom_y` so it never collides with the price/CTA row
+    (which builds from the right) or with the headline (top).
+    """
+    prod = Image.open(card_path).convert('RGBA')
+    M = int(W * 0.06)
+    side = int(W * 0.30)
+    x0, y1 = M, bottom_y
+    y0 = y1 - side
+    d = ImageDraw.Draw(img)
+
+    shadow = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    ImageDraw.Draw(shadow).rounded_rectangle(
+        (x0 + 6, y0 + 8, x0 + side + 6, y1 + 8), radius=int(side * 0.12), fill=(0, 0, 0, 90))
+    img.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(10)))
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle((x0, y0, x0 + side, y1), radius=int(side * 0.12),
+                        fill=(255, 255, 255, 245))
+
+    inner = int(side * 0.86)
+    prod.thumbnail((inner, inner), Image.LANCZOS)
+    img.alpha_composite(prod, (x0 + (side - prod.width) // 2, y0 + (side - prod.height) // 2))
+    return ImageDraw.Draw(img)
+
+
+def build(base_path, out_path, W, H, hook, sub, price, cta='לינק בביו', focus='bottom', old_price=None, headline_pos='bottom', product_card=None):
     base = Image.open(base_path).convert('RGB')
     img = _cover(base, W, H, 'bottom' if focus == 'bottom' else 'center').convert('RGBA')
     d = ImageDraw.Draw(img)
@@ -149,6 +178,9 @@ def build(base_path, out_path, W, H, hook, sub, price, cta='לינק בביו', 
     d.polygon([(tx + arrow*0.7, cyc - arrow), (tx, cyc + arrow*0.7), (tx + arrow*1.4, cyc + arrow*0.7)],
               fill=ORANGE + (255,))
     y -= ph + int(H * 0.028)
+
+    if product_card and os.path.exists(product_card):
+        d = _product_card(img, product_card, W, H, bottom_y=y + int(H * 0.010))
 
     if headline_pos == 'bottom':
         # sub-benefit
