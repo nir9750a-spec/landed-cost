@@ -8,11 +8,37 @@ except Exception:
     from bidi.algorithm import get_display
 
 ASSETS = os.path.join(os.path.dirname(__file__), 'assets')
-FONT = 'C:/Windows/Fonts/gishabd.ttf'   # Gisha Bold – clean Hebrew sans
+# Font resolution. Gisha Bold is the brand face but it is a Windows-only Microsoft font,
+# so a headless Linux runner could never render an ad — CI failed on exactly this. Heebo Bold
+# (SIL OFL) is vendored in the repo so every machine, local or CI, produces the same pixels.
+# Override with ADS_FONT to force a specific file.
+_FONT_CANDIDATES = [
+    os.environ.get('ADS_FONT'),
+    os.path.join(os.path.dirname(__file__), 'assets', 'fonts', 'Heebo.ttf'),
+    'C:/Windows/Fonts/gishabd.ttf',
+    '/usr/share/fonts/truetype/noto/NotoSansHebrew-Bold.ttf',
+]
+
+
+def _font_path():
+    for c in _FONT_CANDIDATES:
+        if c and os.path.exists(c):
+            return c
+    raise RuntimeError('No Hebrew font found. Set ADS_FONT or restore ads/assets/fonts/Heebo.ttf; '
+                       f'tried: {[c for c in _FONT_CANDIDATES if c]}')
+
+
+FONT = _font_path()
 ORANGE = (232, 98, 42)
 CREAM  = (243, 233, 216)
 
-def _f(sz): return ImageFont.truetype(FONT, sz)
+def _f(sz):
+    f = ImageFont.truetype(FONT, sz)
+    try:                       # Heebo ships as a variable font — pin the weight we design against
+        f.set_variation_by_name('Bold')
+    except Exception:
+        pass                   # a static face (Gisha Bold) is already the right weight
+    return f
 
 # python-bidi reorders the runs but skips the mirroring step (UBA rule L4), so a Hebrew
 # "(רקליינר)" came out as ")רקליינר(" in the rendered ad. Our copy is Hebrew-primary, so

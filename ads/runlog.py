@@ -12,10 +12,20 @@ each step, and closes it with ok/failed. Three places you can see it:
 Deliberately dependency-free: if Telegram is down the run still completes and still logs.
 """
 import os
+import sys
 import json
 import time
 import datetime
 import traceback
+
+# A Hebrew Windows console is cp1255 and cannot encode the status emoji — printing a single
+# ❌ used to raise UnicodeEncodeError and kill the run *while it was reporting a failure*,
+# hiding the real error behind an encoding traceback. Force UTF-8 and never die on output.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
 
 LOG = os.path.join(os.path.dirname(__file__), 'workspace', 'runs.jsonl')
 _ICON = {'ok': '✅', 'failed': '❌', 'skipped': '⏭️', 'warn': '⚠️'}
@@ -60,7 +70,11 @@ class Run:
         self.steps.append({'label': label, 'status': st, 'detail': str(detail)[:500]})
         _write({'ts': datetime.datetime.now().isoformat(timespec='seconds'), 'run': self.id,
                 'name': self.name, 'step': label, 'status': st, 'detail': str(detail)[:500]})
-        print(f'{_ICON.get(st, "·")} {label}' + (f' — {detail}' if detail else ''))
+        line = f'{_ICON.get(st, "·")} {label}' + (f' — {detail}' if detail else '')
+        try:
+            print(line)
+        except Exception:                       # last-resort: never let logging break a run
+            print(line.encode('ascii', 'replace').decode('ascii'))
         return ok
 
     def fail(self, label, detail=''):
