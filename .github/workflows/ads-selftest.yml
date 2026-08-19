@@ -39,14 +39,35 @@ jobs:
       - name: Compile every module
         run: python -m compileall -q ads
 
-      - name: Dry run the whole daily cycle (renders, posts nothing)
-        working-directory: ads
-        run: python headless_daily.py --dry-run
+      # Secrets first: without them nothing downstream can work, and a missing-key
+      # traceback from the dry run buries the one line that actually matters.
+      - name: Are the repo secrets configured?
+        run: |
+          missing=""
+          for v in SUPABASE_SERVICE_KEY TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID; do
+            [ -z "${!v}" ] && missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error title=Repo secrets not configured::Missing:$missing"
+            echo "The ad engine cannot reach Supabase or Telegram without these."
+            echo "Add them under Settings -> Secrets and variables -> Actions:"
+            for v in $missing; do echo "  - $v"; done
+            echo "Values live in ads/.env on Nir's machine. SUPABASE_SERVICE_KEY must be the"
+            echo "legacy service_role key starting with eyJ (sb_secret keys are blocked by RLS)."
+            exit 1
+          fi
+          echo "All three secrets present."
 
+      # Health check before the dry run: it reports every dependency as a readable table
+      # instead of dying on the first one.
       # Only the scheduled morning check pings Telegram — a push shouldn't buzz the phone.
       - name: Health check
         working-directory: ads
         run: python selftest.py ${{ github.event_name == 'schedule' && '--notify' || '' }}
+
+      - name: Dry run the whole daily cycle (renders, posts nothing)
+        working-directory: ads
+        run: python headless_daily.py --dry-run
 
       - name: Machine-readable report
         if: ${{ always() }}

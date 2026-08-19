@@ -49,6 +49,18 @@ jobs:
       - name: Install deps
         run: pip install --quiet pillow
 
+      - name: Are the repo secrets configured?
+        run: |
+          missing=""
+          for v in SUPABASE_SERVICE_KEY TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID; do
+            [ -z "${!v}" ] && missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error title=Repo secrets not configured::Missing:$missing"
+            echo "Add them under Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
       - name: Health check (fails fast before touching anything)
         working-directory: ads
         run: python selftest.py
