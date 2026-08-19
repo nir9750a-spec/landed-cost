@@ -96,6 +96,28 @@
         "used_at": null,
         "job_id": null
       }
+    ],
+    "YF-QDC-05B": [
+      {
+        "file": "tent-night__1.png",
+        "scene": "tent-night",
+        "avatar_id": "nir-face",
+        "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GfsjjjORLwMK160OnBIVevQLMI/hf_20260818_031954_c1b6f399-0af6-4ad2-b507-a46f898ac13b.png",
+        "added": "2026-08-18",
+        "used_at": null,
+        "job_id": null
+      }
+    ],
+    "YF-CHL-12": [
+      {
+        "file": "fire-night__1.png",
+        "scene": "fire-night",
+        "avatar_id": "nir-face",
+        "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GfsjjjORLwMK160OnBIVevQLMI/hf_20260818_031954_8d230591-4446-400e-ad54-cd560d94c17b.png",
+        "added": "2026-08-18",
+        "used_at": null,
+        "job_id": null
+      }
     ]
   }
 }

@@ -13,3 +13,13 @@ workspace/scene-bank/*
 !workspace/cutouts/
 workspace/cutouts/*
 !workspace/cutouts/index.json
+
+# Personal reference photos of Nir (and family) live here for avatar generation.
+# The repo is PUBLIC — these must never be pushed. The avatar registry only needs the
+# Higgsfield media_id/url, not the source file.
+assets/*.jpg
+assets/*.jpeg
+assets/*.png
+assets/recliner_real/
+!assets/logo.png
+!assets/logo_rgba.png

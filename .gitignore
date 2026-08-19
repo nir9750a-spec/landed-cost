@@ -26,3 +26,6 @@ yarn-error.log*
 
 # Supabase CLI temp files
 supabase/.temp/
+
+# ad engine secrets
+ads/.env

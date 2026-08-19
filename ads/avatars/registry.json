@@ -6,8 +6,36 @@
       "file": null,
       "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3GfsjjjORLwMK160OnBIVevQLMI/74798df6-4c44-496e-a4ea-7b406a1dec72.jpg",
       "media_id": "f362deb6-ed3a-4d4f-b1d1-303ad3f6e9e8",
-      "tags": ["portrait", "default"],
-      "note": "the first NIR reference — used for combo2, YF-YZ-13, YF-YZ-03"
+      "tags": [
+        "deprecated"
+      ],
+      "note": "NOT Nir — wrong face, used in all ads up to 18.8. Do not use."
+    },
+    {
+      "id": "nir-face",
+      "added": "2026-08-18",
+      "file": "20240616_181913.jpg",
+      "tags": [
+        "portrait",
+        "default",
+        "real"
+      ],
+      "note": "REAL Nir — clear face, no sunglasses. Primary reference.",
+      "media_id": "e4bf3378-6015-4c35-9a90-d6c772804255",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3GfsjjjORLwMK160OnBIVevQLMI/e4bf3378-6015-4c35-9a90-d6c772804255.jpg"
+    },
+    {
+      "id": "nir-outdoor",
+      "added": "2026-08-18",
+      "file": "IMG_20260424_103134.jpg",
+      "tags": [
+        "half-body",
+        "outdoor",
+        "real"
+      ],
+      "note": "REAL Nir, half body outdoors (sunglasses on) — build/styling reference",
+      "media_id": "7af4b225-0a2b-4efe-9c8e-c991fdaddcae",
+      "url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3GfsjjjORLwMK160OnBIVevQLMI/7af4b225-0a2b-4efe-9c8e-c991fdaddcae.jpg"
     }
   ]
 }
