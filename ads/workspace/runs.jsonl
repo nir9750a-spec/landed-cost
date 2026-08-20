@@ -8,3 +8,19 @@
 {"ts": "2026-08-16T23:06:05", "run": "20260816-230604", "name": "daily-ad (dry-run)", "step": "scene", "status": "ok", "detail": "beach__1.png"}
 {"ts": "2026-08-16T23:06:05", "run": "20260816-230604", "name": "daily-ad (dry-run)", "step": "render", "status": "ok", "detail": "feed_4x5 · שוקעים פנימה. הראש מתנקה."}
 {"ts": "2026-08-16T23:06:05", "run": "20260816-230604", "name": "daily-ad (dry-run)", "step": "enqueue", "status": "skipped", "detail": "dry-run"}
+{"ts": "2026-08-19T06:25:15", "run": "20260819-062515", "name": "daily-ad (dry-run)", "step": "__start__", "status": "ok", "detail": ""}
+{"ts": "2026-08-19T06:25:15", "run": "20260819-062515", "name": "daily-ad (dry-run)", "step": "pick", "status": "ok", "detail": "YF-YZ-06B"}
+{"ts": "2026-08-19T06:25:15", "run": "20260819-062515", "name": "daily-ad (dry-run)", "step": "unhandled error", "status": "failed", "detail": "UnicodeEncodeError: 'charmap' codec can't encode character '\\u2705' in position 0: character maps to <undefined>"}
+{"ts": "2026-08-19T06:25:33", "run": "20260819-062533", "name": "daily-ad (dry-run)", "step": "__start__", "status": "ok", "detail": ""}
+{"ts": "2026-08-19T06:25:33", "run": "20260819-062533", "name": "daily-ad (dry-run)", "step": "pick", "status": "ok", "detail": "YF-YZ-06B"}
+{"ts": "2026-08-19T06:25:33", "run": "20260819-062533", "name": "daily-ad (dry-run)", "step": "scene", "status": "ok", "detail": "beach__1.png"}
+{"ts": "2026-08-19T06:25:33", "run": "20260819-062533", "name": "daily-ad (dry-run)", "step": "render", "status": "ok", "detail": "feed_4x5 · שוקעים פנימה. הראש מתנקה."}
+{"ts": "2026-08-19T06:25:33", "run": "20260819-062533", "name": "daily-ad (dry-run)", "step": "enqueue", "status": "skipped", "detail": "dry-run"}
+{"ts": "2026-08-19T06:26:06", "run": "20260819-062606", "name": "daily-ad (dry-run)", "step": "__start__", "status": "ok", "detail": ""}
+{"ts": "2026-08-19T06:26:06", "run": "20260819-062606", "name": "daily-ad (dry-run)", "step": "pick", "status": "ok", "detail": "YF-YZ-06B"}
+{"ts": "2026-08-19T06:26:06", "run": "20260819-062606", "name": "daily-ad (dry-run)", "step": "scene", "status": "ok", "detail": "beach__1.png"}
+{"ts": "2026-08-19T06:26:07", "run": "20260819-062606", "name": "daily-ad (dry-run)", "step": "render", "status": "ok", "detail": "feed_4x5 · שוקעים פנימה. הראש מתנקה."}
+{"ts": "2026-08-19T06:26:07", "run": "20260819-062606", "name": "daily-ad (dry-run)", "step": "enqueue", "status": "skipped", "detail": "dry-run"}
+{"ts": "2026-08-19T06:28:01", "run": "20260819-062801", "name": "daily-ad (dry-run)", "step": "__start__", "status": "ok", "detail": ""}
+{"ts": "2026-08-19T06:28:01", "run": "20260819-062801", "name": "daily-ad (dry-run)", "step": "unhandled error", "status": "failed", "detail": "QueueError: No Supabase key. Set SUPABASE_SERVICE_KEY (writes) or SUPABASE_KEY (reads)."}
+{"ts": "2026-08-19T06:28:01", "run": "20260819-062801", "name": "daily-ad (dry-run)", "step": "__traceback__", "status": "failed", "detail": "Traceback (most recent call last):\n  File \"C:\\Users\\Admin\\landed-cost\\ads\\headless_daily.py\", line 48, in main\n    retries = supervisor.pending_retries()\n  File \"C:\\Users\\Admin\\landed-cost\\ads\\supervisor.py\", line 89, in pending_retries\n    return [j for j in ad_queue.list_jobs(status='queued')\n                       ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Admin\\landed-cost\\ads\\ad_queue.py\", line 92, in list_jobs\n    return _request('GET', TABLE, params=params) or []\n           ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Admin\\landed-cost\\ads\\ad_queue.py\", line 48, in _request\n    key = _require_key()\n  File \"C:\\Users\\Admin\\landed-cost\\ads\\ad_queue.py\", line 43, in _require_key\n    raise QueueError('No Supabase key. Set SUPABASE_SERVICE_KEY (writes) or SUPABASE_KEY (reads).')\nad_queue.QueueError: No Supabase key. Set SUPABASE_SERVICE_KEY (writes) or SUPABASE_KEY (reads).\n"}
