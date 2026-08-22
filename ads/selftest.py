@@ -159,6 +159,32 @@ def _check_decision():
     return True, f'next up {sku} → {fmt} ({why}){tail}'
 
 
+def _check_bundles():
+    """The Sukkot bundles: every SKU must exist, and every bundle must clear the free-shipping
+    threshold on its own. A bundle that references a dead SKU or lands under the threshold
+    reads fine in JSON and only fails once it is in front of a customer."""
+    import json
+    path = os.path.join(os.path.dirname(__file__), 'bundles.json')
+    if not os.path.exists(path):
+        return True, 'no bundles.json — single-SKU rotation only'
+    with open(path, encoding='utf-8') as f:
+        cfg = json.load(f)
+    import scout
+    known = {p['id'] for p in scout.products()}
+    bundles = cfg.get('bundles', [])
+    problems = []
+    for b in bundles:
+        missing = [i for i in b['items'] if i not in known]
+        if missing:
+            problems.append(f"{b['id']}: unknown SKU {', '.join(missing)}")
+        if b['price'] < cfg.get('free_shipping_threshold', 0):
+            problems.append(f"{b['id']}: ₪{b['price']} is under the free-shipping threshold")
+    if problems:
+        return False, ' · '.join(problems)
+    avg = sum(b['price'] for b in bundles) / len(bundles) if bundles else 0
+    return True, f'{len(bundles)} bundle(s) · average basket ₪{avg:.0f}'
+
+
 def _check_last_run():
     import runlog
     st = runlog.last_run_status()
@@ -179,6 +205,7 @@ CHECKS = [
     ('product cards',      False, _check_cards),
     ('avatars',            False, _check_avatars),
     ('decision chain',     True,  _check_decision),
+    ('sukkot bundles',     True,  _check_bundles),
     ('last headless run',  False, _check_last_run),
 ]
 
