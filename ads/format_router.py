@@ -14,6 +14,7 @@ import json
 import datetime
 
 PERF_PATH = os.path.join(os.path.dirname(__file__), 'workspace', 'performance.json')
+DEMO_PATH = os.path.join(os.path.dirname(__file__), 'demo-value.json')
 
 SLOT_DEFAULT = {'07:00': 'feed_4x5', '12:00': 'reel_9x16', '18:00': 'feed_4x5'}
 FEED, REEL = 'feed_4x5', 'reel_9x16'
@@ -23,6 +24,8 @@ CREDIT_RESERVE = 150        # keep ~6 reels of runway before falling back to fre
 MIN_SAMPLES = 3             # per (sku, format) before performance may override the cadence
 WIN_MARGIN = 1.25           # the winner must beat the loser by 25% to be worth overriding
 MAX_STREAK = 3              # never post the same format for one SKU more than 3× running
+DEMO_NEEDS_VIDEO = 0.70     # above this the product cannot be understood from a still
+DEMO_STILL_IS_FINE = 0.35   # below this a video adds cost and nothing else
 
 
 def _load_perf():
@@ -30,6 +33,33 @@ def _load_perf():
         with open(PERF_PATH, encoding='utf-8') as f:
             return json.load(f)
     return {'scores': {}, 'history': []}
+
+
+def demo_value(sku, profiles=None):
+    """How badly this product needs to be seen in motion, 0..1.
+
+    A pop-up tent whose whole claim is "opens in a second" is unprovable in a still; a ₪59
+    moon chair is fully understood from one photo and a reel about it just costs credits.
+    The clock knows neither, which is why the cadence alone kept producing reels for chairs.
+    Scores are curated judgement in demo-value.json, with a per-category fallback for a SKU
+    that has not been rated yet."""
+    try:
+        with open(DEMO_PATH, encoding='utf-8') as f:
+            cfg = json.load(f)
+    except Exception:
+        return None
+    row = cfg.get('products', {}).get(sku)
+    if row:
+        return float(row[0])
+    if profiles is None:
+        try:
+            import scout
+            profiles = {p['id']: p for p in scout.products()}
+        except Exception:
+            return None
+    cat = (profiles.get(sku) or {}).get('category')
+    fb = cfg.get('category_fallback', {})
+    return float(fb[cat]) if cat in fb else None
 
 
 def _streak(history, sku):
@@ -68,7 +98,16 @@ def choose(sku, slot='07:00', credits=None, perf=None, now=None):
         if f_v >= r_v * WIN_MARGIN:
             return FEED, f'learned: feed {f_v:.3f} beats reel {r_v:.3f} for {sku}'
 
-    # 3. Fatigue: break a long run of one shape even when the cadence keeps asking for it.
+    # 3. The product's own nature. Weaker than measured performance, stronger than the clock:
+    #    with no data yet, what the product IS beats what hour it happens to be.
+    dv = demo_value(sku)
+    if dv is not None:
+        if dv >= DEMO_NEEDS_VIDEO and default != REEL:
+            return REEL, f'demo value {dv:.2f}: {sku} cannot be shown in a still'
+        if dv <= DEMO_STILL_IS_FINE and default == REEL:
+            return FEED, f'demo value {dv:.2f}: a still says it all — reel would just cost credits'
+
+    # 4. Fatigue: break a long run of one shape even when the cadence keeps asking for it.
     last, n = _streak(history, sku)
     if last == default and n >= MAX_STREAK:
         other = REEL if default == FEED else FEED
@@ -76,7 +115,7 @@ def choose(sku, slot='07:00', credits=None, perf=None, now=None):
             return default, f'cadence {slot}: would break a {n}× streak but credits are short'
         return other, f'fatigue: {sku} ran {default} {n}× in a row — switching to {other}'
 
-    # 4. Otherwise the planned cadence stands.
+    # 5. Otherwise the planned cadence stands.
     return default, f'cadence {slot} → {default}'
 
 
