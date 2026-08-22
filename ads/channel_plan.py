@@ -22,25 +22,34 @@ import json
 HIGH_TICKET = 800          # above this the feed is the wrong room entirely
 FOURXFOUR = 'שדרוגי 4x4'
 
-# What each surface consumes. 'ad' = branded creative; 'listing' = plain goods-for-sale.
+# What each surface consumes, and who can actually post it.
+#   'mcp'   — an agent session with the right MCP server does it end to end, no hands.
+#   'human' — no API exists for it at all.
+# Note this is NOT the same as "runs in CI". The GitHub Actions run generates the asset,
+# queues it and sends the Telegram approval card; it has no MCP, so every publish — Meta
+# included — happens in an agent session after Nir taps ✅.
 SURFACES = {
-    'ig_feed':     {'kind': 'ad',      'ratio': '4:5',  'auto': True,
-                    'via': 'Make 6869166 (מפרסם ל-IG+FB יחד)'},
-    'fb_feed':     {'kind': 'ad',      'ratio': '4:5',  'auto': True,
+    'ig_feed':     {'kind': 'ad',      'ratio': '4:5',  'runner': 'mcp',
+                    'via': 'Make 6869166 — מפרסם ל-IG+FB יחד'},
+    'fb_feed':     {'kind': 'ad',      'ratio': '4:5',  'runner': 'mcp',
                     'via': 'אותו תרחיש Make'},
-    'ig_reels':    {'kind': 'ad',      'ratio': '9:16', 'auto': True,
+    'ig_reels':    {'kind': 'ad',      'ratio': '9:16', 'runner': 'mcp',
                     'via': 'Make 6903724'},
-    'fb_reels':    {'kind': 'ad',      'ratio': '9:16', 'auto': True,
+    'fb_reels':    {'kind': 'ad',      'ratio': '9:16', 'runner': 'mcp',
                     'via': 'אותו תרחיש Make'},
-    'tiktok':      {'kind': 'ad',      'ratio': '9:16', 'auto': False,
-                    'via': 'Higgsfield connector · סאונד טרנדי לא זמין ב-API'},
-    'whatsapp':    {'kind': 'closing', 'ratio': '4:5',  'auto': False,
-                    'via': 'כרטיס לטלגרם → ניר מפרסם בערוץ'},
-    'marketplace': {'kind': 'listing', 'ratio': '1:1',  'auto': False,
-                    'via': 'רישום ידני, 6-8 ביום'},
-    'yad2':        {'kind': 'listing', 'ratio': '1:1',  'auto': False,
-                    'via': 'לוח רכב — בתשלום, לברר מחיר'},
-    'forums':      {'kind': 'listing', 'ratio': '1:1',  'auto': False,
+    # Fully automated, including the trending sound: tiktok_music_trending returns TikTok's
+    # commercially licensed chart for IL, so the one thing Meta forbids automating is exactly
+    # the thing TikTok hands over. The video must be Higgsfield-hosted before publishing, so
+    # media_import_url runs first — an extra hop, still no hands.
+    'tiktok':      {'kind': 'ad',      'ratio': '9:16', 'runner': 'mcp',
+                    'via': 'Higgsfield: media_import_url → music_trending(IL) → prepare → publish'},
+    'whatsapp':    {'kind': 'closing', 'ratio': '4:5',  'runner': 'human',
+                    'via': 'אין API לערוצי וואטסאפ — הבוט שולח מוכן לטלגרם'},
+    'marketplace': {'kind': 'listing', 'ratio': '1:1',  'runner': 'human',
+                    'via': 'רישום ידני 6-8 ביום — כלי מסיבי מסכן את החשבון'},
+    'yad2':        {'kind': 'listing', 'ratio': '1:1',  'runner': 'human',
+                    'via': 'לוח בתשלום — לברר מחיר'},
+    'forums':      {'kind': 'listing', 'ratio': '1:1',  'runner': 'human',
                     'via': '4x4.co.il · Jeepolog · קבוצות מותג'},
 }
 
@@ -129,4 +138,4 @@ if __name__ == '__main__':
     for s in d['surfaces']:
         a = s['asset']
         a = a['title'] if isinstance(a, dict) else a
-        print(f"  {s['surface']:<12} [{s['kind']:<7}] {'אוטו' if s['auto'] else 'ידני'}  {a}")
+        print(f"  {s['surface']:<12} [{s['kind']:<7}] {s['runner']:<5}  {a}")
