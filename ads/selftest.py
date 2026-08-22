@@ -196,6 +196,28 @@ def _check_bundles():
     return True, f'{len(bundles)} bundle(s) · average basket ₪{avg:.0f}'
 
 
+def _check_channels():
+    """Every product must resolve to at least one surface, and every listing surface must
+    carry a listing rather than an ad. Getting that backwards is invisible in code and
+    obvious to a buyer: a branded ad tile on Marketplace reads as a business pushing."""
+    import channel_plan
+    import scout
+    profs = {p['id']: p for p in scout.products()}
+    bad = []
+    for sku in profs:
+        d = channel_plan.plan(sku, '07:00', profiles=profs)
+        if not d or not d['surfaces']:
+            bad.append(f'{sku}: no surfaces')
+            continue
+        for s in d['surfaces']:
+            if s['kind'] == 'listing' and not isinstance(s['asset'], dict):
+                bad.append(f"{sku}/{s['surface']}: listing surface got an ad")
+    if bad:
+        return False, ' · '.join(bad[:3])
+    heavy = [s for s in profs if channel_plan.plan(s, '07:00', profiles=profs)['note']]
+    return True, f'{len(profs)} product(s) routed · {len(heavy)} off-feed (4x4 / high ticket)'
+
+
 def _check_last_run():
     import runlog
     st = runlog.last_run_status()
@@ -217,6 +239,7 @@ CHECKS = [
     ('avatars',            False, _check_avatars),
     ('decision chain',     True,  _check_decision),
     ('sukkot bundles',     True,  _check_bundles),
+    ('channel routing',    True,  _check_channels),
     ('last headless run',  False, _check_last_run),
 ]
 
