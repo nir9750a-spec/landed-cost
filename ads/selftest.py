@@ -137,6 +137,28 @@ def _check_avatars():
     return True, f'{len(r)} ready' + (f' · {len(p)} awaiting upload' if p else '')
 
 
+def _check_decision():
+    """The scout/router/learner chain — the part that decides WHAT goes out and in which
+    format. It is pure logic with no network, so if it breaks it breaks silently: the
+    daily run still posts, just the wrong thing. Cheap to verify, so verify it."""
+    import scout
+    import format_router
+    import learner
+    prods = scout.products()
+    if not prods:
+        return False, 'scout sees no products'
+    ranked = scout.rank(prods)
+    if len(ranked) != len(prods):
+        return False, f'rank() returned {len(ranked)} of {len(prods)} products'
+    sku = ranked[0]['sku']
+    fmt, why = format_router.choose(sku, '12:00')
+    if fmt not in ('feed_4x5', 'reel_9x16'):
+        return False, f'router returned an unknown format {fmt!r}'
+    board = learner.leaderboard()
+    tail = f' · {len(board)} scored (sku,format) pair(s)' if board else ' · no metrics yet'
+    return True, f'next up {sku} → {fmt} ({why}){tail}'
+
+
 def _check_last_run():
     import runlog
     st = runlog.last_run_status()
@@ -156,6 +178,7 @@ CHECKS = [
     ('scene bank',         True,  _check_bank),
     ('product cards',      False, _check_cards),
     ('avatars',            False, _check_avatars),
+    ('decision chain',     True,  _check_decision),
     ('last headless run',  False, _check_last_run),
 ]
 
