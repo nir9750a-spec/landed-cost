@@ -28,10 +28,20 @@ def _check_env():
     missing = [k for k in need if not os.environ.get(k)]
     if missing:
         return False, 'missing: ' + ', '.join(missing)
+    # A pasted secret that carries a newline or a leading space still "exists", so the
+    # missing-check above passes and the failure surfaces later as an unexplained HTTP 400.
+    dirty = [k for k in need if os.environ[k] != os.environ[k].strip()]
+    if dirty:
+        return False, 'whitespace around: ' + ', '.join(dirty) + ' — re-paste without spaces'
     key = os.environ['SUPABASE_SERVICE_KEY']
-    if not key.startswith('eyJ'):
-        return False, 'SUPABASE_SERVICE_KEY must be the legacy service_role key (starts eyJ)'
-    return True, f'{len(need)} secret(s) present'
+    # Supabase migrated projects off the legacy eyJ service_role key. The new sb_secret keys
+    # carry the same privileges and bypass RLS exactly the same way — verified against this
+    # project, where read and write both pass with one. Whether the key really has the rights
+    # is settled by the supabase write check below, not by a prefix.
+    if not (key.startswith('eyJ') or key.startswith('sb_secret')):
+        return False, 'SUPABASE_SERVICE_KEY is neither a legacy eyJ key nor an sb_secret key'
+    kind = 'legacy service_role' if key.startswith('eyJ') else 'sb_secret'
+    return True, f'{len(need)} secret(s) present · supabase key: {kind}'
 
 
 def _check_supabase():
