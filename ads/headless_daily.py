@@ -45,7 +45,9 @@ def main(argv=None):
 
     with runlog.Run(label, quiet=a.dry_run) as run:
         # --- 1. retries outrank new products --------------------------------
-        retries = supervisor.pending_retries()
+        # A dry run must stay offline to be worth anything: reading the retry queue hits
+        # Supabase, so without secrets the render check died before rendering a thing.
+        retries = [] if a.dry_run else supervisor.pending_retries()
         if retries:
             job = retries[0]
             brief = supervisor.retry_brief(job)
@@ -80,7 +82,9 @@ def main(argv=None):
         # --- 4. render → queue → approval card -------------------------------
         if a.dry_run:
             import make_ad_master as M
-            spec = supervisor.build_spec(sku, fmt=supervisor.SLOT_FORMAT[a.slot])
+            fmt, why = supervisor.choose_format(sku, a.slot)
+            run.step('format', detail=f'{fmt} — {why}')
+            spec = supervisor.build_spec(sku, fmt=fmt)
             M.render_from_sku(sku, scene, os.path.join(os.path.dirname(__file__),
                                                        'workspace', 'dry-run'))
             run.step('render', detail=f"{spec['format']} · {spec['hook']}")

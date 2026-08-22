@@ -1,0 +1,5 @@
+# Everything the ad engine needs to render and post.
+# Both workflows install from this file, so a new import can never again pass locally
+# and then die in CI — which is exactly how python-bidi went missing.
+pillow>=10.0
+python-bidi>=0.4.2

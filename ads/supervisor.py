@@ -21,6 +21,23 @@ DEFAULT_CHANNELS = ['ig', 'fb', 'tiktok', 'wa_channel', 'wa_status']
 SLOT_FORMAT = {'07:00': 'feed_4x5', '12:00': 'reel_9x16', '18:00': 'feed_4x5'}
 
 
+def choose_format(sku, slot, credits=None):
+    """Reel or feed image for this SKU in this slot, plus the reason.
+
+    SLOT_FORMAT is only the cadence. format_router layers the things the cadence cannot
+    know — whether we can afford a reel, which format this product actually performs in,
+    and whether it has run the same shape too many times running."""
+    default = SLOT_FORMAT.get(slot, 'feed_4x5')
+    if credits is None:
+        env = os.environ.get('HIGGSFIELD_CREDITS')
+        credits = float(env) if env else None
+    try:
+        import format_router
+        return format_router.choose(sku, slot, credits=credits)
+    except Exception as e:
+        return default, f'router unavailable ({e}) — cadence {slot}' 
+
+
 def _load_rot():
     if os.path.exists(ROT_PATH):
         with open(ROT_PATH, encoding='utf-8') as f:
@@ -34,11 +51,24 @@ def _save_rot(r):
 
 
 def pick_today(n=1):
-    """Rotate the catalog: least-recently-served products first (never-served win)."""
+    """What to feature today. Least-recently-served is the floor; scout tilts the order
+    toward whatever the learner has proven actually performs, so winners come round sooner
+    without any product ever dropping out of the rotation."""
     products = M._profiles()['products']
     served = _load_rot()['served']
-    order = sorted(products, key=lambda p: served.get(p['id'], ''))
-    return order[:n]
+    try:
+        import scout
+        try:                                    # only offer what we can actually render today
+            import scene_bank
+            avail = {k for k, v in scene_bank.stats().items() if v.get('available')}
+        except Exception:
+            avail = None
+        ranked = scout.rank(products, served=served, available=avail)
+        by_id = {p['id']: p for p in products}
+        return [by_id[r['sku']] for r in ranked[:n] if r['sku'] in by_id]
+    except Exception as e:                      # never let ranking block the daily run
+        print(f'[scout unavailable: {e}] falling back to plain rotation')
+        return sorted(products, key=lambda p: served.get(p['id'], ''))[:n]
 
 
 def build_spec(sku, fmt='feed_4x5', angle='price', scene=None, variant='v1'):
@@ -61,11 +91,12 @@ def run(scene_paths, slot='07:00', out_dir=None):
     import ad_queue
     import telegram_gate
     out_dir = out_dir or os.path.join(os.path.dirname(__file__), 'workspace', 'final-ads')
-    fmt = SLOT_FORMAT.get(slot, 'feed_4x5')
-    is_video = fmt == 'reel_9x16'
     rot = _load_rot()
     jobs = []
     for sku, scene in scene_paths.items():
+        fmt, why = choose_format(sku, slot)
+        is_video = fmt == 'reel_9x16'
+        print(f'[{sku}] format {fmt} — {why}')
         spec = build_spec(sku, fmt=fmt)
         M.render_from_sku(sku, scene, out_dir)
         media = f'{out_dir}/{sku}_{"reel_9x16" if is_video else "feed_4x5"}.jpg'
