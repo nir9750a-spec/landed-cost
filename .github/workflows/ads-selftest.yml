@@ -34,7 +34,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install deps
-        run: pip install --quiet pillow
+        run: pip install --quiet -r ads/requirements.txt
 
       - name: Compile every module
         run: python -m compileall -q ads

@@ -28,10 +28,21 @@ def _check_env():
     missing = [k for k in need if not os.environ.get(k)]
     if missing:
         return False, 'missing: ' + ', '.join(missing)
-    key = os.environ['SUPABASE_SERVICE_KEY']
-    if not key.startswith('eyJ'):
-        return False, 'SUPABASE_SERVICE_KEY must be the legacy service_role key (starts eyJ)'
-    return True, f'{len(need)} secret(s) present'
+    # A pasted secret that carries a newline or a leading space still "exists", so the
+    # missing-check above passes and the failure surfaces much later as an unexplained HTTP
+    # 400. Every consumer strips now, so this is cosmetic rather than broken — worth naming
+    # so the next confusing 400 has an obvious first suspect, not worth failing the run over.
+    dirty = [k for k in need if os.environ[k] != os.environ[k].strip()]
+    note = f" · whitespace trimmed from {', '.join(dirty)}" if dirty else ''
+    key = os.environ['SUPABASE_SERVICE_KEY'].strip()
+    # Supabase migrated projects off the legacy eyJ service_role key. The new sb_secret keys
+    # carry the same privileges and bypass RLS exactly the same way — verified against this
+    # project, where read and write both pass with one. Whether the key really has the rights
+    # is settled by the supabase write check below, not by a prefix.
+    if not (key.startswith('eyJ') or key.startswith('sb_secret')):
+        return False, 'SUPABASE_SERVICE_KEY is neither a legacy eyJ key nor an sb_secret key'
+    kind = 'legacy service_role' if key.startswith('eyJ') else 'sb_secret'
+    return True, f'{len(need)} secret(s) present · supabase key: {kind}{note}'
 
 
 def _check_supabase():
@@ -137,6 +148,54 @@ def _check_avatars():
     return True, f'{len(r)} ready' + (f' · {len(p)} awaiting upload' if p else '')
 
 
+def _check_decision():
+    """The scout/router/learner chain — the part that decides WHAT goes out and in which
+    format. It is pure logic with no network, so if it breaks it breaks silently: the
+    daily run still posts, just the wrong thing. Cheap to verify, so verify it."""
+    import scout
+    import format_router
+    import learner
+    prods = scout.products()
+    if not prods:
+        return False, 'scout sees no products'
+    ranked = scout.rank(prods)
+    if len(ranked) != len(prods):
+        return False, f'rank() returned {len(ranked)} of {len(prods)} products'
+    sku = ranked[0]['sku']
+    fmt, why = format_router.choose(sku, '12:00')
+    if fmt not in ('feed_4x5', 'reel_9x16'):
+        return False, f'router returned an unknown format {fmt!r}'
+    board = learner.leaderboard()
+    tail = f' · {len(board)} scored (sku,format) pair(s)' if board else ' · no metrics yet'
+    return True, f'next up {sku} → {fmt} ({why}){tail}'
+
+
+def _check_bundles():
+    """The Sukkot bundles: every SKU must exist, and every bundle must clear the free-shipping
+    threshold on its own. A bundle that references a dead SKU or lands under the threshold
+    reads fine in JSON and only fails once it is in front of a customer."""
+    import json
+    path = os.path.join(os.path.dirname(__file__), 'bundles.json')
+    if not os.path.exists(path):
+        return True, 'no bundles.json — single-SKU rotation only'
+    with open(path, encoding='utf-8') as f:
+        cfg = json.load(f)
+    import scout
+    known = {p['id'] for p in scout.products()}
+    bundles = cfg.get('bundles', [])
+    problems = []
+    for b in bundles:
+        missing = [i for i in b['items'] if i not in known]
+        if missing:
+            problems.append(f"{b['id']}: unknown SKU {', '.join(missing)}")
+        if b['price'] < cfg.get('free_shipping_threshold', 0):
+            problems.append(f"{b['id']}: ₪{b['price']} is under the free-shipping threshold")
+    if problems:
+        return False, ' · '.join(problems)
+    avg = sum(b['price'] for b in bundles) / len(bundles) if bundles else 0
+    return True, f'{len(bundles)} bundle(s) · average basket ₪{avg:.0f}'
+
+
 def _check_last_run():
     import runlog
     st = runlog.last_run_status()
@@ -156,6 +215,8 @@ CHECKS = [
     ('scene bank',         True,  _check_bank),
     ('product cards',      False, _check_cards),
     ('avatars',            False, _check_avatars),
+    ('decision chain',     True,  _check_decision),
+    ('sukkot bundles',     True,  _check_bundles),
     ('last headless run',  False, _check_last_run),
 ]
 

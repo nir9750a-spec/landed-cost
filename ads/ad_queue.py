@@ -25,9 +25,10 @@ except Exception:
     pass
 
 SUPABASE_URL = os.environ.get('SUPABASE_URL', 'https://eginihtpqahpejnkqznn.supabase.co').rstrip('/')
-_KEY = (os.environ.get('SUPABASE_SERVICE_KEY')
-        or os.environ.get('SUPABASE_KEY')
-        or os.environ.get('REACT_APP_SUPABASE_KEY'))
+_KEY = ((os.environ.get('SUPABASE_SERVICE_KEY')
+         or os.environ.get('SUPABASE_KEY')
+         or os.environ.get('REACT_APP_SUPABASE_KEY')
+         or '').strip() or None)
 
 TABLE = 'ad_jobs'
 STATUSES = ('queued', 'generating', 'pending_approval', 'approved',

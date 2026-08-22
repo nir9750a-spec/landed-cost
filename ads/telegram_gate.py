@@ -26,8 +26,16 @@ try:
 except Exception:
     pass
 
-TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
-CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
+def _secret(name):
+    """Read a secret and strip surrounding whitespace. A token pasted out of BotFather or a
+    chat id typed into a web form arrives with a trailing newline or a leading space often
+    enough that it is worth handling here: the space survives into the request URL and
+    Telegram answers 400, which reads like a bad token rather than a bad paste."""
+    return (os.environ.get(name) or '').strip() or None
+
+
+TOKEN = _secret('TELEGRAM_BOT_TOKEN')
+CHAT_ID = _secret('TELEGRAM_CHAT_ID')
 API = 'https://api.telegram.org/bot{token}/{method}'
 
 try:
