@@ -30,6 +30,13 @@ concurrency:
   group: ads-daily            # never two daily runs at once
   cancel-in-progress: false
 
+# "Persist state" pushes the rotation + scene-bank state back to main. The default token is
+# read-only, so without this the run goes red at the very last step — after the ad was
+# already rendered, queued and sent to Telegram. That is exactly what happened on runs 1-5:
+# the ad went out, the state never came back, and rotation froze on 16.8.
+permissions:
+  contents: write
+
 jobs:
   run:
     runs-on: ubuntu-latest
