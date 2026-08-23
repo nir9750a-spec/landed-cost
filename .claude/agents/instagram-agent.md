@@ -25,8 +25,9 @@ Both scenarios post to Instagram **and** the Facebook Page in one pass, which is
 2. Meta connection `9617477` **expires 07.10.2026**. Renew the OAuth before that date.
 
 Make is on the **Free plan: only 2 scenarios may be active at once, 1,000 ops/month**,
-and a publish costs ~4 ops. Turning the reel publisher on may mean turning something
-else off. Say that out loud rather than silently swapping.
+and a publish costs ~4 ops. As of 23.8 exactly **one** scenario is active (`6869166`),
+so enabling the reel publisher lands on 2 and fits — nothing needs switching off. If a
+third is ever needed, say so out loud rather than silently swapping one out.
 
 ## Verifying a publish
 
