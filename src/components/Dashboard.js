@@ -130,7 +130,7 @@ function KpiCard({ label, value, sub, accent, icon: Icon, featured, loss, badge,
 export default function Dashboard({
   products, settings, showToast,
   allProducts, projects, activeProjectId, setActiveProjectId, setPage, calcCtx,
-  saveActualFreightQuote,
+  saveActualFreightQuote, onReload,
 }) {
   const [showAccountantExport, setShowAccountantExport] = useState(false);
   const [showShareManager, setShowShareManager]         = useState(false);
@@ -286,20 +286,8 @@ export default function Dashboard({
               <Ship size={13} /> למוביל / משלח
             </button>
           )}
-          <button className="btn btn-sm" onClick={() => window.location.reload()} title="רענן נתונים">
+          <button className="btn btn-sm" onClick={() => onReload?.()} title="רענן נתונים">
             <RefreshCw size={13} />
-          </button>
-          <button className="btn btn-sm btn-ghost"
-            onClick={() => {
-              if (navigator.share && activeProject) {
-                navigator.share({ title: activeProject.name, url: window.location.href }).catch(()=>{});
-              } else if (navigator.clipboard) {
-                navigator.clipboard.writeText(window.location.href);
-                showToast?.('הקישור הועתק');
-              }
-            }}
-            title="שתף">
-            <Share2 size={13} /> שתף
           </button>
           <button className="btn btn-sm btn-danger" onClick={() => setPage('projects')} title="מחיקת פרויקט">
             <Trash2 size={13} /> מחק
@@ -463,7 +451,8 @@ export default function Dashboard({
             </div>
             )}
 
-            {/* ── ROI banner ── */}
+            {/* ── ROI banner — only shown when there is real cost data ── */}
+            {totals.fobTotal > 0 && (
             <div className="roi-banner">
               <div className="roi-stat">
                 <div className="roi-label">ROI</div>
@@ -487,6 +476,7 @@ export default function Dashboard({
                 </div>
               )}
             </div>
+            )}
 
             {/* ── Document verification (invoice vs packing vs BL) ── */}
             <DocVerificationPanel

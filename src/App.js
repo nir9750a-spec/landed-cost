@@ -84,7 +84,6 @@ export default function App() {
     async function autoFetchRate() {
       const rate = await fetchUsdRate();
       if (!rate) return;
-      console.log('Fetched rate:', rate);
       setGlobalSettings(g => ({ ...g, usd_rate: rate }));
       setLastRateFetchAt(new Date());
       await supabase.from('settings')
@@ -471,7 +470,8 @@ export default function App() {
       marketRates={marketRates} onUpdateMarketRate={updateMarketRate}
       onApplyMarketRate={applyMarketRate} settings={settings}>
       {page === 'dashboard'  && <Dashboard {...shared} allProducts={uniqueProducts} projects={projects}
-                                  activeProjectId={activeProjectId} setActiveProjectId={setActiveProjectId} setPage={setPage} />}
+                                  activeProjectId={activeProjectId} setActiveProjectId={setActiveProjectId} setPage={setPage}
+                                  onReload={() => { loadProjects(); loadProducts(); }} />}
       {page === 'products'   && <ProductsPage {...shared} activeProject={activeProject} setPage={setPage} />}
       {page === 'compliance' && <CompliancePage {...shared} activeProject={activeProject} setPage={setPage} />}
       {page === 'breakdown'  && <BreakdownPage {...shared} activeProject={activeProject} />}
