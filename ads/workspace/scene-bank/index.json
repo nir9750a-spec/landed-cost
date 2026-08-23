@@ -118,6 +118,17 @@
         "used_at": "2026-08-18T19:47:00",
         "job_id": "31ff11ce-9770-4b4e-924e-6cdf1921838a"
       }
+    ],
+    "YF-CHL-14": [
+      {
+        "file": "forest__1.png",
+        "scene": "forest",
+        "avatar_id": null,
+        "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GfsjjjORLwMK160OnBIVevQLMI/hf_20260821_141139_c8dfdcb7-9959-4e00-bb09-de1cbb5d5cd5.png",
+        "added": "2026-08-23",
+        "used_at": null,
+        "job_id": "c8dfdcb7-9959-4e00-bb09-de1cbb5d5cd5"
+      }
     ]
   }
 }
