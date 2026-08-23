@@ -113,6 +113,33 @@ def _check_render():
     return True, f'rendered {sku} at {w}x{h}'
 
 
+def _check_rtl():
+    """Hebrew must come out in reading order, not reversed.
+
+    Pillow linked against libraqm runs the bidi algorithm itself, so handing it a string we
+    already reordered reverses it twice: the headline reads backwards and the sentence-final
+    period lands on the right. That shipped on every CI-rendered ad because the render check
+    above only asserted that a file appeared. So assert the pixels instead — draw a sentence
+    ending in '.' and confirm the leftmost ink is that short period rather than a full-height
+    letter. Correct scores ~0.20, reversed ~0.76.
+    """
+    from PIL import Image, ImageDraw
+    import make_ad
+    im = Image.new('L', (900, 220), 255)
+    ImageDraw.Draw(im).text((20, 40), make_ad.rtl('מנגל שנפתח.'), font=make_ad._f(110), fill=0)
+    mask = im.point(lambda p: 255 if p < 128 else 0)
+    box = mask.getbbox()
+    if not box:
+        return False, 'nothing rendered'
+    x0, y0, x1, y1 = box
+    edge = mask.crop((x0, y0, x0 + 18, y1)).getbbox()
+    ratio = (edge[3] - edge[1]) / (y1 - y0)
+    engine = 'raqm' if make_ad._HAS_RAQM else 'python-bidi'
+    if ratio > 0.45:
+        return False, f'Hebrew renders REVERSED · {engine} · leftmost glyph fills {ratio:.0%} of the line'
+    return True, f'{engine} · reading order correct'
+
+
 def _check_bank():
     import scene_bank
     st = scene_bank.stats()
@@ -234,6 +261,7 @@ CHECKS = [
     ('product profiles',   True,  _check_profiles),
     ('hero photos',        False, _check_heroes),
     ('render pipeline',    True,  _check_render),
+    ('hebrew rtl',         True,  _check_rtl),
     ('scene bank',         True,  _check_bank),
     ('product cards',      False, _check_cards),
     ('avatars',            False, _check_avatars),

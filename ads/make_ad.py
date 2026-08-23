@@ -45,7 +45,23 @@ def _f(sz):
 # mirroring every paired glyph in the visual string is the correct fix.
 _MIRROR = str.maketrans('()[]{}<>', ')(][}{><')
 
-def rtl(s): return get_display(s).translate(_MIRROR)
+# ...but only when something has to do the reordering. Pillow linked against libraqm runs
+# the full bidi algorithm itself, so feeding it an already-reordered string reverses Hebrew
+# TWICE and ships a mangled ad — headline backwards, sentence-final period on the wrong
+# side. The PyPI Linux wheels bundle raqm, so this is the CI path: every ad rendered on the
+# runner came out reversed, while the Windows box that had no raqm looked fine. Reorder only
+# when we are the ones who must.
+_HAS_RAQM = False
+try:
+    from PIL import features as _pil_features
+    _HAS_RAQM = bool(_pil_features.check('raqm'))
+except Exception:
+    pass
+
+
+def rtl(s):
+    """Hebrew, laid out for whichever text stack Pillow actually has."""
+    return s if _HAS_RAQM else get_display(s).translate(_MIRROR)
 
 def _white_logo():
     lg = Image.open(os.path.join(ASSETS, 'logo.png')).convert('RGBA')
