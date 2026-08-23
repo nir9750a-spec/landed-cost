@@ -1,0 +1,63 @@
+# 🏃 RUNBOOK — 4Elements Daily Auto-Post Agent
+
+This is executed by a fresh scheduled session 3×/day. Follow it exactly.
+
+## Fixed IDs (verified working)
+- Make team: `1499942`  · org: `7334275`
+- **Photo** Publisher scenario: **6869166** (Queue image_url → IG CreatePostPhoto + FB CreatePostWithPhotos)
+- **Reel** Publisher scenario: **6903724** (Queue video_url → IG CreateAReelPost + FB uploadAReel) ✅ מוכח 2026-08-11
+- Post-queue Data Store: **159437** (fields: `image_url`, `video_url`, `caption`, `product_id`)
+- Meta connection: **9617477** · IG account: **17841477773982301** (@4elements.il) · FB page: **1355675404284855**
+- Repo branch: `claude/daily-conversation-connection-n8ezyf`
+
+## ⚠️ אילוץ תרחיש פעיל יחיד (המסלול מרשה 1 בלבד!)
+רק **תרחיש אחד** יכול להיות פעיל בו-זמנית. לכן לפני הרצה:
+- לרילס: `scenarios_deactivate(6869166)` → `scenarios_activate(6903724)` → הרץ 6903724.
+- לתמונה: `scenarios_deactivate(6903724)` → `scenarios_activate(6869166)` → הרץ 6869166.
+ברירת מחדל עכשיו: **רילס פעיל (6903724)** — פיבוט לוידאו להעלאת צפיות.
+
+## 🎵 MODE T — פרסום לטיקטוק עם מוזיקה טרנדית (Higgsfield)
+TikTok connector (Higgsfield): **a8e869f3-5860-4267-9389-b1fdc60bdcbc** (@4elements, active).
+זרימה: (1) `media_import_url` את ה-mp4 דרך **jsDelivr** — `https://cdn.jsdelivr.net/gh/nir9750a-spec/landed-cost@<SHA>/<path>.mp4` (GitHub raw מחזיר octet-stream ש-Higgsfield/TikTok דוחים!). זה מחזיר גם URL של Higgsfield (cloudfront) שמתאים ל-video_url. (2) `tiktok_music_trending(connector, country_code:IL)` → הצג למשתמש, קבל בחירה. (3) `tiktok_prepare_publish(video_url=Higgsfield-hosted URL, mode:DIRECT_POST, media_type:VIDEO, title)`. (4) `tiktok_publish` עם publish_session_id + `music_sound_id` + `video_original_sound_volume:0` (להשתיק פס-קול מקומי) + `music_sound_volume:100` + כל ה-required_confirmations=true + privacy PUBLIC_TO_EVERYONE + commercial_content_disclosure{enabled:true,your_brand:true}. (5) `tiktok_publish_status` עד PUBLISH_COMPLETE.
+✅ מוכח 2026-08-12: מנגל YF-CHL-11 עם FREAKED OUT (song_clip_id 7644353784302340112).
+כלי מדידה: `virality_predictor` (חינם) — ראה LEARNINGS למסקנות ההוק.
+
+## 🎬 MODE R — פרסום רילס (וידאו, מנוע הצפיות)
+1. בנה 2 שכבות 1080×1920: `render-*-reel-bg.html` (תמונה מלאה) + `render-*-reel-fg.html` (טקסט/לוגו/מחיר שקוף).
+2. רנדר Chromium → `reel-bg.png` + `reel-fg.png` → `./make-reel.sh reel-bg.png reel-fg.png out.mp4` (Ken Burns + fade, 8ש', 0 קרדיט).
+3. הוסף אודיו שקט (חובה ל-IG/FB): `ffmpeg -i out.mp4 -f lavfi -i anullsrc=r=48000:cl=stereo -c:v copy -c:a aac -b:a 128k -shortest -movflags +faststart out-audio.mp4`.
+4. **קרא frame לאימות** → commit+push → קישור raw של ה-mp4 עם SHA.
+5. אישור מהמשתמש → `data-store-records_create(159437, {video_url, caption, product_id})` → swap-activate 6903724 → `scenarios_run(6903724, responsive)`.
+   ⏱️ **רילס מעלה לאט:** ריצה responsive עלולה להחזיר 502/timeout — **אל תריץ שוב!** בדוק `executions_get-detail` עד `SUCCESS`, ו/או שהרשומה נמחקה מהתור. רק אם אין execution בכלל — הרץ מחדש.
+
+## ⚠️ HARD RULES (learned the hard way)
+1. **Image MUST be a public JPEG hosted on GitHub raw** (`https://raw.githubusercontent.com/nir9750a-spec/landed-cost/<COMMIT_SHA>/<path>.jpg`). Meta CANNOT fetch weserv, cloudfront, or Google Drive links — those silently fail. Always commit the final JPEG to the repo and use its raw URL with the commit SHA.
+2. **IG aspect ratio** must be between 4:5 and 1.91:1. Render at **1080×1350** (4:5) or slightly wider **1080×1300**.
+3. Hebrew only, verify spelling twice. NEVER fake reviews/stars/buyer counts. Real 4Elements logo. Remove HISPEED branding if visible. Prices only from `product-profiles.json`.
+
+## Steps (MODE A — free, local composite)
+1. **Slot**: from current Israel time → 07:00 TOFU / 12:00 problem→solution / 18:00 conversion+price.
+2. **Pick product**: read `marketing/system/rotation-state.json` → use `order[next_index]`. Look up its hook/specs in `marketing/system/product-profiles.json`.
+3. **Build the ad locally** (0 credits): create an HTML 1080×1350 composite (base it on `marketing/ad-sources/render-cart.html`): product photo `marketing/ad-sources/<photo>` + top-right 4Elements logo badge + Hebrew headline (the product hook) + orange price badge `₪<price>` + footer `www.4elements.co.il · 052-891-3135`. If the photo shows HISPEED, cover it (crop/logo overlay) or pick the `clean:true` variant.
+   Render: `/opt/pw-browsers/chromium-1194/chrome-linux/chrome --headless=new --no-sandbox --disable-gpu --allow-file-access-from-files --screenshot --window-size=1080,1350 file://.../ad.html`
+   **Read the PNG to VERIFY** (Hebrew correct, price right, logo present, no HISPEED). Convert to JPEG (`marketing/auto-posts/<YYYY-MM-DD>-<slot>-<product_id>.jpg`).
+4. **Commit + push** the JPEG. Capture the commit SHA → build the raw JPEG URL.
+5. **Caption** (Hebrew): hook line + 1 benefit line (specs) + `₪<price> · לפרטים ורכישה: 4elements.co.il · 052-891-3135` + hashtags `#קמפינג #אאוטדור #4elements #ציוד_לשטח` + 1–2 product-specific tags.
+6. **APPROVAL**: do NOT publish yet. Send the user a message with the raw JPEG URL + caption + product name, ending with: *"תאשר: כתוב **פרסם** לפרסום ל-IG+פייסבוק, או **דלג**/שינויים."* (Push notification fires automatically.)
+7. **On user reply "פרסם"**: `data-store-records_create` into store 159437 `{image_url: <raw JPEG URL>, caption, product_id}` → `scenarios_run(6869166, responsive:true)` → confirm `operations >= 4` and `status SUCCESS` → reply "✅ פורסם ל-IG+פייסבוק". Then increment `next_index` (wrap) in rotation-state.json and commit.
+   On "דלג" → increment index, skip. On change requests → adjust and re-send for approval.
+8. **On any error**: notify the user with the error; never publish junk.
+
+## MODE B (from the 18th, when Higgsfield credits refresh)
+For the 07:00 hero slot, ALSO generate a premium Higgsfield image (nano_banana_pro, real photo + logo, Hebrew text). Since Higgsfield/cloudfront can't be auto-hosted for Meta, send it to the user to **download & post manually** (or upscale the local-composite path). Keep 12:00 & 18:00 on Mode A auto.
+
+## DAILY LEARNING (once per day, morning run)
+Read IG insights via Make `instagram-business:GetUserInsights2` / `GetMediaInsights` (conn 9617477). Note which of the last posts got the most reach/engagement. Log to `marketing/system/performance-log.md` and bias `rotation-state.json` toward winning products/angles.
+
+## 🔔 חוק התראה (חובה בכל ריצה!)
+בכל ריצה, בסופה, **תמיד** שלח `PushNotification` (status: proactive) — בלי יוצאים מן הכלל:
+- מודעה מוכנה לאישור → "🔔 4Elements HH:MM: פרסומת [מוצר ₪X] מוכנה — כתוב פרסם".
+- אין מודעה / נפסלה / צריך החלטה → "🔔 4Elements HH:MM: צריך החלטה — [סיבה]".
+- שגיאה → "🔔 4Elements: שגיאה בריצת HH:MM — [תמצית]".
+- אחרי פרסום → "✅ 4Elements: [מוצר] פורסם ל-IG+פייסבוק".
+משתמש לא צריך לזכור להיכנס — הצלצול הוא הממשק.

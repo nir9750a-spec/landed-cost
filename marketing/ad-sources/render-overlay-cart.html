@@ -1,0 +1,32 @@
+<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><style>
+html,body{margin:0;padding:0;background:transparent;}*{box-sizing:border-box;-webkit-font-smoothing:antialiased;}
+.page{position:relative;width:1080px;height:1920px;overflow:hidden;background:transparent;font-family:"FreeSans","DejaVu Sans",sans-serif;}
+/* top scrim so all text stays legible over the sky — bottom 32% kept CLEAR for platform UI */
+.scrimTop{position:absolute;top:0;left:0;width:1080px;height:820px;background:linear-gradient(180deg,rgba(14,18,11,0.86)0%,rgba(14,18,11,0.60)46%,rgba(14,18,11,0)100%);}
+/* row 1: free-ship stamp (left) + logo (right), below the platform top bar */
+.stamp{position:absolute;top:150px;left:54px;width:172px;height:172px;border-radius:50%;background:rgba(255,255,255,0.96);
+ border:4px solid #e0863a;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+ color:#c26a22;font-weight:bold;box-shadow:0 8px 22px rgba(0,0,0,0.4);transform:rotate(-11deg);}
+.stamp .a{font-size:35px;line-height:1;}.stamp .b{font-size:35px;line-height:1;margin-top:3px;}.stamp .c{font-size:22px;margin-top:6px;color:#333;}
+.logo{position:absolute;top:168px;right:54px;background:#12140f;border-radius:20px;padding:14px 24px;display:flex;align-items:center;box-shadow:0 6px 20px rgba(0,0,0,0.45);}
+.logo img{height:50px;display:block;filter:invert(1) brightness(1.9);}
+/* headline block — upper third, over the sky, always visible */
+.headline{position:absolute;top:380px;right:56px;left:56px;text-align:right;color:#fff;font-weight:bold;font-size:78px;line-height:1.07;letter-spacing:-1px;text-shadow:0 3px 16px rgba(0,0,0,0.8);}
+.sub{position:absolute;top:512px;right:56px;left:56px;text-align:right;color:#f4f0e6;font-size:34px;font-weight:bold;text-shadow:0 2px 12px rgba(0,0,0,0.95);}
+/* price + CTA row, still in the safe upper zone */
+.price{position:absolute;top:600px;right:56px;background:#e0863a;color:#fff;border-radius:26px;padding:14px 34px;text-align:center;box-shadow:0 8px 26px rgba(0,0,0,0.5);}
+.price .num{font-size:70px;font-weight:bold;line-height:1;}.price .vat{font-size:25px;font-weight:bold;margin-top:3px;}
+.buy{position:absolute;top:612px;left:56px;text-align:left;color:#fff;}
+.buy .k{font-size:29px;font-weight:bold;opacity:.92}
+.buy .v{font-size:42px;font-weight:bold;line-height:1.1;direction:ltr;text-align:left;text-shadow:0 2px 10px rgba(0,0,0,0.85)}
+.buy .p{font-size:30px;font-weight:bold;line-height:1.2;margin-top:4px;color:#f2c98a;direction:ltr;text-align:left;text-shadow:0 2px 10px rgba(0,0,0,0.85)}
+</style></head><body>
+<div class="page">
+  <div class="scrimTop"></div>
+  <div class="stamp"><div class="a">משלוח</div><div class="b">חינם</div><div class="c">מעל ₪350</div></div>
+  <div class="logo"><img src="file:///home/user/landed-cost/marketing/ad-sources/4elements-logo.png"></div>
+  <div class="headline">עגלת חוף/קמפינג מתקפלת</div>
+  <div class="sub">נפתחת ומתקפלת בשניות · גלגלים רחבים לחול</div>
+  <div class="buy"><div class="k">לרכישה באתר</div><div class="v">4elements.co.il</div><div class="p">☎ 052-891-3135</div></div>
+  <div class="price"><div class="num">₪279</div><div class="vat">כולל מע״מ</div></div>
+</div></body></html>

@@ -1,0 +1,60 @@
+{
+  "brand": {
+    "name": "4Elements",
+    "site": "https://www.4elements.co.il",
+    "phone": "052-891-3135",
+    "logo": "marketing/ad-sources/4elements-logo.png",
+    "palette": { "dark": "#12140f", "olive": "#5f6b4e", "cream": "#f3efe6", "orange": "#e0863a" },
+    "rules": [
+      "Hebrew only, natural not over-salesy, verify spelling twice",
+      "NEVER fake reviews / stars / buyer counts",
+      "Use the REAL 4Elements logo, never redraw it",
+      "Remove supplier branding (HISPEED) from all product photos",
+      "Prices ONLY from catalog; never invent specs",
+      "Realistic look: phone-photo feel, flat daylight, no CGI glow"
+    ],
+    "cta": "לינק בביו",
+    "hashtags_base": ["#קמפינג", "#אאוטדור", "#4elements", "#ציוד_לשטח"]
+  },
+  "posting_schedule": {
+    "timezone": "Asia/Jerusalem",
+    "slots": [
+      { "time": "07:00", "cron_utc": "0 4 * * *", "intent": "TOFU רגשי/שאיפה", "format": "פוסט 4:5 / תמונה" },
+      { "time": "12:00", "cron_utc": "0 9 * * *", "intent": "MOFU בעיה→פתרון", "format": "ריל 9:16 / סטורי" },
+      { "time": "18:00", "cron_utc": "0 15 * * *", "intent": "BOFU המרה + מחיר", "format": "פוסט 4:5 + CTA" }
+    ],
+    "note": "cron_utc assumes IDT (UTC+3, summer). In winter (IST, UTC+2) shift +1h."
+  },
+  "products": [
+    { "id": "YF-YZ-04", "name": "כיסא חוף נמוך מתכוונן עם ידיות", "price": 199, "category": "כיסאות ושולחנות", "hook": "קרוב לאדמה. רחוק מהשגרה.", "angle": "רגשי/שאיפה", "audience": "משפחות, חוף, סופ״ש", "scene": "חוף שקיעה", "source": "אמיתי", "status": "done" },
+    { "id": "YF-YZ-13", "name": "כיסא חוף עם ידיות עץ מתכוונן", "price": 220, "category": "כיסאות ושולחנות", "hook": "קלאסיקה שלא מתפשרת.", "angle": "סטטוס/איכות", "audience": "פרימיום, מרפסת/טבע", "scene": "טבע/נחל", "source": "אמיתי", "status": "done" },
+    { "id": "YF-YZ-03", "name": "כיסא חוף נמוך 3 מצבים", "price": 199, "category": "כיסאות ושולחנות", "hook": "שלושה מצבים. אפס פשרות.", "angle": "בעיה→פתרון", "audience": "מטיילים", "scene": "יער", "source": "אמיתי", "status": "todo" },
+    { "id": "YF-YZ-06B", "name": "כיסא נוח מתקפל (רקליינר)", "price": 99, "category": "כיסאות ושולחנות", "hook": "שוקעים פנימה. הראש מתנקה.", "angle": "UGC/רגש", "audience": "כולם, מחיר נמוך", "scene": "חוף/מדבר", "source": "אמיתי+AI", "status": "done" },
+    { "id": "YF-YZ-50A", "name": "כיסא moon", "price": 59, "category": "כיסאות ושולחנות", "hook": "קטן שנעלם בתיק. ענק בנוחות.", "angle": "ניידות/מחיר", "audience": "צעירים, פסטיבלים", "scene": "טרק/הר", "source": "AI", "status": "todo" },
+    { "id": "YF-ZZ-31B", "name": "שולחן מתקפל + 4 כיסאות", "price": 150, "category": "כיסאות ושולחנות", "hook": "פיקניק שלם. במזוודה אחת.", "angle": "משפחה/ערך", "audience": "משפחות", "scene": "יער/דשא", "source": "אמיתי", "status": "todo" },
+    { "id": "YF-ZZ-28", "name": "שולחן מתקפל קומפקטי", "price": 59, "category": "כיסאות ושולחנות", "hook": "שטוח כספר. פתוח בשנייה.", "angle": "ניידות", "audience": "מטיילים", "scene": "טבע", "source": "אמיתי", "status": "todo" },
+    { "id": "YF-ZZ-11D", "name": "שולחן מתקפל אלומיניום", "price": 140, "category": "כיסאות ושולחנות", "hook": "משטח יציב לכל עצירה.", "angle": "פונקציונלי", "audience": "קמפרים", "scene": "מחנה", "source": "אמיתי", "status": "todo" },
+    { "id": "YF-XJC-06A", "name": "מיטת שדה מתקפלת – אוורירי", "price": 250, "category": "כיסאות ושולחנות", "hook": "שינה של בית — מתחת לכוכבים.", "angle": "נוחות/שינה", "audience": "קמפרים", "scene": "אוהל/מדבר לילה", "source": "אמיתי+AI", "status": "done" },
+    { "id": "YF-XJC-06B", "name": "מיטת שדה מתקפלת – נוח", "price": 250, "category": "כיסאות ושולחנות", "hook": "הגב שלך יודה לך בבוקר.", "angle": "נוחות", "audience": "קמפרים", "scene": "אוהל", "source": "אמיתי+AI", "status": "done" },
+    { "id": "YF-YZ-60", "name": "כיסא מתקפל עם אריזה", "price": 220, "category": "כיסאות ושולחנות", "hook": "מוכן לדרך — בתיק שלו.", "angle": "ניידות", "audience": "מטיילים", "scene": "חניון/שטח", "source": "אמיתי", "status": "todo" },
+    { "id": "YF-YZ-61", "name": "כיסא מתקפל מעוצב", "price": 220, "category": "כיסאות ושולחנות", "hook": "כיסא שגונב מבטים.", "angle": "סטטוס", "audience": "חוף", "scene": "חוף", "source": "אמיתי", "status": "todo" },
+    { "id": "YF-ZP-14A", "name": "אוהל פופ-אפ 4 אנשים", "price": 299, "category": "אביזרים לשטח", "hook": "בית שנפתח בנשימה אחת.", "angle": "בעיה→פתרון", "audience": "משפחות, חוף", "scene": "יער אורנים/חוף", "source": "אמיתי", "status": "done" },
+    { "id": "YF-LYC-03A", "name": "עגלת קמפינג 150 ליטר", "price": 279, "category": "אביזרים לשטח", "hook": "נגמר הסבל של לסחוב לים.", "angle": "פתרון/ניידות", "audience": "משפחות חוף", "scene": "חוף", "source": "אמיתי", "status": "done" },
+    { "id": "YF-LYD-13", "name": "מנורה 3 ב-1", "price": 119, "category": "אביזרים לשטח", "hook": "אור, פנס ובנק כוח — בגוף אחד.", "angle": "גאדג׳ט/פונקציונלי", "audience": "קמפרים", "scene": "מחנה לילה", "source": "אמיתי", "status": "todo" },
+    { "id": "YF-LYD-08", "name": "גרלנדה LED 10 מ׳", "price": 49, "category": "אביזרים לשטח", "hook": "10 מטר של אווירה.", "angle": "אווירה/אימפולס", "audience": "בית+קמפינג", "scene": "אוהל לילה", "source": "אמיתי", "status": "done" },
+    { "id": "YF-FS-02", "name": "מאוורר נטען", "price": 69, "category": "אביזרים לשטח", "hook": "רוח קרירה, בלחיצת כפתור.", "angle": "פתרון חום/אימפולס", "audience": "כולם, קיץ", "scene": "מרפסת/חוף", "source": "אמיתי", "status": "done" },
+    { "id": "YF-QDC-05B", "name": "מזרן מתנפח זוגי", "price": 329, "category": "אביזרים לשטח", "hook": "מיטה זוגית מתחת לכוכבים.", "angle": "זוגי/נוחות", "audience": "זוגות", "scene": "אוהל לילה", "source": "AI", "status": "todo" },
+    { "id": "YF-QDC-04", "name": "מזרן מתנפח דק", "price": 329, "category": "אביזרים לשטח", "hook": "מתנפח לבד. אתה רק נשכב.", "angle": "נוחות", "audience": "קמפרים", "scene": "אוהל", "source": "אמיתי", "status": "todo" },
+    { "id": "YF-QDC-02A", "name": "מזרן דק לקמפינג", "price": 95, "category": "אביזרים לשטח", "hook": "שינה טובה, במשקל נוצה.", "angle": "מחיר/ניידות", "audience": "טרקים", "scene": "טרק", "source": "אמיתי", "status": "todo" },
+    { "id": "YF-CHL-11", "name": "מנגל מתקפל דק במיוחד", "price": 135, "category": "בישול שטח", "hook": "מנגל שנכנס לתרמיל.", "angle": "ניידות/על האש", "audience": "מנגליסטים", "scene": "טרק/חוף", "source": "אמיתי", "status": "done" },
+    { "id": "YF-CHL-12", "name": "קערת מדורה + גריל", "price": 149, "category": "בישול שטח", "hook": "אש אחת, שתי חוויות.", "angle": "אווירה/על האש", "audience": "חברים", "scene": "לילה/חברים", "source": "אמיתי+AI", "status": "todo" },
+    { "id": "YF-CHL-13", "name": "גריל פחמים (מעשנה 2-ב-1)", "price": 149, "category": "בישול שטח", "hook": "יאללה, על האש.", "angle": "על האש", "audience": "מנגליסטים", "scene": "יער+חוף", "source": "AI", "status": "done" },
+    { "id": "YF-CHL-14", "name": "מנגל מתקפל בסטייל", "price": 80, "category": "בישול שטח", "hook": "על האש שולחני — בכל מרפסת.", "angle": "שולחני/עירוני", "audience": "מרפסת עירונית", "scene": "מרפסת", "source": "אמיתי", "status": "todo" },
+    { "id": "YF-CJ-11SET", "name": "ערכת תבלינים שטח", "price": 49, "category": "בישול שטח", "hook": "כל התבלינים — בתיק אחד.", "angle": "אביזר משלים", "audience": "מנגליסטים", "scene": "על האש", "source": "אמיתי", "status": "done" },
+    { "id": "YF-LJ-04", "name": "מגן רוח לגזיה", "price": 59, "category": "בישול שטח", "hook": "הרוח לא תכבה לך את הלהבה.", "angle": "פתרון", "audience": "קמפרים", "scene": "מחנה", "source": "אמיתי", "status": "todo" },
+    { "id": "YF-LJ-01", "name": "משטח בישול", "price": 29, "category": "בישול שטח", "hook": "בסיס יציב לכל סיר.", "angle": "אביזר משלים", "audience": "קמפרים", "scene": "מחנה", "source": "אמיתי", "status": "todo" },
+    { "id": "YF-KSL-03", "name": "גזיה אלפינית", "price": 95, "category": "בישול שטח", "hook": "קפה בפסגה — בפחות מדקה.", "angle": "ניידות", "audience": "מטיילי הר", "scene": "פסגה/הר", "source": "אמיתי", "status": "todo" },
+    { "id": "WEB-WINCH", "name": "כננת חשמלית 12,000 ליבר", "price": 2200, "category": "שדרוגי 4x4", "hook": "נתקעת? חלץ את עצמך.", "angle": "חילוץ/ביטחון", "audience": "בעלי ג׳יפ", "scene": "בוץ/חול נגב", "source": "AI", "status": "todo" },
+    { "id": "WEB-SNK2", "name": "שנורקל לנד קרוזר", "price": 400, "category": "שדרוגי 4x4", "hook": "חוצה מים — בלי לחשוש.", "angle": "הרפתקה", "audience": "בעלי ג׳יפ", "scene": "חציית מים", "source": "AI", "status": "todo" }
+  ]
+}
