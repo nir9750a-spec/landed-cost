@@ -29,7 +29,12 @@ def _font_path():
 
 
 FONT = _font_path()
-ORANGE = (232, 98, 42)
+# Brand orange, #e0863a. Sampled straight off the price pill of the ads that actually
+# published (marketing/auto-posts) — gas-stove reads #e0863c, bed #e0873d — and it matches the
+# palette declared in product-profiles.json and in the Higgsfield brand kit.
+# This used to be (232, 98, 42) = #e8622a, a redder orange that belonged to neither, so every
+# ad the engine rendered was off-brand against our own published work.
+ORANGE = (224, 134, 58)
 CREAM  = (243, 233, 216)
 
 def _f(sz):
@@ -133,59 +138,88 @@ def build(base_path, out_path, W, H, hook, sub, price, cta='לינק בביו', 
     d = ImageDraw.Draw(img)
     M = int(W * 0.06)
 
-    # bottom scrim
-    scrim = Image.new('L', (1, H), 0)
-    sp = scrim.load()
-    top = int(H * 0.46)
-    for y in range(H):
-        sp[0, y] = 0 if y < top else int(215 * (y - top) / (H - top))
-    scrim = scrim.resize((W, H))
-    dark = Image.new('RGBA', (W, H), (12, 16, 12, 255)); dark.putalpha(scrim)
-    img = Image.alpha_composite(img, dark); d = ImageDraw.Draw(img)
-
-    # top scrim (for headline placed at top, over sky/negative space)
+    # Scrims, measured against the eight ads that actually published (marketing/auto-posts).
+    #
+    # The old code ramped a 215-alpha wash over the bottom 54% of every frame. Nothing in the
+    # published set does that: sampling them, mean luminance of the bottom sixth is HIGHER than
+    # the top sixth (147 vs 100 on the gas-stove and bed ads) — the photo is left alone and the
+    # price pill supplies its own contrast. That wash is what made our output read as a slide
+    # rather than an ad, so it is gone.
+    #
+    # A soft top scrim stays, at 110 instead of 185. The published ads set their headline over
+    # sky the photographer already gave them; our scene bank is arbitrary, so a light veil is
+    # cheap insurance for legibility without flattening the image.
     if headline_pos == 'top':
         ts = Image.new('L', (1, H), 0); tp = ts.load()
-        bot = int(H * 0.42)
+        bot = int(H * 0.38)
         for yy in range(H):
-            tp[0, yy] = int(185 * (bot - yy) / bot) if yy < bot else 0
+            tp[0, yy] = int(110 * (bot - yy) / bot) if yy < bot else 0
         ts = ts.resize((W, H))
         td = Image.new('RGBA', (W, H), (12, 16, 12, 255)); td.putalpha(ts)
         img = Image.alpha_composite(img, td); d = ImageDraw.Draw(img)
+    else:
+        # Headline at the bottom still needs a foothold, but a shallow one.
+        scrim = Image.new('L', (1, H), 0); sp = scrim.load()
+        top = int(H * 0.62)
+        for y in range(H):
+            sp[0, y] = 0 if y < top else int(150 * (y - top) / (H - top))
+        scrim = scrim.resize((W, H))
+        dark = Image.new('RGBA', (W, H), (12, 16, 12, 255)); dark.putalpha(scrim)
+        img = Image.alpha_composite(img, dark); d = ImageDraw.Draw(img)
 
-    # logo on dark pill, top-right
+    # Logo: a small dark rounded SQUARE in the top-right corner.
+    #
+    # Measured from the published ads: the badge occupies roughly 109x89 px on a 1080-wide
+    # frame, right edge ~45px in from the border. The old code sized the logo at 30% of the
+    # frame width and wrapped it in a full-width pill, which made the brand shout over the
+    # product. It should be a mark, not a banner.
     logo = _white_logo()
-    lw = int(W * 0.30); lh = int(lw * logo.height / logo.width)
+    badge = int(W * 0.098)                      # ~106px at 1080 — matches the published set
+    pad = int(badge * 0.16)
+    lw = badge - 2 * pad
+    lh = max(1, int(lw * logo.height / logo.width))
+    if lh > badge - 2 * pad:                    # keep it inside on a tall logo
+        lh = badge - 2 * pad
+        lw = max(1, int(lh * logo.width / logo.height))
     logo = logo.resize((lw, lh), Image.LANCZOS)
-    pad = int(W * 0.025)
-    pill = (W - M - lw - 2 * pad, M, W - M, M + lh + 2 * pad)
-    _rounded(d, pill, r=int(lh * 0.5), fill=(15, 20, 15, 165))
-    img.alpha_composite(logo, (W - M - lw - pad, M + pad))
+    # The badge sits ~45px in from the right in the published ads — tighter than the 64px body
+    # margin, so like the price pill it gets its own edge.
+    bx1, by1 = W - int(W * 0.042), M
+    bx0, by0 = bx1 - badge, by1 + badge
+    _rounded(d, (bx0, by1, bx1, by0), r=int(badge * 0.22), fill=(15, 20, 15, 210))
+    img.alpha_composite(logo, (bx0 + (badge - lw) // 2, by1 + (badge - lh) // 2))
     d = ImageDraw.Draw(img)
+    lh = badge                                  # downstream layout measures from the badge box
 
     # headline at TOP (below logo), when product occupies the lower/center
     if headline_pos == 'top':
+        # Headline 0.059W (~64px at 1080) and spec line 0.031W (~34px), both right-aligned —
+        # both measured off the published ads. The old 0.076/0.038 pair was a third larger and
+        # crowded the product out of its own frame.
         xr_t = W - M
-        ty = M + lh + 2 * pad + int(H * 0.030)
-        hf = _f(int(W * 0.076))
+        ty = M + lh + int(H * 0.026)
+        HOOK_SZ, SUB_SZ = int(W * 0.059), int(W * 0.031)
+        hf = _f(HOOK_SZ)
         for line in _wrap(d, hook, hf, W - 2 * M):
             d.text((xr_t, ty), rtl(line), font=hf, fill=(255, 255, 255, 255), anchor='ra',
-                   stroke_width=2, stroke_fill=(0, 0, 0, 150))
-            ty += int(W * 0.076) + int(H * 0.006)
+                   stroke_width=2, stroke_fill=(0, 0, 0, 130))
+            ty += HOOK_SZ + int(H * 0.008)
         ty += int(H * 0.006)
-        sf2 = _f(int(W * 0.038))
+        sf2 = _f(SUB_SZ)
         for line in _wrap(d, sub, sf2, W - 2 * M):
             d.text((xr_t, ty), rtl(line), font=sf2, fill=(240, 240, 235, 255), anchor='ra')
-            ty += int(W * 0.038) + int(H * 0.008)
+            ty += SUB_SZ + int(H * 0.008)
 
-    xr = W - M                      # right edge for RTL text
+    # The price pill sits 53-57px in from the right in the published ads, tighter than the 64px
+    # body margin, so it gets its own edge.
+    xr = W - int(W * 0.051)
     y = H - int(H * 0.035)          # build upward from bottom (footer first)
 
-    # footer
+    # Footer is CENTRED in every published ad, not ragged against the right margin.
     ff = _f(int(W * 0.030))
-    d.text((xr, y), rtl('www.4elements.co.il  ·  052-891-3135'), font=ff,
-           fill=(235, 235, 230, 255), anchor='rb')
-    y -= int(W * 0.030) + int(H * 0.022)
+    d.text((W // 2, y), rtl('www.4elements.co.il  ·  052-891-3135'), font=ff,
+           fill=(235, 235, 230, 255), anchor='mb')
+    y -= int(W * 0.030) + int(H * 0.032)   # puts the pill's base ~121px off the bottom, as measured
 
     # price pill + CTA row
     pf = _f(int(W * 0.062)); vf = _f(int(W * 0.028)); cf = _f(int(W * 0.040))
@@ -209,16 +243,12 @@ def build(base_path, out_path, W, H, hook, sub, price, cta='לינק בביו', 
     else:
         d.text((cx, y - ph + int(ph*0.14)), ptxt, font=pf, fill=(255,255,255,255), anchor='ma')
         d.text((cx, y - int(ph*0.30)), vtxt, font=vf, fill=(255,235,225,255), anchor='ma')
-    # CTA pill to the left of price
-    ctxt = rtl(cta); cw = d.textlength(ctxt, font=cf); ch = ph
-    arrow = int(ch * 0.16)
-    cbox = (pbox[0] - int(W*0.03) - (cw + 2*pad2 + arrow*2), y - ch, pbox[0] - int(W*0.03), y)
-    _rounded(d, cbox, r=int(ch * 0.28), fill=(255,255,255,235))
-    cyc = (cbox[1] + cbox[3]) / 2
-    d.text((cbox[2] - pad2*0.8, cyc), ctxt, font=cf, fill=(18,22,18,255), anchor='rm')
-    tx = cbox[0] + pad2*0.9
-    d.polygon([(tx + arrow*0.7, cyc - arrow), (tx, cyc + arrow*0.7), (tx + arrow*1.4, cyc + arrow*0.7)],
-              fill=ORANGE + (255,))
+    # CTA as quiet text on the LEFT, opposite the price — the way the published ads do it.
+    # The old white pill competed with the price for the same corner and gave the frame two
+    # loud objects fighting each other. Pass cta=None to drop it entirely.
+    if cta:
+        d.text((M, y - int(ph * 0.42)), rtl(cta), font=cf,
+               fill=(255, 255, 255, 245), anchor='lm')
     y -= ph + int(H * 0.028)
 
     if product_card and os.path.exists(product_card):
