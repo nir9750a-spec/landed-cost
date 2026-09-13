@@ -13,7 +13,31 @@
 
 ---
 
-## ✅ מפת ההפעלה — 6 צעדים
+## ⚡ הדרך המהירה — סקריפט אוטומטי
+
+אם כבר יש לך את הקוד (או אחרי clone), הסקריפט עושה הכול (סנכרון + התקנה + פתיחת
+המדריך + הרצה) בפקודה אחת:
+
+**Windows (PowerShell):**
+```powershell
+powershell -ExecutionPolicy Bypass -File .\SETUP\setup.ps1
+```
+
+**Mac / Linux:**
+```bash
+bash SETUP/setup.sh
+```
+
+**ממחשב חדש לגמרי** (אין עדיין קוד) — הדבק פקודה אחת:
+```powershell
+cd $HOME; git clone https://github.com/nir9750a-spec/landed-cost.git; cd landed-cost; git checkout claude/israeli-import-agent-3feuk2; powershell -ExecutionPolicy Bypass -File .\SETUP\setup.ps1
+```
+
+> מעדיף ידני / להבין כל שלב? המשך למדריך ה-6 צעדים למטה.
+
+---
+
+## ✅ מפת ההפעלה — 6 צעדים (ידני)
 
 | # | צעד | מתי צריך |
 |---|-----|----------|
